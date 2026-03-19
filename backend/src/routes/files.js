@@ -7,7 +7,8 @@ const mime = require('mime-types')
 const router = express.Router()
 
 // 基础目录 - 限制只能在此目录下操作
-const BASE_DIR = process.env.FILE_MANAGER_BASE_DIR || path.join(__dirname, '../../files')
+// 默认使用系统根目录，可通过环境变量自定义
+const BASE_DIR = process.env.FILE_MANAGER_BASE_DIR || '/'
 
 // 确保基础目录存在
 if (!fs.existsSync(BASE_DIR)) {
@@ -76,7 +77,7 @@ router.get('/*', (req, res) => {
     
     const stats = fs.statSync(filePath)
     if (stats.isDirectory()) {
-      return res.status(400).json({ message: '不能下载文件夹')
+      return res.status(400).json({ message: '不能下载文件夹' })
     }
     
     const mimeType = mime.lookup(filePath) || 'application/octet-stream'
