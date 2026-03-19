@@ -33,9 +33,14 @@ export const moveFile = (fromPath: string, toPath: string): Promise<{ success: b
   return api.put('/files/move', { fromPath, toPath }).then(res => res.data)
 }
 
-// 压缩文件夹
-export const zipFolder = (path: string): Promise<{ success: boolean; zipPath: string }> => {
-  return api.post('/files/zip', { path }).then(res => res.data)
+// 压缩文件夹（返回 EventSource）
+export const zipFolder = (path: string): EventSource => {
+  return new EventSource(`/api/files/zip?path=${encodeURIComponent(path)}`)
+}
+
+// 取消压缩
+export const cancelZip = (path: string): Promise<{ success: boolean }> => {
+  return api.post('/files/zip/cancel', { path }).then(res => res.data)
 }
 
 // 删除文件/文件夹

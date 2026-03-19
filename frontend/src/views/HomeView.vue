@@ -117,6 +117,49 @@
       </template>
     </el-dialog>
 
+    <!-- 压缩进度对话框 -->
+    <el-dialog
+      v-model="zipProgressVisible"
+      title="压缩进度"
+      width="400px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      :lock-scroll="true"
+    >
+      <div class="zip-progress">
+        <el-progress
+          :percentage="zipProgress"
+          :status="zipStatus"
+        />
+        <div class="zip-progress-text">
+          {{ zipStatus === 'exception' ? zipError : zipStatus === 'success' ? '压缩完成' : `正在压缩：${zipFolderPath}` }}
+        </div>
+      </div>
+      <template #footer>
+        <el-button
+          v-if="zipStatus === ''"
+          type="danger"
+          @click="cancelZip"
+        >
+          取消
+        </el-button>
+        <el-button
+          v-else-if="zipStatus === 'exception'"
+          @click="zipProgressVisible = false"
+        >
+          关闭
+        </el-button>
+        <el-button
+          v-else-if="zipStatus === 'success'"
+          type="primary"
+          @click="zipProgressVisible = false"
+        >
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 右键菜单 -->
     <div 
       v-if="contextMenuVisible" 
@@ -139,7 +182,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Folder, Document, FolderAdd, Refresh, HomeFilled } from '@element-plus/icons-vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, moveFile, zipFolder as zipFolderApi, deleteFile as deleteFileApi } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, moveFile, zipFolder as zipFolderApi, cancelZip as cancelZipApi, deleteFile as deleteFileApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
 
 const fileStore = useFileStore()
@@ -152,6 +195,14 @@ const newFolderName = ref('')
 const moveVisible = ref(false)
 const moveSourcePath = ref('')
 const moveTargetPath = ref('')
+
+// 压缩进度
+const zipProgressVisible = ref(false)
+const zipProgress = ref(0)
+const zipStatus = ref<'success' | 'exception' | ''>('')
+const zipFolderPath = ref('')
+const zipError = ref('')
+let zipEventSource: EventSource | null = null
 
 // 右键菜单
 const contextMenuVisible = ref(false)
@@ -257,12 +308,56 @@ const moveFile = async () => {
 }
 
 const zipFolder = async (path: string) => {
+  zipProgress.value = 0
+  zipStatus.value = ''
+  zipError.value = ''
+  zipFolderPath.value = path
+  
+  // 关闭之前的事件源
+  if (zipEventSource) {
+    zipEventSource.close()
+  }
+  
+  zipEventSource = zipFolderApi(path)
+  zipProgressVisible.value = true
+  
+  zipEventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    
+    if (data.type === 'progress') {
+      zipProgress.value = data.progress
+    } else if (data.type === 'complete') {
+      zipStatus.value = 'success'
+      zipProgress.value = 100
+      zipEventSource?.close()
+      zipEventSource = null
+      ElMessage.success('压缩完成')
+      refresh()
+    } else if (data.type === 'error') {
+      zipStatus.value = 'exception'
+      zipError.value = data.message
+      zipEventSource?.close()
+      zipEventSource = null
+    }
+  }
+  
+  zipEventSource.onerror = () => {
+    zipStatus.value = 'exception'
+    zipError.value = '压缩失败，请重试'
+    zipEventSource?.close()
+    zipEventSource = null
+  }
+}
+
+const cancelZip = async () => {
   try {
-    await zipFolderApi(path)
-    ElMessage.success('压缩成功')
-    refresh()
+    await cancelZipApi(zipFolderPath.value)
+    zipEventSource?.close()
+    zipEventSource = null
+    zipProgressVisible.value = false
+    ElMessage.info('已取消压缩')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '压缩失败')
+    ElMessage.error(e.response?.data?.message || '取消失败')
   }
 }
 
@@ -380,5 +475,16 @@ onMounted(() => {
 
 .context-menu-item:hover {
   background: #f5f7fa;
+}
+
+.zip-progress {
+  padding: 20px 0;
+}
+
+.zip-progress-text {
+  margin-top: 16px;
+  text-align: center;
+  color: #606266;
+  font-size: 14px;
 }
 </style>

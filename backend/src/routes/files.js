@@ -66,7 +66,128 @@ router.get('/', (req, res) => {
   }
 })
 
-// 下载文件
+// 压缩文件夹（使用 SSE 发送进度）- 必须在 /* 之前定义
+router.get('/zip', (req, res) => {
+  try {
+    const folderPath = req.query.path
+    
+    if (!folderPath) {
+      return res.status(400).json({ message: '缺少文件夹路径' })
+    }
+    
+    const folderFullPath = safePath(folderPath)
+    
+    if (!fs.existsSync(folderFullPath)) {
+      return res.status(404).json({ message: '文件夹不存在' })
+    }
+    
+    const stats = fs.statSync(folderFullPath)
+    if (!stats.isDirectory()) {
+      return res.status(400).json({ message: '只能压缩文件夹' })
+    }
+    
+    const zipFileName = `${path.basename(folderPath)}.zip`
+    const zipPath = path.join(path.dirname(folderFullPath), zipFileName)
+    
+    // 计算总大小用于进度
+    let totalBytes = 0
+    
+    const walkDir = (dir) => {
+      const files = fs.readdirSync(dir)
+      for (const file of files) {
+        const filePath = path.join(dir, file)
+        const stat = fs.statSync(filePath)
+        if (stat.isDirectory()) {
+          walkDir(filePath)
+        } else {
+          totalBytes += stat.size
+        }
+      }
+    }
+    walkDir(folderFullPath)
+    
+    const output = fs.createWriteStream(zipPath)
+    const archive = archiver('zip', { zlib: { level: 9 } })
+    
+    let processedBytes = 0
+    
+    // 监听数据添加以跟踪进度
+    archive.on('entry', (entry) => {
+      if (!entry.stats.isDirectory()) {
+        processedBytes += entry.stats.size
+        const progress = Math.round((processedBytes / totalBytes) * 100)
+        res.write(`data: ${JSON.stringify({ type: 'progress', progress })}\n\n`)
+      }
+    })
+    
+    output.on('close', () => {
+      res.write(`data: ${JSON.stringify({ 
+        type: 'complete', 
+        zipPath: path.relative(BASE_DIR, zipPath).replace(/\\/g, '/')
+      })}\n\n`)
+      res.end()
+    })
+    
+    archive.on('error', (err) => {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`)
+      res.end()
+    })
+    
+    // 设置 SSE 头
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.setHeader('X-Archive-Path', folderPath)
+    
+    archive.pipe(output)
+    archive.directory(folderFullPath, path.basename(folderPath))
+    archive.finalize()
+    
+    // 存储 archive 实例以便取消
+    if (!req.app.locals.activeArchives) {
+      req.app.locals.activeArchives = {}
+    }
+    req.app.locals.activeArchives[folderPath] = archive
+    
+    // 清理完成的 archive
+    output.on('close', () => {
+      delete req.app.locals.activeArchives[folderPath]
+    })
+    
+  } catch (e) {
+    console.error('压缩失败:', e)
+    res.write(`data: ${JSON.stringify({ type: 'error', message: e.message })}\n\n`)
+    res.end()
+  }
+})
+
+// 取消压缩
+router.post('/zip/cancel', (req, res) => {
+  try {
+    const { path: folderPath } = req.body
+    
+    if (!folderPath) {
+      return res.status(400).json({ message: '缺少文件夹路径' })
+    }
+    
+    const archives = req.app.locals.activeArchives || {}
+    const archive = archives[folderPath]
+    
+    if (!archive) {
+      return res.status(404).json({ message: '未找到正在进行的压缩任务' })
+    }
+    
+    archive.abort()
+    delete archives[folderPath]
+    
+    res.json({ success: true })
+  } catch (e) {
+    console.error('取消压缩失败:', e)
+    res.status(500).json({ message: e.message || '取消失败' })
+  }
+})
+
+// 下载文件 - 必须在最后，避免拦截其他路由
 router.get('/*', (req, res) => {
   try {
     const filePath = safePath(req.params[0])
@@ -146,52 +267,6 @@ router.put('/rename', (req, res) => {
   } catch (e) {
     console.error('重命名失败:', e)
     res.status(500).json({ message: e.message || '重命名失败' })
-  }
-})
-
-// 压缩文件夹
-router.post('/zip', (req, res) => {
-  try {
-    const { path: folderPath } = req.body
-    
-    if (!folderPath) {
-      return res.status(400).json({ message: '缺少文件夹路径' })
-    }
-    
-    const folderFullPath = safePath(folderPath)
-    
-    if (!fs.existsSync(folderFullPath)) {
-      return res.status(404).json({ message: '文件夹不存在' })
-    }
-    
-    const stats = fs.statSync(folderFullPath)
-    if (!stats.isDirectory()) {
-      return res.status(400).json({ message: '只能压缩文件夹' })
-    }
-    
-    const zipFileName = `${path.basename(folderPath)}.zip`
-    const zipPath = path.join(path.dirname(folderFullPath), zipFileName)
-    
-    const output = fs.createWriteStream(zipPath)
-    const archive = archiver('zip', { zlib: { level: 9 } })
-    
-    output.on('close', () => {
-      res.json({ 
-        success: true, 
-        zipPath: path.relative(BASE_DIR, zipPath).replace(/\\/g, '/')
-      })
-    })
-    
-    archive.on('error', (err) => {
-      throw err
-    })
-    
-    archive.pipe(output)
-    archive.directory(folderFullPath, path.basename(folderPath))
-    archive.finalize()
-  } catch (e) {
-    console.error('压缩失败:', e)
-    res.status(500).json({ message: e.message || '压缩失败' })
   }
 })
 
