@@ -161,8 +161,8 @@ npm start
 # 1. 在本地构建
 npm run build
 
-# 2. 打包文件
-tar -czf file-manager.tar.gz backend/
+# 2. 打包文件（忽略 node_modules）
+tar -czf file-manager.tar.gz --exclude='backend/node_modules' backend/
 
 # 3. 传输到目标服务器
 scp file-manager.tar.gz user@remote:/path/to/deploy
