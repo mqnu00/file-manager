@@ -3,16 +3,15 @@
     <!-- 顶部工具栏 -->
     <div class="toolbar">
       <div class="breadcrumb">
-        <span 
-          v-for="(part, index) in breadcrumbParts" 
-          :key="index"
-          class="breadcrumb-item"
-        >
+        <el-link class="breadcrumb-home" @click="navigateTo(-1)">
+          <el-icon><HomeFilled /></el-icon>
+        </el-link>
+        <template v-for="(part, index) in breadcrumbParts" :key="index">
+          <span class="separator">/</span>
           <el-link @click="navigateTo(index)">
-            {{ part || '根目录' }}
+            {{ part }}
           </el-link>
-          <span v-if="index < breadcrumbParts.length - 1" class="separator">/</span>
-        </span>
+        </template>
       </div>
       
       <div class="actions">
@@ -29,10 +28,9 @@
 
     <!-- 文件列表 -->
     <div class="file-list">
-      <el-table 
-        :data="fileStore.files" 
+      <el-table
+        :data="fileStore.files"
         style="width: 100%"
-        @row-dblclick="onRowDblClick"
         @row-contextmenu="onRowContextmenu"
         v-loading="fileStore.loading"
       >
@@ -44,7 +42,12 @@
                 <Folder v-if="row.isDirectory" />
                 <Document v-else />
               </el-icon>
-              <span>{{ row.name }}</span>
+              <span 
+                :class="['file-name-text', { 'is-folder': row.isDirectory }]"
+                @click="row.isDirectory && navigateInto(row.path)"
+              >
+                {{ row.name }}
+              </span>
             </div>
           </template>
         </el-table-column>
@@ -134,9 +137,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Folder, Document, FolderAdd, Refresh } from '@element-plus/icons-vue'
+import { Folder, Document, FolderAdd, Refresh, HomeFilled } from '@element-plus/icons-vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder, moveFile, zipFolder as zipFolderApi, deleteFile as deleteFileApi } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, moveFile, zipFolder as zipFolderApi, deleteFile as deleteFileApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
 
 const fileStore = useFileStore()
@@ -162,6 +165,11 @@ const breadcrumbParts = computed(() => {
 })
 
 const navigateTo = (index: number) => {
+  if (index === -1) {
+    // 跳转到根目录
+    loadFiles('')
+    return
+  }
   const parts = breadcrumbParts.value
   const newPath = parts.slice(0, index + 1).join('/')
   loadFiles(newPath)
@@ -184,10 +192,8 @@ const refresh = () => {
   loadFiles(fileStore.currentPath)
 }
 
-const onRowDblClick = (row: any) => {
-  if (row.isDirectory) {
-    loadFiles(row.path)
-  }
+const navigateInto = (path: string) => {
+  loadFiles(path)
 }
 
 const onRowContextmenu = (e: MouseEvent, row: any) => {
@@ -217,9 +223,9 @@ const createFolder = async () => {
     ElMessage.warning('请输入文件夹名称')
     return
   }
-  
+
   try {
-    await createFolder(fileStore.currentPath, newFolderName.value)
+    await createFolderApi(fileStore.currentPath, newFolderName.value)
     ElMessage.success('创建成功')
     createFolderVisible.value = false
     refresh()
@@ -305,16 +311,16 @@ onMounted(() => {
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.breadcrumb-item {
+.breadcrumb-home {
   display: flex;
   align-items: center;
+  font-size: 18px;
 }
 
 .separator {
-  margin: 0 8px;
   color: #909399;
 }
 
@@ -336,6 +342,21 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.file-name-text {
+  cursor: default;
+}
+
+.file-name-text.is-folder {
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.file-name-text.is-folder:hover {
+  color: #409eff;
+  text-decoration: underline;
 }
 
 .context-menu {
