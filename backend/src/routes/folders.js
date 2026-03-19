@@ -5,7 +5,8 @@ const express = require('express')
 const router = express.Router()
 
 // 基础目录
-const BASE_DIR = process.env.FILE_MANAGER_BASE_DIR || path.join(__dirname, '../../files')
+// 默认使用系统根目录，可通过环境变量自定义
+const BASE_DIR = process.env.FILE_MANAGER_BASE_DIR || '/'
 
 // 确保基础目录存在
 if (!fs.existsSync(BASE_DIR)) {
