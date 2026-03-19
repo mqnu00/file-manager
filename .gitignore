@@ -32,4 +32,4 @@ tmp/
 temp/
 
 # 文件管理目录（可选，如果需要忽略管理的文件）
-# files/
+backend/files/
