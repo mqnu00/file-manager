@@ -1,0 +1,26 @@
+{
+  "name": "file-manager",
+  "version": "1.0.0",
+  "description": "全栈文件管理系统 - Vue3 + Node.js",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "node backend/src/app.js",
+    "release": "node scripts/release.js",
+    "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/"
+  },
+  "keywords": [
+    "file-manager",
+    "vue3",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "semver": "^7.6.0"
+  }
+}
