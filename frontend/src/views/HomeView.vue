@@ -13,8 +13,17 @@
           </el-link>
         </template>
       </div>
-      
+
       <div class="actions">
+        <el-select v-model="sortBy" size="small" @change="sortFiles">
+          <el-option label="名称" value="name" />
+          <el-option label="类型" value="type" />
+          <el-option label="修改时间" value="modified" />
+        </el-select>
+        <el-button size="small" @click="toggleSortOrder">
+          <el-icon><component :is="sortOrder === 'asc' ? 'ArrowUp' : 'ArrowDown'" /></el-icon>
+          <el-icon><ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else /></el-icon>
+        </el-button>
         <el-button type="primary" size="small" @click="showCreateFolderDialog">
           <el-icon><FolderAdd /></el-icon>
           新建文件夹
@@ -180,12 +189,41 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Folder, Document, FolderAdd, Refresh, HomeFilled } from '@element-plus/icons-vue'
+import { Folder, Document, FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useFileStore } from '@/stores/file'
 import { getFiles, createFolder as createFolderApi, moveFile, zipFolder as zipFolderApi, cancelZip as cancelZipApi, deleteFile as deleteFileApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
 
 const fileStore = useFileStore()
+
+// 排序
+const sortBy = ref<'name' | 'type' | 'modified'>('name')
+const sortOrder = ref<'asc' | 'desc'>('asc')
+
+const toggleSortOrder = () => {
+  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  sortFiles()
+}
+
+const sortFiles = () => {
+  const files = [...fileStore.files]
+  files.sort((a, b) => {
+    let comparison = 0
+    
+    if (sortBy.value === 'name') {
+      comparison = a.name.localeCompare(b.name)
+    } else if (sortBy.value === 'type') {
+      const aType = a.isDirectory ? 'folder' : 'file'
+      const bType = b.isDirectory ? 'folder' : 'file'
+      comparison = aType.localeCompare(bType) || a.name.localeCompare(b.name)
+    } else if (sortBy.value === 'modified') {
+      comparison = new Date(a.modified).getTime() - new Date(b.modified).getTime()
+    }
+    
+    return sortOrder.value === 'asc' ? comparison : -comparison
+  })
+  fileStore.setFiles(files)
+}
 
 // 新建文件夹
 const createFolderVisible = ref(false)
@@ -232,6 +270,8 @@ const loadFiles = async (path: string = '') => {
     const res = await getFiles(path)
     fileStore.setFiles(res.files)
     fileStore.setCurrentPath(res.path)
+    // 加载后应用排序
+    sortFiles()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '加载失败')
   } finally {
@@ -422,6 +462,8 @@ onMounted(() => {
 .actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .file-list {
