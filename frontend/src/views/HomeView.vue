@@ -5,7 +5,7 @@
       :sort-by="sortBy"
       :sort-order="sortOrder"
       @navigate="navigateTo"
-      @sort-change="sortBy = $event; sortFiles()"
+      @sort-change="(val: any) => { sortBy = val as 'name' | 'type' | 'modified'; sortFiles() }"
       @toggle-sort="toggleSortOrder"
       @create-folder="showCreateFolderDialog"
       @refresh="refresh"
@@ -147,7 +147,7 @@ const sortFiles = () => {
   fileStore.setFiles(files)
 }
 
-const onRowContextmenu = (e: MouseEvent, row: any) => {
+const onRowContextmenu = (e: MouseEvent, _row: any) => {
   e.preventDefault()
   e.stopPropagation()
   contextMenuX.value = e.clientX

@@ -66,7 +66,7 @@ defineProps<{
   loading: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   open: [path: string]
   zip: [path: string]
   move: [path: string, name: string]
@@ -74,10 +74,10 @@ defineEmits<{
   contextmenu: [event: MouseEvent, row: FileItem]
 }>()
 
-const handleContextmenu = (row: FileItem, index: number, e: MouseEvent) => {
+const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
-  defineEmits().contextmenu(e, row)
+  emit('contextmenu', e, row)
 }
 
 const formatSize = (size: number) => {
