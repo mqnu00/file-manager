@@ -4,13 +4,6 @@
 
 一个全栈文件管理应用，支持文件的上传、下载、预览、压缩等操作。
 
-## 第一版目标
-
-- [x] 文件目录查看
-- [x] 创建文件夹
-- [x] 移动文件
-- [x] 压缩文件夹 (zip)
-
 ## 技术栈
 
 ### 前端
@@ -35,6 +28,10 @@ file-manager/
 ├── frontend/           # Vue 3 + TypeScript 前端
 │   ├── src/
 │   │   ├── components/   # 通用组件
+│   │   │   ├── Toolbar.vue       # 工具栏组件
+│   │   │   ├── FileTable.vue     # 文件列表组件
+│   │   │   ├── Dialogs.vue       # 对话框组件
+│   │   │   └── ContextMenu.vue   # 右键菜单组件
 │   │   ├── views/        # 页面视图
 │   │   ├── stores/       # Pinia 状态管理
 │   │   ├── api/          # API 接口
@@ -54,7 +51,7 @@ file-manager/
 └── README.md
 ```
 
-## 核心功能
+## 核心功能（规划中）
 
 ### 1. 文件操作
 - 上传/下载文件
@@ -104,7 +101,7 @@ cd backend && npm install --registry https://registry.npmmirror.com/
 
 ### 配置文件目录
 
-后端默认在 `files/` 目录下管理文件，可通过环境变量自定义：
+后端默认在系统根目录 `/` 下管理文件，可通过环境变量自定义：
 
 ```bash
 # Linux/Mac
@@ -113,6 +110,8 @@ export FILE_MANAGER_BASE_DIR=/path/to/your/files
 # Windows
 set FILE_MANAGER_BASE_DIR=D:\path\to\your\files
 ```
+
+**注意：** 使用系统根目录时请确保有足够的权限，并注意安全风险。
 
 ### 开发模式
 
@@ -128,8 +127,106 @@ npm run dev
 ### 构建
 
 ```bash
-# 构建前端
+# 构建前端（输出到 backend/dist）
 npm run build
+
+# 构建后目录结构
+# backend/
+# ├── dist/          # 前端构建产物
+# ├── src/           # 后端代码
+# └── package.json
+```
+
+### 生产环境部署
+
+#### 方式一：直接部署整个项目
+
+```bash
+# 1. 构建项目
+npm run build
+
+# 2. 安装后端生产依赖
+cd backend
+npm install --production --registry https://registry.npmmirror.com/
+
+# 3. 启动服务
+npm start
+
+# 服务运行在 http://localhost:3000
+```
+
+#### 方式二：部署到其他服务器
+
+```bash
+# 1. 在本地构建
+npm run build
+
+# 2. 打包文件
+tar -czf file-manager.tar.gz backend/
+
+# 3. 传输到目标服务器
+scp file-manager.tar.gz user@remote:/path/to/deploy
+
+# 4. 在目标服务器解压并启动
+ssh user@remote
+cd /path/to/deploy
+tar -xzf file-manager.tar.gz
+cd backend
+npm install --production --registry https://registry.npmmirror.com/
+# 不能是3000，因为被后端占用了
+PORT=10000 node src/app.js  
+```
+
+#### 方式三：使用 Docker（可选）（未验证）
+
+```dockerfile
+# Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 复制后端
+COPY backend/package*.json ./
+RUN npm install --production --registry https://registry.npmmirror.com/
+
+# 复制构建产物
+COPY backend/dist ./dist
+COPY backend/src ./src
+
+EXPOSE 3000
+CMD ["node", "src/app.js"]
+```
+
+```bash
+# 构建镜像
+docker build -t file-manager .
+
+# 运行容器
+docker run -d -p 3000:3000 \
+  -v /path/to/files:/files \
+  -e FILE_MANAGER_BASE_DIR=/files \
+  file-manager
+```
+
+### 环境变量
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `PORT` | 服务端口 | `3000` |
+| `HOST` | 监听地址 | `0.0.0.0` |
+| `FILE_MANAGER_BASE_DIR` | 文件管理根目录 | `/` |
+
+### 防火墙配置
+
+确保目标服务器开放对应端口（默认 3000）：
+
+```bash
+# Ubuntu/Debian
+sudo ufw allow 3000/tcp
+
+# CentOS/RHEL
+sudo firewall-cmd --add-port=3000/tcp --permanent
+sudo firewall-cmd --reload
 ```
 
 ### 生产环境启动
@@ -146,18 +243,9 @@ npm run start
 npm run release
 ```
 
-## API 接口
+## API 文档
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/files | 获取文件列表 |
-| GET | /api/files/* | 下载文件 |
-| POST | /api/files | 上传文件 |
-| PUT | /api/files/* | 重命名/移动文件 |
-| DELETE | /api/files/* | 删除文件 |
-| POST | /api/files/:path/zip | 压缩文件 |
-| POST | /api/files/:path/unzip | 解压文件 |
-| GET | /api/files/:path/preview | 预览文件 |
+详细 API 接口说明请参考 [API.md](./API.md)
 
 ## 开发说明
 
