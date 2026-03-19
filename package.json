@@ -10,6 +10,7 @@
     "build:backend": "cd backend && npm run build",
     "start": "node backend/src/app.js",
     "release": "node scripts/release.js",
+    "package": "npm run build && tar -czf file-manager.tar.gz --exclude='backend/node_modules' backend/",
     "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/"
   },
   "keywords": [
