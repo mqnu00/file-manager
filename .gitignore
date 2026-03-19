@@ -30,6 +30,7 @@ Thumbs.db
 # 临时文件
 tmp/
 temp/
+file-manager.tar.gz
 
 # 文件管理目录（可选，如果需要忽略管理的文件）
 backend/files/
