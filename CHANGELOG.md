@@ -2,6 +2,8 @@
 
 ## v2.0.0 (2026-03-20)
 
+详细更改见 https://github.com/mqnu00/file-manager/blob/v2.0.0/backend/REFACTOR.md
+
 ### 重大更新
 
 #### 后端 TypeScript 重构
