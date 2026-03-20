@@ -1,8 +1,9 @@
-const express = require('express')
-const cors = require('cors')
-const path = require('path')
-const fileRoutes = require('./routes/files')
-const folderRoutes = require('./routes/folders')
+import express from 'express'
+import cors from 'cors'
+import path from 'path'
+import fs from 'fs'
+import fileRoutes from './routes/files.js'
+import folderRoutes from './routes/folders.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -19,7 +20,6 @@ app.use('/api/folders', folderRoutes)
 // 生产环境提供静态文件
 const distPath = path.join(__dirname, '../dist')
 try {
-  const fs = require('fs')
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath))
 
@@ -28,23 +28,24 @@ try {
       res.sendFile(path.join(distPath, 'index.html'))
     })
   }
-} catch (e) {
+} catch {
   console.log('静态文件目录不存在，跳过')
 }
 
 // 尝试使用指定端口，如果被占用则自动选择下一个端口
-const startServer = (port) => {
+const startServer = (port: number): void => {
   app.listen(port, HOST, () => {
     console.log(`🚀 服务器运行在 http://localhost:${port}`)
-  }).on('error', (err) => {
+  }).on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.log(`端口 ${port} 已被占用`)
+      startServer(port + 1)
     } else {
       throw err
     }
   })
 }
 
-startServer(PORT)
+startServer(Number(PORT))
 
-module.exports = app
+export default app

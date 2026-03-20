@@ -17,6 +17,7 @@
 
 ### 后端
 - Node.js
+- TypeScript
 - Express.js
 - Multer (文件上传)
 - Archiver (压缩/解压)
@@ -122,18 +123,19 @@ npm run dev
 
 启动后：
 - 前端开发服务器：http://localhost:5173
-- 后端 API 服务器：http://localhost:3000
+- 后端 API 服务器：http://localhost:3000 (使用 ts-node 运行 TypeScript)
 
 ### 构建
 
 ```bash
-# 构建前端（输出到 backend/dist）
+# 构建前端和后端 TypeScript
 npm run build
 
 # 构建后目录结构
 # backend/
-# ├── dist/          # 前端构建产物
-# ├── src/           # 后端代码
+# ├── dist/          # 前端构建产物 + 后端编译后的 JS
+# ├── src/           # 后端 TypeScript 源码
+# ├── tsconfig.json  # TypeScript 配置
 # └── package.json
 ```
 
@@ -142,7 +144,7 @@ npm run build
 #### 方式一：直接部署整个项目
 
 ```bash
-# 1. 构建项目
+# 1. 构建项目（前端 + 后端 TypeScript 编译）
 npm run build
 
 # 2. 安装后端生产依赖
@@ -151,6 +153,7 @@ npm install --production --registry https://registry.npmmirror.com/
 
 # 3. 启动服务
 npm start
+# 或等价于：node dist/app.js
 
 # 服务运行在 http://localhost:3000
 ```
@@ -174,7 +177,7 @@ tar -xzf file-manager.tar.gz
 cd backend
 npm install --production --registry https://registry.npmmirror.com/
 # 不能是3000，因为被后端占用了
-PORT=10000 node src/app.js  
+PORT=10000 node dist/app.js  
 ```
 
 #### 方式三：使用 Docker（可选）（未验证）
@@ -194,7 +197,7 @@ COPY backend/dist ./dist
 COPY backend/src ./src
 
 EXPOSE 3000
-CMD ["node", "src/app.js"]
+CMD ["node", "dist/app.js"]
 ```
 
 ```bash
