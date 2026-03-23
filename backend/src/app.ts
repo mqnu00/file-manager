@@ -2,8 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import path from 'path'
 import fs from 'fs'
-import fileRoutes from './routes/files.js'
-import folderRoutes from './routes/folders.js'
+import fileRoutes from './routes/files'
+import folderRoutes from './routes/folders'
 
 const app = express()
 const PORT = process.env.PORT || 3000
