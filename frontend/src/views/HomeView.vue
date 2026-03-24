@@ -26,6 +26,12 @@
       :new-folder-name="newFolderName"
       :move-visible="moveVisible"
       :move-target-path="moveTargetPath"
+      :move-source-path="moveSourcePath"
+      :move-source-name="moveSourceName"
+      :move-loading="moveLoading"
+      :move-progress="moveProgress"
+      :move-status="moveStatus"
+      :move-speed="moveSpeed"
       :zip-progress-visible="zipProgressVisible"
       :zip-progress="zipProgress"
       :zip-status="zipStatus"
@@ -33,6 +39,7 @@
       :zip-error="zipError"
       @update:create-folder-visible="createFolderVisible = $event"
       @update:new-folder-name="newFolderName = $event"
+      @update:move-visible="handleMoveVisibleChange"
       @update:move-target-path="moveTargetPath = $event"
       @update:zip-progress-visible="zipProgressVisible = $event"
       @create-folder="createFolder"
@@ -71,7 +78,13 @@ const createFolderVisible = ref(false)
 const newFolderName = ref('')
 const moveVisible = ref(false)
 const moveSourcePath = ref('')
+const moveSourceName = ref('')
 const moveTargetPath = ref('')
+const moveLoading = ref(false)
+const moveProgress = ref(0)
+const moveStatus = ref<'success' | 'exception' | ''>('')
+const moveSpeed = ref(0)
+let moveEventSource: EventSource | null = null
 
 // 压缩
 const zipProgressVisible = ref(false)
@@ -183,24 +196,96 @@ const createFolder = async () => {
   }
 }
 
-const showMoveDialog = (path: string) => {
+const showMoveDialog = (path: string, name: string) => {
   moveSourcePath.value = path
+  moveSourceName.value = name
   moveTargetPath.value = ''
   moveVisible.value = true
 }
 
+const handleMoveVisibleChange = (value: boolean) => {
+  moveVisible.value = value
+  // 对话框关闭时重置所有状态
+  if (!value) {
+    moveSourcePath.value = ''
+    moveSourceName.value = ''
+    moveTargetPath.value = ''
+  }
+}
+
 const moveFile = async () => {
   if (!moveTargetPath.value.trim()) {
-    ElMessage.warning('请输入目标路径')
+    ElMessage.warning('请选择目标路径')
     return
   }
-  try {
-    await moveFileApi(moveSourcePath.value, moveTargetPath.value)
-    ElMessage.success('移动成功')
-    moveVisible.value = false
-    refresh()
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '移动失败')
+
+  moveLoading.value = true
+  moveProgress.value = 0
+  moveStatus.value = ''
+  moveSpeed.value = 0
+
+  // 构建完整目标路径：目标文件夹路径 + 源文件/文件夹名称
+  // 确保路径以 / 开头
+  const normalizedSourcePath = moveSourcePath.value.startsWith('/') 
+    ? moveSourcePath.value 
+    : '/' + moveSourcePath.value
+  const normalizedTargetPath = moveTargetPath.value.startsWith('/')
+    ? moveTargetPath.value
+    : '/' + moveTargetPath.value
+  const fullPath = normalizedTargetPath + '/' + moveSourceName.value
+
+  console.log('移动文件 - fromPath:', normalizedSourcePath)
+  console.log('移动文件 - fullPath:', fullPath)
+
+  // 关闭之前可能存在的连接
+  if (moveEventSource) {
+    moveEventSource.close()
+  }
+
+  moveEventSource = moveFileApi(normalizedSourcePath, fullPath)
+
+  console.log('移动文件 - EventSource URL:', moveEventSource.url)
+  
+  moveEventSource.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    if (data.type === 'progress') {
+      moveProgress.value = data.progress
+      moveSpeed.value = data.speed || 0
+    } else if (data.type === 'complete') {
+      moveProgress.value = 100
+      moveStatus.value = 'success'
+      moveEventSource?.close()
+      moveEventSource = null
+      ElMessage.success('移动成功')
+      setTimeout(() => {
+        handleMoveVisibleChange(false)
+        moveStatus.value = ''
+        moveSpeed.value = 0
+      }, 500)
+      refresh()
+    } else if (data.type === 'error') {
+      moveStatus.value = 'exception'
+      moveEventSource?.close()
+      moveEventSource = null
+      ElMessage.error(data.message || '移动失败')
+      setTimeout(() => {
+        handleMoveVisibleChange(false)
+        moveStatus.value = ''
+        moveSpeed.value = 0
+      }, 500)
+    }
+  }
+  
+  moveEventSource.onerror = () => {
+    moveStatus.value = 'exception'
+    moveEventSource?.close()
+    moveEventSource = null
+    ElMessage.error('移动失败，请重试')
+    setTimeout(() => {
+      handleMoveVisibleChange(false)
+      moveStatus.value = ''
+      moveSpeed.value = 0
+    }, 500)
   }
 }
 

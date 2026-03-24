@@ -23,16 +23,35 @@
     :model-value="moveVisible"
     @update:model-value="$emit('update:move-visible', $event)"
     title="移动到"
-    width="400px"
+    width="500px"
+    :close-on-click-modal="false"
   >
-    <el-input
+    <div style="margin-bottom: 8px; color: #606266; font-size: 14px;">
+      当前移动：<strong>{{ moveSourceName }}</strong>
+    </div>
+    <div style="margin-bottom: 16px;">
+      <el-progress
+        v-if="moveLoading"
+        :percentage="moveProgress"
+        :status="moveStatus"
+        :format="(percent: number) => formatProgress(percent, moveSpeed)"
+      />
+      <div v-if="moveLoading && moveSpeed > 0" style="text-align: center; margin-top: 8px; color: #909399; font-size: 13px;">
+        速度：{{ formatSpeed(moveSpeed) }}
+      </div>
+    </div>
+    <PathSelector
       :model-value="moveTargetPath"
       @update:model-value="$emit('update:move-target-path', $event)"
-      placeholder="请输入目标路径"
+      :exclude-path="moveSourcePath"
+      placeholder="选择目标文件夹"
+      :disabled="moveLoading"
     />
     <template #footer>
-      <el-button @click="$emit('update:move-visible', false)">取消</el-button>
-      <el-button type="primary" @click="$emit('move-file')">确定</el-button>
+      <el-button @click="$emit('update:move-visible', false)" :disabled="moveLoading">取消</el-button>
+      <el-button type="primary" @click="$emit('move-file')" :loading="moveLoading">
+        {{ moveLoading ? '移动中...' : '确定' }}
+      </el-button>
     </template>
   </el-dialog>
 
@@ -82,11 +101,19 @@
 </template>
 
 <script setup lang="ts">
+import PathSelector from './PathSelector.vue'
+
 defineProps<{
   createFolderVisible: boolean
   newFolderName: string
   moveVisible: boolean
   moveTargetPath: string
+  moveSourcePath: string
+  moveSourceName: string
+  moveLoading: boolean
+  moveProgress: number
+  moveStatus: string
+  moveSpeed: number
   zipProgressVisible: boolean
   zipProgress: number
   zipStatus: string
@@ -104,6 +131,27 @@ defineEmits<{
   'move-file': []
   'cancel-zip': []
 }>()
+
+// 格式化速度显示
+const formatSpeed = (speed: number): string => {
+  if (speed < 1) {
+    return `${(speed * 1024).toFixed(2)} KB/s`
+  } else if (speed < 1024) {
+    return `${speed.toFixed(2)} MB/s`
+  } else {
+    return `${(speed / 1024).toFixed(2)} GB/s`
+  }
+}
+
+// 格式化进度显示
+const formatProgress = (percent: number, speed: number): string => {
+  if (speed > 0 && percent < 100) {
+    const remainingMB = (100 - percent) / 100 * 100 // 估算
+    const eta = remainingMB / speed
+    return `${percent}% (${eta < 60 ? `${eta.toFixed(0)}s` : `${(eta / 60).toFixed(1)}m`} 剩余)`
+  }
+  return `${percent}%`
+}
 </script>
 
 <style scoped>

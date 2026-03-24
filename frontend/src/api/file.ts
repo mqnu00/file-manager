@@ -23,14 +23,23 @@ export const getFiles = (path: string = ''): Promise<FileListResponse> => {
   return api.get('/files', { params: { path } }).then(res => res.data)
 }
 
+// 获取文件夹列表（仅文件夹）
+export const getFolders = (path: string = ''): Promise<FileItem[]> => {
+  return api.get('/files', { params: { path } })
+    .then(res => res.data.files.filter((f: FileItem) => f.isDirectory))
+}
+
 // 创建文件夹
 export const createFolder = (path: string, name: string): Promise<{ success: boolean }> => {
   return api.post('/folders', { path, name }).then(res => res.data)
 }
 
-// 移动文件/文件夹
-export const moveFile = (fromPath: string, toPath: string): Promise<{ success: boolean }> => {
-  return api.put('/files/move', { fromPath, toPath }).then(res => res.data)
+// 移动文件/文件夹（返回 EventSource）
+export const moveFile = (fromPath: string, toPath: string): EventSource => {
+  const params = new URLSearchParams()
+  params.append('fromPath', fromPath)
+  params.append('toPath', toPath)
+  return new EventSource(`/api/files/move?${params.toString()}`)
 }
 
 // 压缩文件夹（返回 EventSource）
