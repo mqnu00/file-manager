@@ -70,7 +70,7 @@ import ContextMenu from '../components/ContextMenu.vue'
 const fileStore = useFileStore()
 
 // 排序
-const sortBy = ref<'name' | 'type' | 'modified'>('name')
+const sortBy = ref<'name' | 'type' | 'modified' | 'size'>('type')
 const sortOrder = ref<'asc' | 'desc'>('asc')
 
 // 对话框
@@ -145,16 +145,30 @@ const toggleSortOrder = () => {
 const sortFiles = () => {
   const files = [...fileStore.files]
   files.sort((a, b) => {
+    // 第一优先级：文件夹在前，文件在后
+    const typeComparison = (a.isDirectory ? 0 : 1) - (b.isDirectory ? 0 : 1)
+    if (typeComparison !== 0) return sortOrder.value === 'asc' ? typeComparison : -typeComparison
+
+    // 第二优先级：按指定字段排序
     let comparison = 0
     if (sortBy.value === 'name') {
       comparison = a.name.localeCompare(b.name)
     } else if (sortBy.value === 'type') {
-      const aType = a.isDirectory ? 'folder' : 'file'
-      const bType = b.isDirectory ? 'folder' : 'file'
-      comparison = aType.localeCompare(bType) || a.name.localeCompare(b.name)
+      // 按扩展名排序
+      const aExt = a.name.includes('.') ? a.name.split('.').pop()!.toLowerCase() : ''
+      const bExt = b.name.includes('.') ? b.name.split('.').pop()!.toLowerCase() : ''
+      comparison = aExt.localeCompare(bExt) || a.name.localeCompare(b.name)
     } else if (sortBy.value === 'modified') {
       comparison = new Date(a.modified).getTime() - new Date(b.modified).getTime()
+    } else if (sortBy.value === 'size') {
+      comparison = a.size - b.size
     }
+
+    // 如果指定字段相同，按名称排序
+    if (comparison === 0) {
+      comparison = a.name.localeCompare(b.name)
+    }
+
     return sortOrder.value === 'asc' ? comparison : -comparison
   })
   fileStore.setFiles(files)
@@ -234,17 +248,12 @@ const moveFile = async () => {
     : '/' + moveTargetPath.value
   const fullPath = normalizedTargetPath + '/' + moveSourceName.value
 
-  console.log('移动文件 - fromPath:', normalizedSourcePath)
-  console.log('移动文件 - fullPath:', fullPath)
-
   // 关闭之前可能存在的连接
   if (moveEventSource) {
     moveEventSource.close()
   }
 
   moveEventSource = moveFileApi(normalizedSourcePath, fullPath)
-
-  console.log('移动文件 - EventSource URL:', moveEventSource.url)
   
   moveEventSource.onmessage = (event) => {
     const data = JSON.parse(event.data)

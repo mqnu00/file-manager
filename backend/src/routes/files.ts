@@ -254,12 +254,8 @@ router.post('/zip/cancel', (req: Request<{}, {}, ZipCancelRequest>, res: Respons
 
 // 移动文件（SSE 返回进度）- 使用 GET 因为 EventSource 只支持 GET（必须在 /* 之前定义）
 router.get('/move', (req: Request<{}, {}, MoveRequest>, res: Response) => {
-  console.log('=== 移动请求到达 ===')
   try {
     const { fromPath, toPath } = req.query as any
-
-    console.log('移动请求 - 原始 fromPath:', fromPath)
-    console.log('移动请求 - 原始 toPath:', toPath)
 
     if (!fromPath || !toPath) {
       return res.status(400).json({ message: '缺少必要参数' })
@@ -269,18 +265,10 @@ router.get('/move', (req: Request<{}, {}, MoveRequest>, res: Response) => {
     const decodedFromPath = decodeURIComponent(fromPath)
     const decodedToPath = decodeURIComponent(toPath)
 
-    console.log('移动请求 - 解码后 fromPath:', decodedFromPath)
-    console.log('移动请求 - 解码后 toPath:', decodedToPath)
-
     const fromFullPath = safePath(decodedFromPath)
     const toFullPath = safePath(decodedToPath)
 
-    console.log('移动请求 - fromFullPath:', fromFullPath)
-    console.log('移动请求 - toFullPath:', toFullPath)
-    console.log('移动请求 - fromFullPath exists:', fs.existsSync(fromFullPath))
-
     if (!fs.existsSync(fromFullPath)) {
-      console.log('错误：文件不存在')
       return res.status(404).json({ message: '源文件不存在' })
     }
 

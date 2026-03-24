@@ -17,6 +17,7 @@
         <el-option label="名称" value="name" />
         <el-option label="类型" value="type" />
         <el-option label="修改时间" value="modified" />
+        <el-option label="大小" value="size" />
       </el-select>
       <el-button size="small" @click="$emit('toggle-sort')">
         <el-icon><ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else /></el-icon>
