@@ -5,12 +5,12 @@
       :sort-by="sortBy"
       :sort-order="sortOrder"
       @navigate="navigateTo"
-      @sort-change="(val: any) => { sortBy = val as 'name' | 'type' | 'modified'; sortFiles() }"
+      @sort-change="handleSortChange"
       @toggle-sort="toggleSortOrder"
       @create-folder="showCreateFolderDialog"
       @refresh="refresh"
     />
-    
+
     <FileTable
       :files="fileStore.files"
       :loading="fileStore.loading"
@@ -20,33 +20,42 @@
       @delete="deleteFile"
       @contextmenu="onRowContextmenu"
     />
-    
-    <Dialogs
-      :create-folder-visible="createFolderVisible"
-      :new-folder-name="newFolderName"
-      :move-visible="moveVisible"
-      :move-target-path="moveTargetPath"
-      :move-source-path="moveSourcePath"
-      :move-source-name="moveSourceName"
-      :move-loading="moveLoading"
-      :move-progress="moveProgress"
-      :move-status="moveStatus"
-      :move-speed="moveSpeed"
-      :zip-progress-visible="zipProgressVisible"
-      :zip-progress="zipProgress"
-      :zip-status="zipStatus"
-      :zip-folder-path="zipFolderPath"
-      :zip-error="zipError"
-      @update:create-folder-visible="createFolderVisible = $event"
-      @update:new-folder-name="newFolderName = $event"
-      @update:move-visible="handleMoveVisibleChange"
-      @update:move-target-path="moveTargetPath = $event"
-      @update:zip-progress-visible="zipProgressVisible = $event"
-      @create-folder="createFolder"
-      @move-file="moveFile"
-      @cancel-zip="cancelZip"
+
+    <!-- 新建文件夹对话框 -->
+    <CreateFolderDialog
+      :model-value="createFolderVisible"
+      :folder-name="newFolderName"
+      @update:model-value="createFolderVisible = $event"
+      @update:folder-name="newFolderName = $event"
+      @confirm="createFolder"
     />
-    
+
+    <!-- 移动文件对话框 -->
+    <MoveFileDialog
+      :model-value="progress.moveState.visible"
+      :source-path="progress.moveState.sourcePath"
+      :source-name="progress.moveState.sourceName"
+      :target-path="progress.moveState.targetPath"
+      :loading="progress.moveState.loading"
+      :progress="progress.moveState.progress"
+      :status="progress.moveState.status"
+      :speed="progress.moveState.speed"
+      @update:model-value="progress.moveState.visible = $event"
+      @update:target-path="progress.moveState.targetPath = $event"
+      @confirm="() => progress.moveFile(refresh)"
+    />
+
+    <!-- 压缩进度对话框 -->
+    <ZipProgressDialog
+      :model-value="progress.zipState.visible"
+      :progress="progress.zipState.progress"
+      :status="progress.zipState.status"
+      :folder-path="progress.zipState.folderPath"
+      :error="progress.zipState.error"
+      @update:model-value="progress.zipState.visible = $event"
+      @cancel="() => progress.cancelZip()"
+    />
+
     <ContextMenu
       v-if="contextMenuVisible"
       :x="contextMenuX"
@@ -60,39 +69,26 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, moveFile as moveFileApi, zipFolder as zipFolderApi, cancelZip as cancelZipApi, deleteFile as deleteFileApi } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, deleteFile as deleteFileApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
+import { useFileProgress } from '@/composables/useFileProgress'
 import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
-import Dialogs from '../components/Dialogs.vue'
+import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
+import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
+import ZipProgressDialog from '../components/dialogs/ZipProgressDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
 
 const fileStore = useFileStore()
+const progress = useFileProgress()
 
 // 排序
 const sortBy = ref<'name' | 'type' | 'modified' | 'size'>('type')
 const sortOrder = ref<'asc' | 'desc'>('asc')
 
-// 对话框
+// 新建文件夹对话框
 const createFolderVisible = ref(false)
 const newFolderName = ref('')
-const moveVisible = ref(false)
-const moveSourcePath = ref('')
-const moveSourceName = ref('')
-const moveTargetPath = ref('')
-const moveLoading = ref(false)
-const moveProgress = ref(0)
-const moveStatus = ref<'success' | 'exception' | ''>('')
-const moveSpeed = ref(0)
-let moveEventSource: EventSource | null = null
-
-// 压缩
-const zipProgressVisible = ref(false)
-const zipProgress = ref(0)
-const zipStatus = ref<'success' | 'exception' | ''>('')
-const zipFolderPath = ref('')
-const zipError = ref('')
-let zipEventSource: EventSource | null = null
 
 // 右键菜单
 const contextMenuVisible = ref(false)
@@ -137,6 +133,11 @@ const navigateInto = (path: string) => {
   loadFiles(path)
 }
 
+const handleSortChange = (val: any) => {
+  sortBy.value = val as 'name' | 'type' | 'modified'
+  sortFiles()
+}
+
 const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
   sortFiles()
@@ -154,7 +155,6 @@ const sortFiles = () => {
     if (sortBy.value === 'name') {
       comparison = a.name.localeCompare(b.name)
     } else if (sortBy.value === 'type') {
-      // 按扩展名排序
       const aExt = a.name.includes('.') ? a.name.split('.').pop()!.toLowerCase() : ''
       const bExt = b.name.includes('.') ? b.name.split('.').pop()!.toLowerCase() : ''
       comparison = aExt.localeCompare(bExt) || a.name.localeCompare(b.name)
@@ -211,137 +211,11 @@ const createFolder = async () => {
 }
 
 const showMoveDialog = (path: string, name: string) => {
-  moveSourcePath.value = path
-  moveSourceName.value = name
-  moveTargetPath.value = ''
-  moveVisible.value = true
+  progress.showMoveDialog(path, name)
 }
 
-const handleMoveVisibleChange = (value: boolean) => {
-  moveVisible.value = value
-  // 对话框关闭时重置所有状态
-  if (!value) {
-    moveSourcePath.value = ''
-    moveSourceName.value = ''
-    moveTargetPath.value = ''
-  }
-}
-
-const moveFile = async () => {
-  if (!moveTargetPath.value.trim()) {
-    ElMessage.warning('请选择目标路径')
-    return
-  }
-
-  moveLoading.value = true
-  moveProgress.value = 0
-  moveStatus.value = ''
-  moveSpeed.value = 0
-
-  // 构建完整目标路径：目标文件夹路径 + 源文件/文件夹名称
-  // 确保路径以 / 开头
-  const normalizedSourcePath = moveSourcePath.value.startsWith('/') 
-    ? moveSourcePath.value 
-    : '/' + moveSourcePath.value
-  const normalizedTargetPath = moveTargetPath.value.startsWith('/')
-    ? moveTargetPath.value
-    : '/' + moveTargetPath.value
-  const fullPath = normalizedTargetPath + '/' + moveSourceName.value
-
-  // 关闭之前可能存在的连接
-  if (moveEventSource) {
-    moveEventSource.close()
-  }
-
-  moveEventSource = moveFileApi(normalizedSourcePath, fullPath)
-  
-  moveEventSource.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.type === 'progress') {
-      moveProgress.value = data.progress
-      moveSpeed.value = data.speed || 0
-    } else if (data.type === 'complete') {
-      moveProgress.value = 100
-      moveStatus.value = 'success'
-      moveEventSource?.close()
-      moveEventSource = null
-      ElMessage.success('移动成功')
-      setTimeout(() => {
-        handleMoveVisibleChange(false)
-        moveStatus.value = ''
-        moveSpeed.value = 0
-      }, 500)
-      refresh()
-    } else if (data.type === 'error') {
-      moveStatus.value = 'exception'
-      moveEventSource?.close()
-      moveEventSource = null
-      ElMessage.error(data.message || '移动失败')
-      setTimeout(() => {
-        handleMoveVisibleChange(false)
-        moveStatus.value = ''
-        moveSpeed.value = 0
-      }, 500)
-    }
-  }
-  
-  moveEventSource.onerror = () => {
-    moveStatus.value = 'exception'
-    moveEventSource?.close()
-    moveEventSource = null
-    ElMessage.error('移动失败，请重试')
-    setTimeout(() => {
-      handleMoveVisibleChange(false)
-      moveStatus.value = ''
-      moveSpeed.value = 0
-    }, 500)
-  }
-}
-
-const zipFolder = async (path: string) => {
-  zipProgress.value = 0
-  zipStatus.value = ''
-  zipError.value = ''
-  zipFolderPath.value = path
-  if (zipEventSource) zipEventSource.close()
-  zipEventSource = zipFolderApi(path)
-  zipProgressVisible.value = true
-  zipEventSource.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data.type === 'progress') {
-      zipProgress.value = data.progress
-    } else if (data.type === 'complete') {
-      zipStatus.value = 'success'
-      zipProgress.value = 100
-      zipEventSource?.close()
-      zipEventSource = null
-      ElMessage.success('压缩完成')
-      refresh()
-    } else if (data.type === 'error') {
-      zipStatus.value = 'exception'
-      zipError.value = data.message
-      zipEventSource?.close()
-      zipEventSource = null
-    }
-  }
-  zipEventSource.onerror = () => {
-    zipStatus.value = 'exception'
-    zipError.value = '压缩失败，请重试'
-    zipEventSource?.close()
-    zipEventSource = null
-  }
-}
-
-const cancelZip = async () => {
-  try {
-    await cancelZipApi(zipFolderPath.value)
-    zipEventSource?.close()
-    zipEventSource = null
-    zipProgressVisible.value = false
-    ElMessage.info('已取消压缩')
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '取消失败')
-  }
+const zipFolder = (path: string) => {
+  progress.zipFolder(path, refresh)
 }
 
 const deleteFile = async (path: string) => {

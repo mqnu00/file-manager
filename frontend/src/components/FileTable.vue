@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { Folder, Document } from '@element-plus/icons-vue'
 import type { FileItem } from '@/types'
+import { formatSize, formatTime } from '@/utils/format'
 
 defineProps<{
   files: FileItem[]
@@ -82,24 +83,6 @@ const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
   emit('contextmenu', e, row)
-}
-
-const formatSize = (size: number) => {
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
-  if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024).toFixed(2) + ' MB'
-  return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
-}
-
-const formatTime = (time: string) => {
-  const date = new Date(time)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 </script>
 

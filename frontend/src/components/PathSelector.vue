@@ -29,7 +29,7 @@
           :expand-on-click-node="false"
           @node-click="handleNodeClick"
         >
-          <template #default="{ node, data }">
+          <template #default="{ node }">
             <span class="tree-node">
               <el-icon><Folder /></el-icon>
               <span>{{ node.label }}</span>
@@ -74,31 +74,35 @@ const treeRef = ref<InstanceType<typeof ElTree>>()
 const treeData = ref<TreeNode[]>([])
 const selectedPath = ref('')
 
-// 懒加载节点
+/**
+ * 懒加载节点
+ */
 const loadNode = async (node: any, resolve: (data: TreeNode[]) => void) => {
   try {
     const parentPath = node.data?.path || ''
     const folders = await getFolders(parentPath)
     const filteredFolders = folders.filter((f: any) => f.path !== props.excludePath)
-    
+
     const children = filteredFolders.map((f: any) => ({
       label: f.name,
       path: f.path,
       disabled: false
     }))
-    
+
     resolve(children)
   } catch (e) {
     resolve([])
   }
 }
 
-// 加载根节点
+/**
+ * 加载根节点
+ */
 const loadRootNodes = async () => {
   try {
     const folders = await getFolders('')
     const filteredFolders = folders.filter((f: any) => f.path !== props.excludePath)
-    
+
     treeData.value = filteredFolders.map((f: any) => ({
       label: f.name,
       path: f.path,
@@ -109,12 +113,16 @@ const loadRootNodes = async () => {
   }
 }
 
-// 处理节点点击
+/**
+ * 处理节点点击
+ */
 const handleNodeClick = (data: TreeNode) => {
   selectedPath.value = data.path
 }
 
-// 确认选择
+/**
+ * 确认选择
+ */
 const confirmSelection = () => {
   if (selectedPath.value) {
     emit('update:modelValue', selectedPath.value)
@@ -122,14 +130,15 @@ const confirmSelection = () => {
   showTreeDialog.value = false
 }
 
+// 监听 excludePath 变化
 watch(() => props.excludePath, () => {
   loadRootNodes()
 })
 
+// 监听对话框显示状态
 watch(() => showTreeDialog.value, (newVal) => {
   if (newVal) {
     loadRootNodes()
-    // 如果当前有值，尝试展开到对应节点
     if (props.modelValue) {
       selectedPath.value = props.modelValue
     }
