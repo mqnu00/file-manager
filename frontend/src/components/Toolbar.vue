@@ -14,14 +14,16 @@
 
     <div class="actions">
       <el-select :model-value="sortBy" size="small" @update:model-value="$emit('sort-change', $event)">
+        <template #prefix>
+          <el-icon @click.stop="$emit('toggle-sort')" style="cursor: pointer; margin-right: 4px;">
+            <ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else />
+          </el-icon>
+        </template>
         <el-option label="名称" value="name" />
         <el-option label="类型" value="type" />
         <el-option label="修改时间" value="modified" />
         <el-option label="大小" value="size" />
       </el-select>
-      <el-button size="small" @click="$emit('toggle-sort')">
-        <el-icon><ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else /></el-icon>
-      </el-button>
       <el-button type="primary" size="small" @click="$emit('create-folder')">
         <el-icon><FolderAdd /></el-icon>
         新建文件夹
