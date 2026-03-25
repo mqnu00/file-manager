@@ -28,7 +28,11 @@
           {{ row.isDirectory ? '-' : formatSize(row.size) }}
         </template>
       </el-table-column>
-      <el-table-column prop="modified" label="修改时间" width="180" />
+      <el-table-column prop="modified" label="修改时间" width="180">
+        <template #default="{ row }">
+          {{ formatTime(row.modified) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button
@@ -60,6 +64,7 @@
 <script setup lang="ts">
 import { Folder, Document } from '@element-plus/icons-vue'
 import type { FileItem } from '@/types'
+import { formatSize, formatTime } from '@/utils/format'
 
 defineProps<{
   files: FileItem[]
@@ -78,13 +83,6 @@ const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
   emit('contextmenu', e, row)
-}
-
-const formatSize = (size: number) => {
-  if (size < 1024) return size + ' B'
-  if (size < 1024 * 1024) return (size / 1024).toFixed(2) + ' KB'
-  if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024).toFixed(2) + ' MB'
-  return (size / 1024 / 1024 / 1024).toFixed(2) + ' GB'
 }
 </script>
 

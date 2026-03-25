@@ -4,9 +4,10 @@ const path = require('path')
 console.log('🚀 启动开发模式...')
 
 // 启动后端
-const backend = spawn('node', ['src/app.js'], {
+const backend = spawn('npm', ['run', 'dev'], {
   cwd: path.join(__dirname, '..', 'backend'),
-  stdio: 'inherit'
+  stdio: 'inherit',
+  shell: true
 })
 
 // 等待后端启动后再启动前端
