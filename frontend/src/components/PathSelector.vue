@@ -15,8 +15,10 @@
     <el-dialog
       v-model="showTreeDialog"
       title="选择目标文件夹"
-      width="400px"
+      width="420px"
+      top="5vh"
       :close-on-click-modal="true"
+      :append-to-body="true"
     >
       <div class="tree-container">
         <el-tree
@@ -159,17 +161,19 @@ onMounted(() => {
 }
 
 .tree-container {
-  max-height: 400px;
+  max-height: 60vh;
   overflow-y: auto;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--cyber-border);
   border-radius: 4px;
   padding: 8px;
+  background: rgba(6, 11, 26, 0.4);
 }
 
 .tree-node {
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--cyber-text);
 }
 
 :deep(.el-input__inner) {

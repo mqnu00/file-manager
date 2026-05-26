@@ -75,10 +75,13 @@ defineExpose({ tableRef })
 <style scoped>
 .file-list {
   flex: 1;
-  background: #fff;
+  background: var(--cyber-panel);
   border-radius: 8px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--cyber-border);
+  box-shadow: var(--cyber-glow-cyan);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   overflow: auto;
 }
 
@@ -86,20 +89,69 @@ defineExpose({ tableRef })
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--cyber-text);
 }
 
 .file-name-text {
   cursor: default;
+  color: var(--cyber-text);
 }
 
 .file-name-text.is-folder {
   cursor: pointer;
   text-decoration: none;
   transition: all 0.2s;
+  color: var(--cyber-cyan);
+  text-shadow: 0 0 4px rgba(0, 240, 255, 0.3);
 }
 
 .file-name-text.is-folder:hover {
-  color: #409eff;
+  color: #5cf0ff;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
   text-decoration: underline;
+}
+
+:deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: rgba(0, 240, 255, 0.06);
+  --el-table-row-hover-bg-color: rgba(0, 240, 255, 0.08);
+  --el-table-border-color: rgba(0, 240, 255, 0.1);
+  --el-table-text-color: var(--cyber-text);
+  --el-table-header-text-color: var(--cyber-cyan);
+}
+
+:deep(.el-table th) {
+  background: rgba(0, 240, 255, 0.06) !important;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2) !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+:deep(.el-table td) {
+  border-bottom: 1px solid rgba(0, 240, 255, 0.06) !important;
+}
+
+:deep(.el-table tr:hover > td) {
+  background: rgba(0, 240, 255, 0.06) !important;
+}
+
+:deep(.el-table .el-table__cell) {
+  color: var(--cyber-text);
+}
+
+:deep(.el-checkbox__inner) {
+  background: rgba(0, 240, 255, 0.06) !important;
+  border-color: rgba(0, 240, 255, 0.3) !important;
+}
+
+:deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
+  background: var(--cyber-cyan) !important;
+  border-color: var(--cyber-cyan) !important;
+  box-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+}
+
+:deep(.el-loading-mask) {
+  background: rgba(6, 11, 26, 0.7) !important;
 }
 </style>

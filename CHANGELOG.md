@@ -30,14 +30,36 @@
 ### 🐛 Bug 修复
 
 - **修复文件移动数据丢失风险**：将源文件删除从 `readStream.on('end')` 移至 `writeStream.on('finish')`，确保目标文件写入完成后再删除源文件，避免数据不完整
+- **修复移动对话框文件夹选择器被裁剪**：PathSelector 内嵌对话框改为 `append-to-body`，`top="5vh"` 置顶打开；移动对话框 body 添加 `max-height: 70vh` 可滚动
+
+### 🎨 科幻主题改造
+
+#### Three.js 动态背景
+- 新增 `SciFiBackground.vue` 组件，引入 Three.js 渲染全屏动态背景
+- **星空**：1200 颗四色粒子（青/品红/蓝/白）缓慢旋转漂移
+- **极坐标网格**：青色半透明网格持续旋转
+- **浮动光球**：5 个发光球体正弦波浮动
+- **光束**：3 条旋转细光束脉动
+- 相机视角对准文件列表区域
+
+#### 赛博朋克全局主题
+- App.vue 定义 CSS 变量（`--cyber-cyan`、`--cyber-panel` 等暗色配色）
+- 覆盖 Element Plus 全部组件样式：Dialog / Button / Input / Message / MessageBox / Progress / Tree / Select / Scrollbar
+- 所有面板采用毛玻璃效果（`backdrop-filter: blur`），低不透明度让 3D 背景透出
+- 文字色提升亮度保证可读性
+
+#### 组件风格统一
+- Toolbar / FileTable / 所有 Dialog / ContextMenu / PathSelector 统一采用赛博朋克暗色主题
+- 主色调青 `#00f0ff`，辅色调品红 `#ff00ff`，面板背景 `rgba(10,18,40,0.35)`
+- 复选框、按钮、选中态、悬停态均改为青色发光风格
 
 ### 📊 统计
 
 | 模块 | 新增接口 | 改动文件 |
 |------|---------|---------|
 | 后端 | 1 (batch-delete) | 3 文件 |
-| 前端 | — | 6 文件 |
-| 文档 | — | API.md |
+| 前端 | — | 9 文件 |
+| 文档 | — | API.md, CHANGELOG.md |
 
 ---
 

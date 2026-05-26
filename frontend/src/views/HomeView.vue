@@ -309,7 +309,7 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  background: #f5f7fa;
+  padding: 16px 20px;
+  background: transparent;
 }
 </style>

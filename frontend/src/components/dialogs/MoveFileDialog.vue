@@ -77,12 +77,18 @@ const formatProgressFn = (percent: number) => {
 <style scoped>
 .move-dialog-content {
   padding: 8px 0;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .move-dialog-info {
   margin-bottom: 8px;
-  color: #606266;
+  color: var(--cyber-text);
   font-size: 14px;
+}
+
+.move-dialog-info strong {
+  color: var(--cyber-cyan);
 }
 
 .move-dialog-progress {
@@ -92,7 +98,12 @@ const formatProgressFn = (percent: number) => {
 .move-dialog-speed {
   text-align: center;
   margin-top: 8px;
-  color: #909399;
+  color: var(--cyber-text-dim);
   font-size: 13px;
+}
+
+:deep(.el-dialog__body) {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 </style>

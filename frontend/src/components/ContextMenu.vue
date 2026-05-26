@@ -31,12 +31,15 @@ defineEmits<{
 <style scoped>
 .context-menu {
   position: fixed;
-  background: #fff;
+  background: var(--cyber-panel);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--cyber-border);
+  box-shadow: var(--cyber-glow-cyan), 0 4px 24px rgba(0, 0, 0, 0.4);
   padding: 8px 0;
   z-index: 9999;
   min-width: 150px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .context-menu-item {
@@ -45,10 +48,13 @@ defineEmits<{
   gap: 8px;
   padding: 8px 16px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  color: var(--cyber-text);
 }
 
 .context-menu-item:hover {
-  background: #f5f7fa;
+  background: rgba(0, 240, 255, 0.08);
+  color: var(--cyber-cyan);
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
 }
 </style>

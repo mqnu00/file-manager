@@ -52,7 +52,7 @@ defineEmits<{
 .zip-progress-dialog-text {
   margin-top: 16px;
   text-align: center;
-  color: #606266;
+  color: var(--cyber-text);
   font-size: 14px;
 }
 </style>
