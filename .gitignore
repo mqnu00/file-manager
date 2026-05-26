@@ -19,6 +19,7 @@ npm-debug.log*
 # 编辑器
 .vscode/
 .idea/
+.trae/
 *.swp
 *.swo
 *~
