@@ -76,9 +76,6 @@ const treeRef = ref<InstanceType<typeof ElTree>>()
 const treeData = ref<TreeNode[]>([])
 const selectedPath = ref('')
 
-/**
- * 懒加载节点
- */
 const loadNode = async (node: any, resolve: (data: TreeNode[]) => void) => {
   try {
     const parentPath = node.data?.path || ''
@@ -97,9 +94,6 @@ const loadNode = async (node: any, resolve: (data: TreeNode[]) => void) => {
   }
 }
 
-/**
- * 加载根节点
- */
 const loadRootNodes = async () => {
   try {
     const folders = await getFolders('')
@@ -115,16 +109,10 @@ const loadRootNodes = async () => {
   }
 }
 
-/**
- * 处理节点点击
- */
 const handleNodeClick = (data: TreeNode) => {
   selectedPath.value = data.path
 }
 
-/**
- * 确认选择
- */
 const confirmSelection = () => {
   if (selectedPath.value) {
     emit('update:modelValue', selectedPath.value)
@@ -132,12 +120,10 @@ const confirmSelection = () => {
   showTreeDialog.value = false
 }
 
-// 监听 excludePath 变化
 watch(() => props.excludePath, () => {
   loadRootNodes()
 })
 
-// 监听对话框显示状态
 watch(() => showTreeDialog.value, (newVal) => {
   if (newVal) {
     loadRootNodes()
@@ -163,17 +149,17 @@ onMounted(() => {
 .tree-container {
   max-height: 60vh;
   overflow-y: auto;
-  border: 1px solid var(--cyber-border);
+  border: 1px solid var(--app-border);
   border-radius: 4px;
   padding: 8px;
-  background: rgba(6, 11, 26, 0.4);
+  background: var(--app-accent-bg);
 }
 
 .tree-node {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--cyber-text);
+  color: var(--app-text);
 }
 
 :deep(.el-input__inner) {

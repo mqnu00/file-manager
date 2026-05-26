@@ -31,15 +31,15 @@ defineEmits<{
 <style scoped>
 .context-menu {
   position: fixed;
-  background: var(--cyber-panel);
+  background: var(--app-panel);
   border-radius: 8px;
-  border: 1px solid var(--cyber-border);
-  box-shadow: var(--cyber-glow-cyan), 0 4px 24px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-glow), 0 4px 24px rgba(0, 0, 0, 0.4);
   padding: 8px 0;
   z-index: 9999;
   min-width: 150px;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .context-menu-item {
@@ -49,12 +49,12 @@ defineEmits<{
   padding: 8px 16px;
   cursor: pointer;
   transition: all 0.2s;
-  color: var(--cyber-text);
+  color: var(--app-text);
 }
 
 .context-menu-item:hover {
-  background: rgba(0, 240, 255, 0.08);
-  color: var(--cyber-cyan);
-  text-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+  background: var(--app-accent-bg-hover);
+  color: var(--app-accent);
+  text-shadow: var(--app-text-shadow);
 }
 </style>

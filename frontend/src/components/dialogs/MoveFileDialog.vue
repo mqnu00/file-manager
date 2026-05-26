@@ -83,12 +83,12 @@ const formatProgressFn = (percent: number) => {
 
 .move-dialog-info {
   margin-bottom: 8px;
-  color: var(--cyber-text);
+  color: var(--app-text);
   font-size: 14px;
 }
 
 .move-dialog-info strong {
-  color: var(--cyber-cyan);
+  color: var(--app-accent);
 }
 
 .move-dialog-progress {
@@ -98,7 +98,7 @@ const formatProgressFn = (percent: number) => {
 .move-dialog-speed {
   text-align: center;
   margin-top: 8px;
-  color: var(--cyber-text-dim);
+  color: var(--app-text-dim);
   font-size: 13px;
 }
 

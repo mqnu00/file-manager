@@ -33,6 +33,10 @@
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
+        <el-button size="small" class="theme-toggle" @click="toggle">
+          <el-icon><Moon v-if="isCyber" /><Sunny v-else /></el-icon>
+          {{ isCyber ? '赛博' : '亮色' }}
+        </el-button>
       </div>
     </div>
 
@@ -59,7 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import { FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown, Delete, Rank, Download, FolderChecked } from '@element-plus/icons-vue'
+import { FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown, Delete, Rank, Download, FolderChecked, Moon, Sunny } from '@element-plus/icons-vue'
+import { useTheme } from '@/composables/useTheme'
 
 defineProps<{
   breadcrumbParts: string[]
@@ -81,6 +86,8 @@ defineEmits<{
   'batch-download': []
   'batch-zip': []
 }>()
+
+const { isCyber, toggle } = useTheme()
 </script>
 
 <style scoped>
@@ -93,12 +100,12 @@ defineEmits<{
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: var(--cyber-panel);
+  background: var(--app-panel);
   border-radius: 8px;
-  border: 1px solid var(--cyber-border);
-  box-shadow: var(--cyber-glow-cyan);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-glow), var(--app-shadow);
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .breadcrumb {
@@ -114,16 +121,16 @@ defineEmits<{
 }
 
 .breadcrumb :deep(.el-link__inner) {
-  color: var(--cyber-cyan) !important;
+  color: var(--app-accent) !important;
 }
 
 .breadcrumb :deep(.el-link) {
-  color: var(--cyber-cyan) !important;
-  text-shadow: 0 0 6px rgba(0, 240, 255, 0.4);
+  color: var(--app-accent) !important;
+  text-shadow: var(--app-text-shadow);
 }
 
 .separator {
-  color: var(--cyber-text-dim);
+  color: var(--app-text-dim);
 }
 
 .bulk-actions {
@@ -132,19 +139,19 @@ defineEmits<{
   gap: 8px;
   margin: 8px 0;
   padding: 8px 20px;
-  background: rgba(0, 240, 255, 0.06);
+  background: var(--app-accent-bg-subtle);
   border-radius: 6px;
-  border: 1px solid rgba(0, 240, 255, 0.15);
-  box-shadow: 0 0 8px rgba(0, 240, 255, 0.08);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid var(--app-accent-border-light);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .bulk-actions-count {
-  color: var(--cyber-cyan);
+  color: var(--app-accent);
   font-size: 14px;
   margin-right: 8px;
-  text-shadow: 0 0 6px rgba(0, 240, 255, 0.3);
+  text-shadow: var(--app-text-shadow);
 }
 
 .actions {
@@ -154,17 +161,21 @@ defineEmits<{
   flex-wrap: wrap;
 }
 
+.theme-toggle {
+  margin-left: 4px;
+}
+
 :deep(.el-select .el-input__wrapper) {
-  background: rgba(0, 240, 255, 0.06) !important;
-  border: 1px solid rgba(0, 240, 255, 0.2) !important;
+  background: var(--app-accent-bg) !important;
+  border: 1px solid var(--app-accent-border) !important;
   box-shadow: none !important;
 }
 
 :deep(.el-select .el-input__inner) {
-  color: var(--cyber-text-bright) !important;
+  color: var(--app-text-bright) !important;
 }
 
 :deep(.el-select .el-select__caret) {
-  color: var(--cyber-cyan) !important;
+  color: var(--app-select-caret) !important;
 }
 </style>
