@@ -210,6 +210,46 @@
 
 ---
 
+### 8. 批量删除文件/文件夹
+
+批量删除多个文件或文件夹（支持递归删除）。
+
+- **接口**: `POST /api/files/batch-delete`
+- **请求体**:
+  | 参数 | 类型 | 必填 | 说明 |
+  |------|------|------|------|
+  | `paths` | string[] | 是 | 要删除的文件/文件夹路径列表 |
+
+- **请求示例**:
+  ```bash
+  POST /api/files/batch-delete
+  Content-Type: application/json
+
+  {
+    "paths": ["/documents/file1.txt", "/documents/folder1"]
+  }
+  ```
+
+- **响应示例**:
+  ```json
+  {
+    "success": 2,
+    "failed": []
+  }
+  ```
+
+  部分失败时：
+  ```json
+  {
+    "success": 1,
+    "failed": [
+      { "path": "/documents/missing.txt", "message": "文件不存在" }
+    ]
+  }
+  ```
+
+---
+
 ## 文件夹接口
 
 ### 8. 创建文件夹

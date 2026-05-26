@@ -41,6 +41,10 @@ export interface DeleteRequest {
   path: string
 }
 
+export interface BatchDeleteRequest {
+  paths: string[]
+}
+
 export interface ZipCancelRequest {
   path: string
 }

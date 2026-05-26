@@ -57,6 +57,16 @@ export const deleteFile = (path: string): Promise<{ success: boolean }> => {
   return api.delete('/files', { params: { path } }).then(res => res.data)
 }
 
+export interface BatchDeleteResponse {
+  success: number
+  failed: { path: string; message: string }[]
+}
+
+// 批量删除文件/文件夹
+export const batchDeleteFiles = (paths: string[]): Promise<BatchDeleteResponse> => {
+  return api.post('/files/batch-delete', { paths }).then(res => res.data)
+}
+
 // 重命名文件/文件夹
 export const renameFile = (path: string, newName: string): Promise<{ success: boolean }> => {
   return api.put('/files/rename', { path, newName }).then(res => res.data)

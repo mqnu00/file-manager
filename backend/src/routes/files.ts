@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express'
 import * as fileService from '../services/fileService'
-import { ArchiveLocals, MoveRequest, RenameRequest, DeleteRequest, ZipCancelRequest } from '../types'
+import { ArchiveLocals, MoveRequest, RenameRequest, DeleteRequest, BatchDeleteRequest, ZipCancelRequest } from '../types'
 
 const router = express.Router()
 
@@ -121,6 +121,25 @@ router.put('/rename', (req: Request<{}, {}, RenameRequest>, res: Response) => {
   } catch (e) {
     console.error('重命名失败:', e)
     res.status(500).json({ message: e instanceof Error ? e.message : '重命名失败' })
+  }
+})
+
+/**
+ * 批量删除文件/文件夹
+ */
+router.post('/batch-delete', (req: Request<{}, {}, BatchDeleteRequest>, res: Response) => {
+  try {
+    const { paths } = req.body
+
+    if (!paths || !Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ message: '缺少文件路径列表' })
+    }
+
+    const result = fileService.deleteFiles(paths)
+    res.json(result)
+  } catch (e) {
+    console.error('批量删除失败:', e)
+    res.status(500).json({ message: e instanceof Error ? e.message : '批量删除失败' })
   }
 })
 

@@ -2,23 +2,20 @@ import { reactive } from 'vue'
 import { moveFile as moveFileApi, zipFolder as zipFolderApi, cancelZip as cancelZipApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
 
-/**
- * 移动文件进度状态
- */
 export interface MoveProgressState {
   visible: boolean
   sourcePath: string
   sourceName: string
+  sourceNames: string[]
+  sourcePaths: string[]
   targetPath: string
   loading: boolean
   progress: number
   status: 'success' | 'exception' | ''
   speed: number
+  batchMode: boolean
 }
 
-/**
- * 压缩进度状态
- */
 export interface ZipProgressState {
   visible: boolean
   folderPath: string
@@ -27,24 +24,45 @@ export interface ZipProgressState {
   error: string
 }
 
-/**
- * 文件移动和压缩进度管理
- */
+const moveOneFile = (fromPath: string, toPath: string, onProgress?: (progress: number, speed: number) => void): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const es = moveFileApi(fromPath, toPath)
+
+    es.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data.type === 'progress') {
+        onProgress?.(data.progress, data.speed || 0)
+      } else if (data.type === 'complete') {
+        es.close()
+        resolve()
+      } else if (data.type === 'error') {
+        es.close()
+        reject(new Error(data.message || '移动失败'))
+      }
+    }
+
+    es.onerror = () => {
+      es.close()
+      reject(new Error('移动失败，请重试'))
+    }
+  })
+}
+
 export const useFileProgress = () => {
-  // 移动状态
   const moveState = reactive<MoveProgressState>({
     visible: false,
     sourcePath: '',
     sourceName: '',
+    sourceNames: [],
+    sourcePaths: [],
     targetPath: '',
     loading: false,
     progress: 0,
     status: '',
-    speed: 0
+    speed: 0,
+    batchMode: false
   })
-  let moveEventSource: EventSource | null = null
 
-  // 压缩状态
   const zipState = reactive<ZipProgressState>({
     visible: false,
     folderPath: '',
@@ -54,45 +72,62 @@ export const useFileProgress = () => {
   })
   let zipEventSource: EventSource | null = null
 
-  /**
-   * 显示移动对话框
-   */
-  const showMoveDialog = (path: string, name: string) => {
-    Object.assign(moveState, {
-      visible: true,
-      sourcePath: path,
-      sourceName: name,
-      targetPath: '',
-      loading: false,
-      progress: 0,
-      status: '',
-      speed: 0
-    })
-  }
-
-  /**
-   * 隐藏移动对话框
-   */
   const hideMoveDialog = () => {
     moveState.visible = false
     moveState.sourcePath = ''
     moveState.sourceName = ''
+    moveState.sourceNames = []
+    moveState.sourcePaths = []
     moveState.targetPath = ''
+    moveState.batchMode = false
   }
 
-  /**
-   * 重置移动状态
-   */
   const resetMoveState = () => {
     moveState.loading = false
     moveState.status = ''
     moveState.speed = 0
   }
 
-  /**
-   * 执行文件移动
-   */
+  /** 单文件移动 */
+  const showMoveDialog = (path: string, name: string) => {
+    Object.assign(moveState, {
+      visible: true,
+      sourcePath: path,
+      sourceName: name,
+      sourceNames: [name],
+      sourcePaths: [path],
+      targetPath: '',
+      loading: false,
+      progress: 0,
+      status: '',
+      speed: 0,
+      batchMode: false
+    })
+  }
+
+  /** 批量移动 */
+  const showBatchMoveDialog = (paths: string[], names: string[]) => {
+    Object.assign(moveState, {
+      visible: true,
+      sourcePath: paths[0] || '',
+      sourceName: names[0] || '',
+      sourceNames: names,
+      sourcePaths: paths,
+      targetPath: '',
+      loading: false,
+      progress: 0,
+      status: '',
+      speed: 0,
+      batchMode: true
+    })
+  }
+
   const moveFile = (onComplete?: () => void) => {
+    moveFiles(onComplete)
+  }
+
+  /** 执行移动（支持单文件和批量） */
+  const moveFiles = async (onComplete?: () => void) => {
     if (!moveState.targetPath.trim()) {
       ElMessage.warning('请选择目标路径')
       return
@@ -103,64 +138,53 @@ export const useFileProgress = () => {
     moveState.status = ''
     moveState.speed = 0
 
-    // 构建完整目标路径
-    const normalizedSourcePath = moveState.sourcePath.startsWith('/')
-      ? moveState.sourcePath
-      : '/' + moveState.sourcePath
-    const normalizedTargetPath = moveState.targetPath.startsWith('/')
-      ? moveState.targetPath
-      : '/' + moveState.targetPath
-    const fullPath = normalizedTargetPath + '/' + moveState.sourceName
+    const total = moveState.sourcePaths.length
+    let completed = 0
+    let failed = 0
 
-    if (moveEventSource) {
-      moveEventSource.close()
-    }
+    for (let i = 0; i < moveState.sourcePaths.length; i++) {
+      const srcPath = moveState.sourcePaths[i]
+      const srcName = moveState.sourceNames[i]
 
-    moveEventSource = moveFileApi(normalizedSourcePath, fullPath)
+      const normalizedSourcePath = srcPath.startsWith('/') ? srcPath : '/' + srcPath
+      const normalizedTargetPath = moveState.targetPath.startsWith('/') ? moveState.targetPath : '/' + moveState.targetPath
+      const fullPath = normalizedTargetPath + '/' + srcName
 
-    moveEventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        moveState.progress = data.progress
-        moveState.speed = data.speed || 0
-      } else if (data.type === 'complete') {
-        moveState.progress = 100
-        moveState.status = 'success'
-        moveEventSource?.close()
-        moveEventSource = null
-        ElMessage.success('移动成功')
-        setTimeout(() => {
-          hideMoveDialog()
-          resetMoveState()
-          onComplete?.()
-        }, 500)
-      } else if (data.type === 'error') {
-        moveState.status = 'exception'
-        moveEventSource?.close()
-        moveEventSource = null
-        ElMessage.error(data.message || '移动失败')
-        setTimeout(() => {
-          hideMoveDialog()
-          resetMoveState()
-        }, 500)
+      try {
+        await moveOneFile(normalizedSourcePath, fullPath, (fileProgress, fileSpeed) => {
+          moveState.speed = fileSpeed
+          const overallProgress = Math.floor(((completed + fileProgress / 100) / total) * 100)
+          moveState.progress = Math.min(99, overallProgress)
+        })
+        completed++
+      } catch (e: any) {
+        failed++
+        ElMessage.error(`${srcName}: ${e.message}`)
       }
     }
 
-    moveEventSource.onerror = () => {
+    moveState.speed = 0
+
+    if (failed === 0) {
+      moveState.progress = 100
+      moveState.status = 'success'
+      ElMessage.success(`移动完成，成功 ${completed} 个`)
+    } else if (completed > 0) {
+      moveState.progress = 100
+      moveState.status = 'success'
+      ElMessage.warning(`移动完成，成功 ${completed} 个，失败 ${failed} 个`)
+    } else {
       moveState.status = 'exception'
-      moveEventSource?.close()
-      moveEventSource = null
-      ElMessage.error('移动失败，请重试')
-      setTimeout(() => {
-        hideMoveDialog()
-        resetMoveState()
-      }, 500)
     }
+
+    setTimeout(() => {
+      hideMoveDialog()
+      resetMoveState()
+      onComplete?.()
+    }, 600)
   }
 
-  /**
-   * 执行文件夹压缩
-   */
+  /** 执行文件夹压缩 */
   const zipFolder = (path: string, onRefresh?: () => void) => {
     Object.assign(zipState, {
       visible: true,
@@ -223,6 +247,7 @@ export const useFileProgress = () => {
     moveState,
     zipState,
     showMoveDialog,
+    showBatchMoveDialog,
     moveFile,
     zipFolder,
     cancelZip

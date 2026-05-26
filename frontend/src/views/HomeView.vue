@@ -4,21 +4,27 @@
       :breadcrumb-parts="breadcrumbParts"
       :sort-by="sortBy"
       :sort-order="sortOrder"
+      :selected-count="selectedFiles.length"
+      :is-single-file-selected="isSingleFileSelected"
+      :is-single-folder-selected="isSingleFolderSelected"
       @navigate="navigateTo"
       @sort-change="handleSortChange"
       @toggle-sort="toggleSortOrder"
       @create-folder="showCreateFolderDialog"
       @refresh="refresh"
+      @batch-delete="handleBatchDelete"
+      @batch-move="handleBatchMove"
+      @batch-download="handleBatchDownload"
+      @batch-zip="handleBatchZip"
     />
 
     <FileTable
+      ref="fileTableRef"
       :files="fileStore.files"
       :loading="fileStore.loading"
       @open="navigateInto"
-      @zip="zipFolder"
-      @move="showMoveDialog"
-      @delete="deleteFile"
       @contextmenu="onRowContextmenu"
+      @selection-change="handleSelectionChange"
     />
 
     <!-- 新建文件夹对话框 -->
@@ -35,11 +41,13 @@
       :model-value="progress.moveState.visible"
       :source-path="progress.moveState.sourcePath"
       :source-name="progress.moveState.sourceName"
+      :source-names="progress.moveState.sourceNames"
       :target-path="progress.moveState.targetPath"
       :loading="progress.moveState.loading"
       :progress="progress.moveState.progress"
       :status="progress.moveState.status"
       :speed="progress.moveState.speed"
+      :batch-mode="progress.moveState.batchMode"
       @update:model-value="progress.moveState.visible = $event"
       @update:target-path="progress.moveState.targetPath = $event"
       @confirm="() => progress.moveFile(refresh)"
@@ -69,8 +77,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, deleteFile as deleteFileApi } from '@/api/file'
-import { ElMessage } from 'element-plus'
+import { getFiles, createFolder as createFolderApi, batchDeleteFiles } from '@/api/file'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
@@ -82,6 +90,9 @@ import ContextMenu from '../components/ContextMenu.vue'
 const fileStore = useFileStore()
 const progress = useFileProgress()
 
+// FileTable ref
+const fileTableRef = ref<InstanceType<typeof FileTable>>()
+
 // 排序
 const sortBy = ref<'name' | 'type' | 'modified' | 'size'>('type')
 const sortOrder = ref<'asc' | 'desc'>('asc')
@@ -89,6 +100,23 @@ const sortOrder = ref<'asc' | 'desc'>('asc')
 // 新建文件夹对话框
 const createFolderVisible = ref(false)
 const newFolderName = ref('')
+
+// 选中文件
+const selectedFiles = ref<string[]>([])
+
+const selectedFileInfos = computed(() => {
+  return selectedFiles.value
+    .map(path => fileStore.files.find(f => f.path === path))
+    .filter(Boolean) as typeof fileStore.files
+})
+
+const isSingleFileSelected = computed(() => {
+  return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && !selectedFileInfos.value[0].isDirectory
+})
+
+const isSingleFolderSelected = computed(() => {
+  return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && selectedFileInfos.value[0].isDirectory
+})
 
 // 右键菜单
 const contextMenuVisible = ref(false)
@@ -146,11 +174,9 @@ const toggleSortOrder = () => {
 const sortFiles = () => {
   const files = [...fileStore.files]
   files.sort((a, b) => {
-    // 第一优先级：文件夹在前，文件在后
     const typeComparison = (a.isDirectory ? 0 : 1) - (b.isDirectory ? 0 : 1)
     if (typeComparison !== 0) return sortOrder.value === 'asc' ? typeComparison : -typeComparison
 
-    // 第二优先级：按指定字段排序
     let comparison = 0
     if (sortBy.value === 'name') {
       comparison = a.name.localeCompare(b.name)
@@ -164,7 +190,6 @@ const sortFiles = () => {
       comparison = a.size - b.size
     }
 
-    // 如果指定字段相同，按名称排序
     if (comparison === 0) {
       comparison = a.name.localeCompare(b.name)
     }
@@ -210,21 +235,67 @@ const createFolder = async () => {
   }
 }
 
-const showMoveDialog = (path: string, name: string) => {
-  progress.showMoveDialog(path, name)
+const handleSelectionChange = (paths: string[]) => {
+  selectedFiles.value = paths
 }
 
-const zipFolder = (path: string) => {
-  progress.zipFolder(path, refresh)
-}
+const handleBatchDelete = async () => {
+  if (selectedFiles.value.length === 0) {
+    ElMessage.warning('请先选择文件')
+    return
+  }
 
-const deleteFile = async (path: string) => {
   try {
-    await deleteFileApi(path)
-    ElMessage.success('删除成功')
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedFiles.value.length} 个文件/文件夹吗？此操作不可恢复。`,
+      '确认删除',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  try {
+    const result = await batchDeleteFiles(selectedFiles.value)
+    if (result.failed.length === 0) {
+      ElMessage.success(`成功删除 ${result.success} 个文件/文件夹`)
+    } else if (result.success > 0) {
+      ElMessage.warning(`成功删除 ${result.success} 个，${result.failed.length} 个失败`)
+    } else {
+      ElMessage.error('删除失败')
+    }
+    selectedFiles.value = []
     refresh()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '删除失败')
+  }
+}
+
+const handleBatchMove = () => {
+  if (selectedFiles.value.length === 0) {
+    ElMessage.warning('请先选择文件')
+    return
+  }
+
+  const names = selectedFiles.value.map(path => {
+    const parts = path.split('/')
+    return parts[parts.length - 1]
+  })
+
+  progress.showBatchMoveDialog(selectedFiles.value, names)
+}
+
+const handleBatchDownload = () => {
+  if (isSingleFileSelected.value) {
+    window.open('/api/files/' + selectedFiles.value[0], '_blank')
+    selectedFiles.value = []
+  }
+}
+
+const handleBatchZip = () => {
+  if (isSingleFolderSelected.value) {
+    progress.zipFolder(selectedFiles.value[0], refresh)
+    selectedFiles.value = []
   }
 }
 

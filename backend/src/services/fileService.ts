@@ -175,15 +175,15 @@ export const moveFile = (
       sendProgress(progress, speed)
     })
 
-    readStream.on('end', () => {
-      sendProgress(100, 0)
-      fs.unlinkSync(fromFullPath)
-      sendComplete()
-    })
-
     readStream.on('error', (err) => {
       writeStream.destroy()
       sendError(err.message)
+    })
+
+    writeStream.on('finish', () => {
+      sendProgress(100, 0)
+      fs.unlinkSync(fromFullPath)
+      sendComplete()
     })
 
     writeStream.on('error', (err) => {
@@ -293,6 +293,27 @@ export const deleteFile = (filePath: string): void => {
   }
 
   fs.rmSync(fullPath, { recursive: true, force: true })
+}
+
+export const deleteFiles = (filePaths: string[]): { success: number; failed: { path: string; message: string }[] } => {
+  let success = 0
+  const failed: { path: string; message: string }[] = []
+
+  for (const filePath of filePaths) {
+    try {
+      const fullPath = safePath(filePath)
+      if (!fs.existsSync(fullPath)) {
+        failed.push({ path: filePath, message: '文件不存在' })
+        continue
+      }
+      fs.rmSync(fullPath, { recursive: true, force: true })
+      success++
+    } catch (e) {
+      failed.push({ path: filePath, message: e instanceof Error ? e.message : '删除失败' })
+    }
+  }
+
+  return { success, failed }
 }
 
 /**

@@ -1,9 +1,11 @@
 <template>
   <div class="file-list">
     <el-table
+      ref="tableRef"
       :data="files"
       style="width: 100%"
       @row-contextmenu="handleContextmenu"
+      @selection-change="handleSelectionChange"
       v-loading="loading"
     >
       <el-table-column type="selection" width="55" />
@@ -33,38 +35,16 @@
           {{ formatTime(row.modified) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
-        <template #default="{ row }">
-          <el-button
-            v-if="row.isDirectory"
-            size="small"
-            @click="$emit('zip', row.path)"
-          >
-            压缩
-          </el-button>
-          <el-button
-            size="small"
-            @click="$emit('move', row.path, row.name)"
-          >
-            移动
-          </el-button>
-          <el-button
-            size="small"
-            type="danger"
-            @click="$emit('delete', row.path)"
-          >
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
     </el-table>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Folder, Document } from '@element-plus/icons-vue'
 import type { FileItem } from '@/types'
 import { formatSize, formatTime } from '@/utils/format'
+import type { ElTable } from 'element-plus'
 
 defineProps<{
   files: FileItem[]
@@ -73,17 +53,23 @@ defineProps<{
 
 const emit = defineEmits<{
   open: [path: string]
-  zip: [path: string]
-  move: [path: string, name: string]
-  delete: [path: string]
   contextmenu: [event: MouseEvent, row: FileItem]
+  selectionChange: [paths: string[]]
 }>()
+
+const tableRef = ref<InstanceType<typeof ElTable>>()
 
 const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
   e.preventDefault()
   e.stopPropagation()
   emit('contextmenu', e, row)
 }
+
+const handleSelectionChange = (rows: FileItem[]) => {
+  emit('selectionChange', rows.map(r => r.path))
+}
+
+defineExpose({ tableRef })
 </script>
 
 <style scoped>
