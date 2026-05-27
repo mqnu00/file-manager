@@ -10,6 +10,7 @@ dist/
 .env
 .env.local
 .env.*.local
+backend/config.yml
 
 # 日志
 logs/
