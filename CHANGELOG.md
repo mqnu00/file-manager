@@ -44,6 +44,26 @@
 - `tsconfig.json` 添加 `jsxImportSource: "vue"`，修复 Vue 模板中 JSX 元素类型报错
 - 修复 `config.yml` 路径：`../../config.yml` 更正为 `../config.yml`
 
+### 🔧 代码重构
+
+基于架构审查报告，对前后端进行全面重构。
+
+#### 后端
+- `GET /*` 重命名为 `GET /download/*`，添加醒目警示注释防止路由顺序隐患
+- 新增 `middleware/asyncHandler.ts`：包装器消除路由 handler 重复的 `try/catch` 模式
+- 新增 `middleware/errorHandler.ts`：统一错误处理中间件，集中日志输出和 500 响应
+- `routes/files.ts` 和 `routes/folders.ts` 非 SSE 路由全部改用 `asyncHandler`，减少 ~40 行样板代码
+- `app.ts` 注册统一错误处理中间件
+
+#### 前端
+- `HomeView.vue` 排序逻辑抽出为 `composables/useFileSort.ts`（-50 行）
+- `HomeView.vue` 右键菜单逻辑抽出为 `composables/useContextMenu.ts`（-20 行）
+- `fileStore` 选中态从局部 ref 移入 store，新增 `selectedFileInfos` / `isSingleFileSelected` / `isSingleFolderSelected` 计算属性
+- 去重 `FileItem` 类型定义，统一从 `types/index.ts` 导入
+- 新建 `constants/index.ts` 集中管理 `session_token` / `file-manager-theme` 等魔法字符串
+- `composables/useFileProgress.ts` 中 EventSource 创建/解析逻辑移至 `api/file.ts`（新增 `moveFileAsync` / `zipFolderAsync`），composable 只保留状态管理
+- `auth.ts` store 空 catch 块改为 `console.debug` 保留调试信息
+
 ### 📊 统计
 
 | 模块 | 新增文件 | 改动文件 | 新增接口 |

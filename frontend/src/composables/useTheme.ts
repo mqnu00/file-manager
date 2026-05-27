@@ -1,23 +1,21 @@
 import { ref, watch } from 'vue'
-
-const CYBER_CLASS = 'cyber'
-const STORAGE_KEY = 'file-manager-theme'
+import { STORAGE_KEY_THEME, THEME_CLASS_CYBER, THEME_VALUE_CYBER, THEME_VALUE_LIGHT } from '@/constants'
 
 const isCyber = ref(loadPreference())
 
 function loadPreference(): boolean {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored !== null) return stored === 'cyber'
+    const stored = localStorage.getItem(STORAGE_KEY_THEME)
+    if (stored !== null) return stored === THEME_VALUE_CYBER
   } catch {}
   return true
 }
 
 function applyClass(cyber: boolean) {
   if (cyber) {
-    document.documentElement.classList.add(CYBER_CLASS)
+    document.documentElement.classList.add(THEME_CLASS_CYBER)
   } else {
-    document.documentElement.classList.remove(CYBER_CLASS)
+    document.documentElement.classList.remove(THEME_CLASS_CYBER)
   }
 }
 
@@ -25,7 +23,7 @@ export function useTheme() {
   watch(isCyber, (val) => {
     applyClass(val)
     try {
-      localStorage.setItem(STORAGE_KEY, val ? 'cyber' : 'light')
+      localStorage.setItem(STORAGE_KEY_THEME, val ? THEME_VALUE_CYBER : THEME_VALUE_LIGHT)
     } catch {}
   }, { immediate: true })
 

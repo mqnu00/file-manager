@@ -1,12 +1,13 @@
 import axios from 'axios'
+import { STORAGE_KEY_SESSION, API_BASE_URL } from '@/constants'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   timeout: 10000
 })
 
 api.interceptors.request.use((config) => {
-  const sessionToken = localStorage.getItem('session_token')
+  const sessionToken = localStorage.getItem(STORAGE_KEY_SESSION)
   if (sessionToken) {
     config.headers.Authorization = `Bearer ${sessionToken}`
   }
@@ -17,7 +18,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('session_token')
+      localStorage.removeItem(STORAGE_KEY_SESSION)
     }
     return Promise.reject(error)
   }

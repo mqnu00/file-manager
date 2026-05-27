@@ -6,6 +6,7 @@ import fileRoutes from './routes/files'
 import folderRoutes from './routes/folders'
 import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
+import { errorHandler } from './middleware/errorHandler'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -19,6 +20,8 @@ app.use('/api/config', configRoutes)
 app.use('/api/files', fileRoutes)
 app.use('/api/folders', folderRoutes)
 
+// ===== 静态文件 =====
+
 const distPath = path.join(__dirname, '../dist')
 try {
   if (fs.existsSync(distPath)) {
@@ -31,6 +34,9 @@ try {
 } catch {
   console.log('静态文件目录不存在，跳过')
 }
+
+// ===== 统一错误处理中间件（必须放在所有路由之后） =====
+app.use(errorHandler)
 
 const startServer = (port: number): void => {
   app.listen(port, HOST, () => {

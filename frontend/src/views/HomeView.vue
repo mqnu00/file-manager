@@ -4,9 +4,9 @@
       :breadcrumb-parts="breadcrumbParts"
       :sort-by="sortBy"
       :sort-order="sortOrder"
-      :selected-count="selectedFiles.length"
-      :is-single-file-selected="isSingleFileSelected"
-      :is-single-folder-selected="isSingleFolderSelected"
+      :selected-count="fileStore.selectedFiles.length"
+      :is-single-file-selected="fileStore.isSingleFileSelected"
+      :is-single-folder-selected="fileStore.isSingleFolderSelected"
       @navigate="navigateTo"
       @sort-change="handleSortChange"
       @toggle-sort="toggleSortOrder"
@@ -80,6 +80,8 @@ import { useFileStore } from '@/stores/file'
 import { getFiles, createFolder as createFolderApi, batchDeleteFiles } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
+import { useFileSort } from '@/composables/useFileSort'
+import { useContextMenu } from '@/composables/useContextMenu'
 import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
 import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
@@ -90,38 +92,21 @@ import ContextMenu from '../components/ContextMenu.vue'
 const fileStore = useFileStore()
 const progress = useFileProgress()
 
+const fileSort = useFileSort(
+  () => fileStore.files,
+  (files) => fileStore.setFiles(files)
+)
+const { sortBy, sortOrder, handleSortChange, toggleSortOrder, sortFiles } = fileSort
+
+const contextMenu = useContextMenu()
+const { contextMenuVisible, contextMenuX, contextMenuY, onRowContextmenu, closeContextMenu } = contextMenu
+
 // FileTable ref
 const fileTableRef = ref<InstanceType<typeof FileTable>>()
-
-// 排序
-const sortBy = ref<'name' | 'type' | 'modified' | 'size'>('type')
-const sortOrder = ref<'asc' | 'desc'>('asc')
 
 // 新建文件夹对话框
 const createFolderVisible = ref(false)
 const newFolderName = ref('')
-
-// 选中文件
-const selectedFiles = ref<string[]>([])
-
-const selectedFileInfos = computed(() => {
-  return selectedFiles.value
-    .map(path => fileStore.files.find(f => f.path === path))
-    .filter(Boolean) as typeof fileStore.files
-})
-
-const isSingleFileSelected = computed(() => {
-  return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && !selectedFileInfos.value[0].isDirectory
-})
-
-const isSingleFolderSelected = computed(() => {
-  return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && selectedFileInfos.value[0].isDirectory
-})
-
-// 右键菜单
-const contextMenuVisible = ref(false)
-const contextMenuX = ref(0)
-const contextMenuY = ref(0)
 
 const breadcrumbParts = computed(() => {
   const path = fileStore.currentPath
@@ -161,59 +146,6 @@ const navigateInto = (path: string) => {
   loadFiles(path)
 }
 
-const handleSortChange = (val: any) => {
-  sortBy.value = val as 'name' | 'type' | 'modified'
-  sortFiles()
-}
-
-const toggleSortOrder = () => {
-  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  sortFiles()
-}
-
-const sortFiles = () => {
-  const files = [...fileStore.files]
-  files.sort((a, b) => {
-    const typeComparison = (a.isDirectory ? 0 : 1) - (b.isDirectory ? 0 : 1)
-    if (typeComparison !== 0) return sortOrder.value === 'asc' ? typeComparison : -typeComparison
-
-    let comparison = 0
-    if (sortBy.value === 'name') {
-      comparison = a.name.localeCompare(b.name)
-    } else if (sortBy.value === 'type') {
-      const aExt = a.name.includes('.') ? a.name.split('.').pop()!.toLowerCase() : ''
-      const bExt = b.name.includes('.') ? b.name.split('.').pop()!.toLowerCase() : ''
-      comparison = aExt.localeCompare(bExt) || a.name.localeCompare(b.name)
-    } else if (sortBy.value === 'modified') {
-      comparison = new Date(a.modified).getTime() - new Date(b.modified).getTime()
-    } else if (sortBy.value === 'size') {
-      comparison = a.size - b.size
-    }
-
-    if (comparison === 0) {
-      comparison = a.name.localeCompare(b.name)
-    }
-
-    return sortOrder.value === 'asc' ? comparison : -comparison
-  })
-  fileStore.setFiles(files)
-}
-
-const onRowContextmenu = (e: MouseEvent, _row: any) => {
-  e.preventDefault()
-  e.stopPropagation()
-  contextMenuX.value = e.clientX
-  contextMenuY.value = e.clientY
-  contextMenuVisible.value = true
-  setTimeout(() => {
-    document.addEventListener('click', closeContextMenu, { once: true })
-  }, 0)
-}
-
-const closeContextMenu = () => {
-  contextMenuVisible.value = false
-}
-
 const showCreateFolderDialog = () => {
   newFolderName.value = ''
   createFolderVisible.value = true
@@ -236,18 +168,18 @@ const createFolder = async () => {
 }
 
 const handleSelectionChange = (paths: string[]) => {
-  selectedFiles.value = paths
+  fileStore.setSelectedFiles(paths)
 }
 
 const handleBatchDelete = async () => {
-  if (selectedFiles.value.length === 0) {
+  if (fileStore.selectedFiles.length === 0) {
     ElMessage.warning('请先选择文件')
     return
   }
 
   try {
     await ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedFiles.value.length} 个文件/文件夹吗？此操作不可恢复。`,
+      `确定要删除选中的 ${fileStore.selectedFiles.length} 个文件/文件夹吗？此操作不可恢复。`,
       '确认删除',
       { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
     )
@@ -256,7 +188,7 @@ const handleBatchDelete = async () => {
   }
 
   try {
-    const result = await batchDeleteFiles(selectedFiles.value)
+    const result = await batchDeleteFiles(fileStore.selectedFiles)
     if (result.failed.length === 0) {
       ElMessage.success(`成功删除 ${result.success} 个文件/文件夹`)
     } else if (result.success > 0) {
@@ -264,7 +196,7 @@ const handleBatchDelete = async () => {
     } else {
       ElMessage.error('删除失败')
     }
-    selectedFiles.value = []
+    fileStore.setSelectedFiles([])
     refresh()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '删除失败')
@@ -272,30 +204,30 @@ const handleBatchDelete = async () => {
 }
 
 const handleBatchMove = () => {
-  if (selectedFiles.value.length === 0) {
+  if (fileStore.selectedFiles.length === 0) {
     ElMessage.warning('请先选择文件')
     return
   }
 
-  const names = selectedFiles.value.map(path => {
+  const names = fileStore.selectedFiles.map(path => {
     const parts = path.split('/')
     return parts[parts.length - 1]
   })
 
-  progress.showBatchMoveDialog(selectedFiles.value, names)
+  progress.showBatchMoveDialog(fileStore.selectedFiles, names)
 }
 
 const handleBatchDownload = () => {
-  if (isSingleFileSelected.value) {
-    window.open('/api/files/' + selectedFiles.value[0], '_blank')
-    selectedFiles.value = []
+  if (fileStore.isSingleFileSelected) {
+    window.open('/api/files/download/' + fileStore.selectedFiles[0], '_blank')
+    fileStore.setSelectedFiles([])
   }
 }
 
 const handleBatchZip = () => {
-  if (isSingleFolderSelected.value) {
-    progress.zipFolder(selectedFiles.value[0], refresh)
-    selectedFiles.value = []
+  if (fileStore.isSingleFolderSelected) {
+    progress.zipFolder(fileStore.selectedFiles[0], refresh)
+    fileStore.setSelectedFiles([])
   }
 }
 

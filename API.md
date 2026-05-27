@@ -179,12 +179,12 @@
 
 下载指定文件。
 
-- **接口**: `GET /api/files/*`
-- **参数**: 文件路径（通过 URL 路径传递）
+- **接口**: `GET /api/files/download/*`
+- **参数**: 文件路径（通过 URL 路径传递，`/download/` 之后的部分）
 
 - **请求示例**:
   ```bash
-  GET /api/files/documents/file.txt
+  GET /api/files/download/documents/file.txt
   ```
 
 - **响应**: 文件二进制流

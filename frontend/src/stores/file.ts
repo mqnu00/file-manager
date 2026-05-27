@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { FileItem } from '@/types'
 
 export const useFileStore = defineStore('file', () => {
@@ -29,6 +29,20 @@ export const useFileStore = defineStore('file', () => {
     error.value = msg
   }
 
+  const selectedFileInfos = computed<FileItem[]>(() => {
+    return selectedFiles.value
+      .map(path => files.value.find(f => f.path === path))
+      .filter(Boolean) as FileItem[]
+  })
+
+  const isSingleFileSelected = computed(() => {
+    return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && !selectedFileInfos.value[0].isDirectory
+  })
+
+  const isSingleFolderSelected = computed(() => {
+    return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && selectedFileInfos.value[0].isDirectory
+  })
+
   return {
     currentPath,
     files,
@@ -39,6 +53,9 @@ export const useFileStore = defineStore('file', () => {
     setCurrentPath,
     setSelectedFiles,
     setLoading,
-    setError
+    setError,
+    selectedFileInfos,
+    isSingleFileSelected,
+    isSingleFolderSelected
   }
 })

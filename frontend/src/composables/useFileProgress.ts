@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { moveFile as moveFileApi, zipFolder as zipFolderApi, cancelZip as cancelZipApi } from '@/api/file'
+import { moveFileAsync, zipFolderAsync, cancelZip as cancelZipApi } from '@/api/file'
 import { ElMessage } from 'element-plus'
 
 export interface MoveProgressState {
@@ -24,30 +24,6 @@ export interface ZipProgressState {
   error: string
 }
 
-const moveOneFile = (fromPath: string, toPath: string, onProgress?: (progress: number, speed: number) => void): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const es = moveFileApi(fromPath, toPath)
-
-    es.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        onProgress?.(data.progress, data.speed || 0)
-      } else if (data.type === 'complete') {
-        es.close()
-        resolve()
-      } else if (data.type === 'error') {
-        es.close()
-        reject(new Error(data.message || '移动失败'))
-      }
-    }
-
-    es.onerror = () => {
-      es.close()
-      reject(new Error('移动失败，请重试'))
-    }
-  })
-}
-
 export const useFileProgress = () => {
   const moveState = reactive<MoveProgressState>({
     visible: false,
@@ -70,7 +46,6 @@ export const useFileProgress = () => {
     status: '',
     error: ''
   })
-  let zipEventSource: EventSource | null = null
 
   const hideMoveDialog = () => {
     moveState.visible = false
@@ -88,7 +63,6 @@ export const useFileProgress = () => {
     moveState.speed = 0
   }
 
-  /** 单文件移动 */
   const showMoveDialog = (path: string, name: string) => {
     Object.assign(moveState, {
       visible: true,
@@ -105,7 +79,6 @@ export const useFileProgress = () => {
     })
   }
 
-  /** 批量移动 */
   const showBatchMoveDialog = (paths: string[], names: string[]) => {
     Object.assign(moveState, {
       visible: true,
@@ -122,11 +95,6 @@ export const useFileProgress = () => {
     })
   }
 
-  const moveFile = (onComplete?: () => void) => {
-    moveFiles(onComplete)
-  }
-
-  /** 执行移动（支持单文件和批量） */
   const moveFiles = async (onComplete?: () => void) => {
     if (!moveState.targetPath.trim()) {
       ElMessage.warning('请选择目标路径')
@@ -151,7 +119,7 @@ export const useFileProgress = () => {
       const fullPath = normalizedTargetPath + '/' + srcName
 
       try {
-        await moveOneFile(normalizedSourcePath, fullPath, (fileProgress, fileSpeed) => {
+        await moveFileAsync(normalizedSourcePath, fullPath, (fileProgress, fileSpeed) => {
           moveState.speed = fileSpeed
           const overallProgress = Math.floor(((completed + fileProgress / 100) / total) * 100)
           moveState.progress = Math.min(99, overallProgress)
@@ -184,7 +152,6 @@ export const useFileProgress = () => {
     }, 600)
   }
 
-  /** 执行文件夹压缩 */
   const zipFolder = (path: string, onRefresh?: () => void) => {
     Object.assign(zipState, {
       visible: true,
@@ -194,47 +161,22 @@ export const useFileProgress = () => {
       error: ''
     })
 
-    if (zipEventSource) {
-      zipEventSource.close()
-    }
-
-    zipEventSource = zipFolderApi(path)
-
-    zipEventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        zipState.progress = data.progress
-      } else if (data.type === 'complete') {
-        zipState.status = 'success'
-        zipState.progress = 100
-        zipEventSource?.close()
-        zipEventSource = null
-        ElMessage.success('压缩完成')
-        onRefresh?.()
-      } else if (data.type === 'error') {
-        zipState.status = 'exception'
-        zipState.error = data.message
-        zipEventSource?.close()
-        zipEventSource = null
-      }
-    }
-
-    zipEventSource.onerror = () => {
+    zipFolderAsync(path, (progress) => {
+      zipState.progress = progress
+    }).then(() => {
+      zipState.status = 'success'
+      zipState.progress = 100
+      ElMessage.success('压缩完成')
+      onRefresh?.()
+    }).catch((e: Error) => {
       zipState.status = 'exception'
-      zipState.error = '压缩失败，请重试'
-      zipEventSource?.close()
-      zipEventSource = null
-    }
+      zipState.error = e.message || '压缩失败，请重试'
+    })
   }
 
-  /**
-   * 取消压缩
-   */
   const cancelZip = async (onSuccess?: () => void) => {
     try {
       await cancelZipApi(zipState.folderPath)
-      zipEventSource?.close()
-      zipEventSource = null
       zipState.visible = false
       ElMessage.info('已取消压缩')
       onSuccess?.()
@@ -248,7 +190,7 @@ export const useFileProgress = () => {
     zipState,
     showMoveDialog,
     showBatchMoveDialog,
-    moveFile,
+    moveFile: moveFiles,
     zipFolder,
     cancelZip
   }
