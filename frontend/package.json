@@ -6,21 +6,38 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx --fix",
+    "lint:check": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx",
+    "lint:style": "stylelint \"src/**/*.{vue,css,scss}\" --fix",
+    "lint:style:check": "stylelint \"src/**/*.{vue,css,scss}\"",
+    "format": "prettier --write \"src/**/*.{vue,ts,tsx,js,jsx,css,scss,json}\"",
+    "format:check": "prettier --check \"src/**/*.{vue,ts,tsx,js,jsx,css,scss,json}\""
   },
   "dependencies": {
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.0",
-    "pinia": "^2.1.7",
-    "element-plus": "^2.6.3",
     "axios": "^1.6.8",
-    "three": "^0.184.0"
+    "element-plus": "^2.6.3",
+    "pinia": "^2.1.7",
+    "three": "^0.184.0",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@types/three": "^0.184.1",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-vue": "^5.0.4",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-vue": "^9.33.0",
+    "postcss-html": "^1.8.1",
+    "postcss-scss": "^4.0.9",
+    "stylelint": "^16.26.1",
+    "stylelint-config-recommended-vue": "^1.6.1",
+    "stylelint-config-standard": "^36.0.1",
+    "stylelint-config-standard-scss": "^13.1.0",
     "typescript": "^5.4.3",
     "vite": "^5.2.8",
-    "vue-tsc": "^3.3.2",
-    "@types/three": "^0.184.1"
+    "vue-tsc": "^3.3.2"
   }
 }

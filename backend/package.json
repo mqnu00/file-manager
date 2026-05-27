@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "ts-node src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "lint": "eslint src/ --ext .ts --fix",
+    "lint:check": "eslint src/ --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
     "archiver": "^7.0.1",
@@ -24,6 +28,10 @@
     "@types/mime-types": "^3.0.1",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

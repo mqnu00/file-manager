@@ -11,7 +11,17 @@
     "start": "node backend/src/app.js",
     "release": "node scripts/release.js",
     "package": "npm run build && tar -czf file-manager.tar.gz --exclude='backend/node_modules' backend/",
-    "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/"
+    "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:check": "npm run lint:check:frontend && npm run lint:check:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:check:frontend": "cd frontend && npm run lint:check",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:check:backend": "cd backend && npm run lint:check",
+    "lint:style": "cd frontend && npm run lint:style",
+    "lint:style:check": "cd frontend && npm run lint:style:check",
+    "format": "prettier --write \"**/*.{vue,ts,tsx,js,jsx,css,scss,json,md}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{vue,ts,tsx,js,jsx,css,scss,json,md}\" --ignore-path .prettierignore"
   },
   "keywords": [
     "file-manager",
@@ -22,6 +32,8 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "eslint": "^8.57.1",
+    "prettier": "^3.8.3",
     "semver": "^7.6.0"
   }
 }
