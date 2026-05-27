@@ -195,36 +195,26 @@ npm install --production --registry https://registry.npmmirror.com/
 PORT=10000 node dist/app.js  
 ```
 
-#### 方式三：使用 Docker（可选）（未验证）
-
-```dockerfile
-# Dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-# 复制后端
-COPY backend/package*.json ./
-RUN npm install --production --registry https://registry.npmmirror.com/
-
-# 复制构建产物
-COPY backend/dist ./dist
-COPY backend/src ./src
-
-EXPOSE 3000
-CMD ["node", "dist/app.js"]
-```
+#### 方式三：使用 Docker
 
 ```bash
-# 构建镜像
+# 1. 打包构建产物
+npm run build
+tar -czf file-manager.tar.gz backend/
+
+# 2. 构建镜像
 docker build -t file-manager .
 
-# 运行容器
-docker run -d -p 3000:3000 \
-  -v /path/to/files:/files \
-  -e FILE_MANAGER_BASE_DIR=/files \
+# 3. 运行容器
+docker run -d \
+  -v /home/lzh:/app/lzh \
+  -p 10001:10000 \
+  -p 3000:3000 \
+  --user 1000:1000 \
   file-manager
 ```
+
+> 也可直接使用 `bash docker.sh` 一键启动。`Dockerfile`、`.dockerignore` 均已包含在仓库中。
 
 ### 环境变量
 

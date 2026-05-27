@@ -38,6 +38,12 @@
 #### 配置页返回按钮
 - 配置页新增返回按钮，方便回到文件列表主页
 
+### 🐳 Docker 支持
+
+- 新增 `Dockerfile`：基于 `node:22-alpine3.20`，通过 tar.gz 分发包部署，暴露 10000 / 3000 端口
+- 新增 `docker.sh`：预配置的运行脚本，含宿主机目录挂载、UID 映射和端口映射
+- 新增 `.dockerignore`：排除 `node_modules`、`config.yml`、构建产物等
+
 ### 🔧 工程修复
 
 - 新增 `env.d.ts`，修复 `.vue` 模块 TypeScript 类型声明缺失导致的 lint 报错
