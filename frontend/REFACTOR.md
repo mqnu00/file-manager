@@ -230,3 +230,160 @@ import { formatSize, formatTime } from '@/utils/format'
 2. **状态重置**: 对话框关闭时重置所有状态
 3. **错误处理**: 统一的错误提示机制 (ElMessage)
 4. **类型导出**: 确保所有接口和类型正确导出
+
+---
+
+## 下一阶段重构计划 (2026-05-26)
+
+> 基于架构审查报告，按优先级排列的改进计划。
+
+---
+
+### 🔴 高优先级
+
+#### 1. `HomeView.vue` 职责拆分
+
+**问题**: [HomeView.vue](file:///home/lzh/code/vue/file-manager/frontend/src/views/HomeView.vue) 315 行，混杂了排序、右键菜单、批量操作、对话框管理等多种职责。
+
+**方案**: 将独立逻辑抽出为 composables：
+
+| 抽出内容 | 目标 composable | 行数估算 |
+|----------|----------------|---------|
+| 排序逻辑 (sortBy, sortOrder, sortFiles, handleSortChange) | `composables/useFileSort.ts` | ~40 行 |
+| 右键菜单 (contextMenuVisible, onRowContextmenu, closeContextMenu) | `composables/useContextMenu.ts` | ~30 行 |
+| 批量下载/压缩 (handleBatchDownload, handleBatchZip) | 合并到 `useBatchOperations.ts` | ~20 行 |
+
+**目标**: `HomeView.vue` 缩减到 ~150 行，只负责组合调用和模板协调。
+
+**新建文件**: `composables/useFileSort.ts`, `composables/useContextMenu.ts`
+**改动文件**: [HomeView.vue](file:///home/lzh/code/vue/file-manager/frontend/src/views/HomeView.vue)
+
+```typescript
+// composables/useFileSort.ts 示例
+export function useFileSort(fileStore: ReturnType<typeof useFileStore>) {
+  const sortBy = ref<'name' | 'type' | 'modified' | 'size'>('type')
+  const sortOrder = ref<'asc' | 'desc'>('asc')
+  
+  const sortFiles = () => { /* ... */ }
+  const handleSortChange = (val: any) => { /* ... */ }
+  const toggleSortOrder = () => { /* ... */ }
+  
+  return { sortBy, sortOrder, sortFiles, handleSortChange, toggleSortOrder }
+}
+```
+
+---
+
+#### 2. `fileStore` 清理冗余字段
+
+**问题**: [stores/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/file.ts) 中 `selectedFiles` 和 `setSelectedFiles` 从未被任何组件使用。实际选中状态在 `HomeView.vue` 的局部 ref 中管理。
+
+**方案**: 二选一：
+
+| 方案 A | 删除 store 中的 `selectedFiles`、`setSelectedFiles`，选中状态保持组件本地 |
+| 方案 B | 将 HomeView 的 `selectedFiles` 移入 store，统一由 store 管理选中态 |
+
+推荐 **方案 B**，因为批量操作依赖 `selectedFiles` 的地方不止一个（HomeView 传给 Toolbar 的 props 都基于它），移入 store 后无需 prop drilling。
+
+**目标文件**: [stores/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/file.ts), [HomeView.vue](file:///home/lzh/code/vue/file-manager/frontend/src/views/HomeView.vue), [Toolbar.vue](file:///home/lzh/code/vue/file-manager/frontend/src/components/Toolbar.vue)
+
+---
+
+### 🟡 中优先级
+
+#### 3. `useFileProgress` 业务逻辑分离
+
+**问题**: [useFileProgress.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useFileProgress.ts) 混合了两种不同层级的职责：
+
+| 职责 | 属性 |
+|------|------|
+| **状态管理** | `moveState`, `zipState`, `hideMoveDialog`, `showMoveDialog` |
+| **业务调用** | `moveOneFile`(EventSource), `moveFiles`(顺序移动), `zipFolder`, `cancelZip` |
+| **UI 反馈** | `ElMessage.error`, `ElMessage.success` |
+
+**方案**: 将 EventSource 的创建/关闭/事件解析逻辑抽到 API 层，composable 只保留响应式状态和面向组件的接口。
+
+```typescript
+// api/file.ts 新增
+export function moveFileSSE(fromPath: string, toPath: string, onProgress: (p: number, s: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const es = new EventSource(`/api/files/move?...`)
+    es.onmessage = (e) => { /* 解析并回调 onProgress */ }
+    es.onerror = () => { /* reject */ }
+  })
+}
+
+// composables/useFileProgress.ts 变为纯状态管理
+export function useFileProgress() {
+  const moveState = reactive<MoveProgressState>({...})
+  const zipState = reactive<ZipProgressState>({...})
+  
+  async function moveFiles(onComplete?: () => void) {
+    // 调用 api 层，只更新 moveState
+  }
+  
+  return { moveState, zipState, moveFiles, ... }
+}
+```
+
+**目标文件**: [useFileProgress.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useFileProgress.ts), [api/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/file.ts)
+
+---
+
+#### 4. 常量集中管理
+
+**问题**: 以下字符串在多个文件中硬编码：
+
+| 常量 | 出现位置 | 建议定义位置 |
+|------|---------|------------|
+| `'session_token'` | 3 处 (auth store + api interceptor + logout) | `constants/index.ts` |
+| `'file-manager-theme'` | 1 处 (useTheme) | `constants/index.ts` |
+| `'/api'` | 1 处 (api/index.ts) | `constants/index.ts` |
+
+**方案**: 新建 `constants/index.ts`，集中导出所有常量。
+
+**新建文件**: `constants/index.ts`
+**改动文件**: [stores/auth.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/auth.ts), [api/index.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/index.ts), [composables/useTheme.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useTheme.ts)
+
+---
+
+#### 5. 类型去重
+
+**问题**: `FileItem` 类型在两处定义：`api/file.ts#L2` 和 `types/index.ts#L1`，内容完全相同。
+
+**方案**: 删除 `api/file.ts` 中的重复定义，统一从 `types/index.ts` 导入。
+
+**目标文件**: [api/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/file.ts)
+
+---
+
+### 🟢 低优先级
+
+#### 6. `Toolbar.vue` emits 简化
+
+**问题**: [Toolbar.vue](file:///home/lzh/code/vue/file-manager/frontend/src/components/Toolbar.vue) 暴露了 10+ 个 `$emit`，父子组件 prop/event 映射链过长。
+
+**方案**: 考虑以下替代方案之一：
+
+| 方案 | 适用场景 |
+|------|---------|
+| **provide/inject** | 跨层级传递操作函数，避免逐层 emit |
+| **事件总线 (mitt)** | 解耦组件通信 |
+
+当前项目层级不深（HomeView → Toolbar 只有一层），暂不紧急。
+
+---
+
+#### 7. 空 catch 块日志保留
+
+**问题**: [stores/auth.ts#L56](file:///home/lzh/code/vue/file-manager/frontend/src/stores/auth.ts#L56) — `try { await apiLogout() } catch { /* ignore */ }` 丢失调试信息。
+
+**方案**: 使用 `console.debug` 记录，开发环境可见但不干扰用户。
+
+```typescript
+try { await apiLogout() } catch (e) {
+  console.debug('登出请求失败（已忽略）:', e)
+}
+```
+
+**目标文件**: [stores/auth.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/auth.ts)

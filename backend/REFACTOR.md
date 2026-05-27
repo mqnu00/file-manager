@@ -134,3 +134,117 @@ export const createFolder = (parentPath: string | undefined, name: string) => vo
 2. **环境变量**: `BASE_DIR`, `PORT`, `HOST` 保持兼容
 3. **SSE 流**: 压缩进度使用 Server-Sent Events，保持原有逻辑
 4. **错误处理**: 保留 try-catch 块，确保错误响应格式一致
+
+---
+
+## 下一阶段重构计划 (2026-05-26)
+
+> 基于架构审查报告，按优先级排列的改进计划。
+
+---
+
+### 🔴 高优先级
+
+#### 1. `GET /*` 通配符路由安全加固
+
+**问题**: [routes/files.ts#L99](file:///home/lzh/code/vue/file-manager/backend/src/routes/files.ts#L99) `GET /*` 是兜底通配符路由，若误放到 `/zip` 或 `/move` 之前，会导致所有 GET 请求被通配符捕获。
+
+**方案**:
+1. 在 `GET /*` 正上方添加醒目注释 `// ⚠️ 通配符兜底路由 — 必须保持在所有具体路由之后`
+2. 将 `GET /*` 改名为 `GET /download/*` 语义更明确
+
+**目标文件**: [routes/files.ts](file:///home/lzh/code/vue/file-manager/backend/src/routes/files.ts)
+
+---
+
+#### 2. 统一错误处理中间件
+
+**问题**: 每个路由 handler 都重复 `try/catch + console.error + res.status(500)` 模式。
+
+**方案**: 创建 Express 错误处理中间件统一捕获异常。
+
+```typescript
+// middleware/errorHandler.ts
+export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
+  console.error(`${req.method} ${req.path}:`, err.message)
+  res.status(500).json({ message: err.message || '服务器内部错误' })
+}
+```
+
+路由 handler 通过 `next(err)` 或 `throw` 传递错误，无需再写 try/catch。
+
+**新建文件**: `middleware/errorHandler.ts`
+**改动文件**: [app.ts](file:///home/lzh/code/vue/file-manager/backend/src/app.ts), 所有 `routes/*.ts`
+
+---
+
+### 🟡 中优先级
+
+#### 3. `fileService.ts` 拆分
+
+**问题**: 331 行，包含 6 个独立业务操作，增长趋势不可持续。
+
+**目标结构**:
+```
+services/
+├── fileList.ts     # getFileList
+├── fileZip.ts      # zipFolder, cancelZip
+├── fileMove.ts     # moveFile
+├── fileDownload.ts # downloadFile
+├── fileCrud.ts     # renameFile, deleteFile, deleteFiles
+└── folderCrud.ts   # createFolder
+```
+
+**原则**: 每个文件 ≤ 100 行，变化原因单一。
+
+**改动文件**: [services/fileService.ts](file:///home/lzh/code/vue/file-manager/backend/src/services/fileService.ts), [routes/files.ts](file:///home/lzh/code/vue/file-manager/backend/src/routes/files.ts), [routes/folders.ts](file:///home/lzh/code/vue/file-manager/backend/src/routes/folders.ts)
+
+---
+
+#### 4. 目录移动进度算法统一
+
+**问题**: 文件移动按字节数计算进度，目录移动按文件计数计算进度，批量操作时进度语义不统一。
+
+**方案**: 统一使用字节数计算进度。目录移动前先用 `calculateDirSize` 获取总字节数，每写入一个文件累加实际字节数。
+
+**目标文件**: [services/fileService.ts#L189-L229](file:///home/lzh/code/vue/file-manager/backend/src/services/fileService.ts#L189-L229)
+
+---
+
+### 🟢 低优先级
+
+#### 5. 安全加固
+
+**问题**: CORS 全开、无速率限制。
+
+**方案**:
+
+| 加固项 | 方案 |
+|--------|------|
+| CORS 白名单 | `cors({ origin: ['http://localhost:3000'] })` |
+| 登录速率限制 | `express-rate-limit`: 5次/分钟 |
+| API 速率限制 | `express-rate-limit`: 100 次/分钟 |
+
+**新建依赖**: `express-rate-limit`
+**目标文件**: [app.ts](file:///home/lzh/code/vue/file-manager/backend/src/app.ts)
+
+---
+
+#### 6. `GET /api/files/move` 改为 `POST`
+
+**问题**: 移动操作是副作用操作，不应使用 GET 方法。
+
+**方案**: 改为 `POST /api/files/move`，参数从 query 改为 body。前端 `EventSource` 不支持 POST body，需改用 `fetch` + ReadableStream 或保持 EventSource + GET。权衡后可以保持现状，或用 `fetch` 手动解析 SSE 流。
+
+**目标文件**: [routes/files.ts](file:///home/lzh/code/vue/file-manager/backend/src/routes/files.ts), [api/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/file.ts)
+
+---
+
+#### 7. 日志系统升级
+
+**问题**: `console.error` 散落各处，生产环境无法持久化。
+
+**方案**: 引入 `winston` 或 `pino`，按级别输出到控制台 + 文件。
+
+**新建依赖**: `winston`
+**新建文件**: `utils/logger.ts`
