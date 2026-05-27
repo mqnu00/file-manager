@@ -1,4 +1,0 @@
-auth:
-  token: admin123
-  tokenExpiryHours: 24
-storageRoot: /home/lzh
