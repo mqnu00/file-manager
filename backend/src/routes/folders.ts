@@ -1,22 +1,25 @@
-import express, { Request, Response } from 'express'
-import * as fileService from '../services/fileService'
-import { CreateFolderRequest } from '../types'
-import { asyncHandler } from '../middleware/asyncHandler'
+import express, { Request, Response } from 'express';
+import * as fileService from '../services/fileService';
+import { CreateFolderRequest } from '../types';
+import { asyncHandler } from '../middleware/asyncHandler';
 
-const router = express.Router()
+const router = express.Router();
 
 /**
  * 创建文件夹
  */
-router.post('/', asyncHandler((req: Request<{}, {}, CreateFolderRequest>, res: Response) => {
-  const { path: parentPath, name } = req.body
+router.post(
+  '/',
+  asyncHandler((req: Request, res: Response) => {
+    const { path: parentPath, name } = req.body as CreateFolderRequest;
 
-  if (!name) {
-    return res.status(400).json({ message: '缺少文件夹名称' })
-  }
+    if (!name) {
+      return res.status(400).json({ message: '缺少文件夹名称' });
+    }
 
-  fileService.createFolder(parentPath, name)
-  res.json({ success: true })
-}))
+    fileService.createFolder(parentPath, name);
+    res.json({ success: true });
+  })
+);
 
-export default router
+export default router;
