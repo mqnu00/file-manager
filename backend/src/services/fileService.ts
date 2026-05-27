@@ -21,15 +21,30 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
   const files = fs.readdirSync(targetPath, { withFileTypes: true })
   const fileList: FileInfo[] = files.map(file => {
     const filePath = path.join(targetPath, file.name)
-    const stats = fs.statSync(filePath)
     const relativePath = path.relative(getStorageRoot(), filePath)
+    const lstat = fs.lstatSync(filePath)
 
-    return {
-      name: file.name,
-      path: relativePath.replace(/\\/g, '/'),
-      isDirectory: file.isDirectory(),
-      size: stats.size,
-      modified: stats.mtime.toISOString()
+    try {
+      const stats = fs.statSync(filePath)
+      return {
+        name: file.name,
+        path: relativePath.replace(/\\/g, '/'),
+        isDirectory: file.isDirectory(),
+        size: stats.size,
+        modified: stats.mtime.toISOString()
+      }
+    } catch (e: any) {
+      if (e.code === 'ENOENT') {
+        return {
+          name: file.name,
+          path: relativePath.replace(/\\/g, '/'),
+          isDirectory: file.isDirectory(),
+          size: lstat.size,
+          modified: lstat.mtime.toISOString(),
+          broken: true
+        }
+      }
+      throw e
     }
   })
 

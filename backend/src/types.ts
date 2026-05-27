@@ -11,6 +11,7 @@ export interface FileInfo {
   isDirectory: boolean
   size: number
   modified: string
+  broken?: boolean
 }
 
 /**

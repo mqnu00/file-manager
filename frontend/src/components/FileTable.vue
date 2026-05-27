@@ -8,7 +8,7 @@
       @selection-change="handleSelectionChange"
       v-loading="loading"
     >
-      <el-table-column type="selection" width="55" />
+      <el-table-column type="selection" width="55" :selectable="(row: FileItem) => !row.broken" />
       <el-table-column prop="name" label="名称" min-width="200">
         <template #default="{ row }">
           <div class="file-name">
@@ -17,17 +17,19 @@
               <Document v-else />
             </el-icon>
             <span
-              :class="['file-name-text', { 'is-folder': row.isDirectory }]"
-              @click="row.isDirectory && $emit('open', row.path)"
+              :class="['file-name-text', { 'is-folder': row.isDirectory && !row.broken }]"
+              @click="(row.isDirectory && !row.broken) && $emit('open', row.path)"
             >
               {{ row.name }}
             </span>
+            <el-tag v-if="row.broken" type="danger" size="small" effect="dark">符号链接，目标不存在</el-tag>
           </div>
         </template>
       </el-table-column>
       <el-table-column prop="size" label="大小" width="120">
         <template #default="{ row }">
-          {{ row.isDirectory ? '-' : formatSize(row.size) }}
+          <span v-if="row.broken" class="broken-text">—</span>
+          <span v-else>{{ row.isDirectory ? '-' : formatSize(row.size) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="modified" label="修改时间" width="180">
@@ -109,6 +111,11 @@ defineExpose({ tableRef })
   color: var(--app-accent);
   text-shadow: var(--app-text-glow-hover);
   text-decoration: underline;
+}
+
+.broken-text {
+  color: var(--app-text-dim);
+  font-style: italic;
 }
 
 :deep(.el-table) {

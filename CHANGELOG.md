@@ -44,6 +44,14 @@
 - `tsconfig.json` 添加 `jsxImportSource: "vue"`，修复 Vue 模板中 JSX 元素类型报错
 - 修复 `config.yml` 路径：`../../config.yml` 更正为 `../config.yml`
 
+### 🐛 Bug 修复
+
+#### 损坏的符号链接导致列表加载失败
+- `GET /api/files` 遇到目标不存在的符号链接时不再抛出 `ENOENT` 错误
+- 改用 `lstat` + `stat` 双检测：`stat` 失败时回退到 `lstat` 的元数据，标记 `broken: true` 正常返回
+- `calculateDirSize` 同样跳过损坏的符号链接，避免压缩功能中断
+- 前端损坏文件显示为红色「符号链接，目标不存在」标签，禁止勾选和点击进入
+
 ### 🔧 代码重构
 
 基于架构审查报告，对前后端进行全面重构。

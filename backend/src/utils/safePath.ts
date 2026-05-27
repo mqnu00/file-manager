@@ -57,11 +57,16 @@ export const calculateDirSize = (dir: string): number => {
     const files = fs.readdirSync(currentDir)
     for (const file of files) {
       const filePath = path.join(currentDir, file)
-      const stat = fs.statSync(filePath)
-      if (stat.isDirectory()) {
-        walkDir(filePath)
-      } else {
-        totalBytes += stat.size
+      try {
+        const stat = fs.statSync(filePath)
+        if (stat.isDirectory()) {
+          walkDir(filePath)
+        } else {
+          totalBytes += stat.size
+        }
+      } catch (e: any) {
+        if (e.code === 'ENOENT') continue
+        throw e
       }
     }
   }

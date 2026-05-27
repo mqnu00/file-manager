@@ -4,6 +4,7 @@ export interface FileItem {
   isDirectory: boolean
   size: number
   modified: string
+  broken?: boolean
 }
 
 export interface FileState {
