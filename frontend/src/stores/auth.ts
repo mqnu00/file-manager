@@ -36,7 +36,9 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem(STORAGE_KEY_SESSION, res.sessionToken)
       return true
     } catch (e: any) {
-      loginError.value = e.response?.data?.error || '登录失败'
+      const error = e.response?.data?.error || '登录失败'
+      const remaining = e.response?.data?.remaining
+      loginError.value = remaining !== undefined ? `${error}（剩余 ${remaining} 次尝试）` : error
       return false
     }
   }

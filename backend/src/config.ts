@@ -14,6 +14,22 @@ export interface AppConfig {
 
 const CONFIG_PATH = path.join(__dirname, '../config.yml')
 
+const DEFAULT_CONFIG: AppConfig = {
+  auth: {
+    token: 'admin123',
+    tokenExpiryHours: 24
+  },
+  storageRoot: process.env.FILE_MANAGER_BASE_DIR || '/'
+}
+
+function ensureConfig(): void {
+  if (fs.existsSync(CONFIG_PATH)) return
+
+  const yamlStr = yaml.dump(DEFAULT_CONFIG, { lineWidth: -1, noRefs: true })
+  fs.writeFileSync(CONFIG_PATH, yamlStr, 'utf-8')
+  console.log('📝 已生成默认配置文件 config.yml')
+}
+
 let cachedConfig: AppConfig | null = null
 let watching = false
 
@@ -40,6 +56,7 @@ function readRaw(): AppConfig {
 
 export function getConfig(): AppConfig {
   if (!cachedConfig) {
+    ensureConfig()
     startWatch()
     cachedConfig = readRaw()
   }
