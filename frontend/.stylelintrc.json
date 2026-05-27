@@ -1,0 +1,40 @@
+{
+  "extends": [
+    "stylelint-config-standard",
+    "stylelint-config-recommended-vue"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.vue"],
+      "customSyntax": "postcss-html"
+    },
+    {
+      "files": ["**/*.scss"],
+      "customSyntax": "postcss-scss",
+      "extends": ["stylelint-config-standard-scss"]
+    }
+  ],
+  "rules": {
+    "selector-class-pattern": null,
+    "selector-pseudo-class-no-unknown": [
+      true,
+      {
+        "ignorePseudoClasses": ["deep", "global"]
+      }
+    ],
+    "property-no-unknown": [
+      true,
+      {
+        "ignoreProperties": ["composes"]
+      }
+    ],
+    "no-empty-source": null,
+    "import-notation": null,
+    "function-no-unknown": [
+      true,
+      {
+        "ignoreFunctions": ["v-bind"]
+      }
+    ]
+  }
+}
