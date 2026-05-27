@@ -197,24 +197,11 @@ PORT=10000 node dist/app.js
 
 #### 方式三：使用 Docker
 
-```bash
-# 1. 打包构建产物
-npm run build
-tar -czf file-manager.tar.gz backend/
+> 直接使用 `bash docker.sh` 一键启动。`Dockerfile`、`.dockerignore` 均已包含在仓库中。
 
-# 2. 构建镜像
-docker build -t file-manager .
-
-# 3. 运行容器
-docker run -d \
-  -v /home/lzh:/app/lzh \
-  -p 10001:10000 \
-  -p 3000:3000 \
-  --user 1000:1000 \
-  file-manager
-```
-
-> 也可直接使用 `bash docker.sh` 一键启动。`Dockerfile`、`.dockerignore` 均已包含在仓库中。
+- 新增 `Dockerfile`：基于 `node:22-alpine3.20`，通过 tar.gz 分发包部署，暴露 10000 / 3000 端口
+- 新增 `docker.sh`：预配置的运行脚本，含宿主机目录挂载、UID 映射和端口映射
+- 新增 `.dockerignore`：排除 `node_modules`、`config.yml`、构建产物等
 
 ### 环境变量
 
