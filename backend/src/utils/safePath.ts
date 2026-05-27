@@ -1,17 +1,29 @@
 import path from 'path'
 import fs from 'fs'
+import { getConfig } from '../config'
 
-/**
- * 基础目录 - 限制只能在此目录下操作
- * 默认使用系统根目录，可通过环境变量自定义
- */
-export const BASE_DIR = process.env.FILE_MANAGER_BASE_DIR || '/'
+function getBaseDir(): string {
+  const configured = getConfig().storageRoot
+  if (configured && configured.trim()) {
+    const resolved = path.resolve(configured)
+    if (!fs.existsSync(resolved)) {
+      fs.mkdirSync(resolved, { recursive: true })
+    }
+    return resolved
+  }
+  const envDir = process.env.FILE_MANAGER_BASE_DIR
+  if (envDir) {
+    const resolved = path.resolve(envDir)
+    if (!fs.existsSync(resolved)) {
+      fs.mkdirSync(resolved, { recursive: true })
+    }
+    return resolved
+  }
+  return '/'
+}
 
-/**
- * 确保基础目录存在
- */
-if (!fs.existsSync(BASE_DIR)) {
-  fs.mkdirSync(BASE_DIR, { recursive: true })
+export function getStorageRoot(): string {
+  return getBaseDir()
 }
 
 /**
@@ -20,12 +32,12 @@ if (!fs.existsSync(BASE_DIR)) {
  * @returns 解析后的安全路径
  */
 export const safePath = (userPath: string): string => {
-  // 如果 BASE_DIR 是 '/'，直接使用用户路径（确保以 / 开头）
+  const BASE_DIR = getBaseDir()
+
   if (BASE_DIR === '/') {
     const normalizedPath = userPath.startsWith('/') ? userPath : '/' + userPath
     return path.normalize(normalizedPath)
   }
-  // 否则，将用户路径连接到 BASE_DIR
   const resolved = path.join(BASE_DIR, userPath)
   if (!resolved.startsWith(BASE_DIR)) {
     throw new Error('非法路径')

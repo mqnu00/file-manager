@@ -16,6 +16,121 @@
 | `HOST` | 监听地址 | `0.0.0.0` |
 | `FILE_MANAGER_BASE_DIR` | 文件管理根目录 | `/` |
 
+> 注：`FILE_MANAGER_BASE_DIR` 优先级低于 `config.yml` 中的 `storageRoot` 配置。优先级：`config.yml` > 环境变量 > `/`
+
+---
+
+## 认证接口
+
+所有文件/文件夹/配置接口（除登录外）均需认证：请求头携带 `Authorization: Bearer <sessionToken>`。
+
+### 1. 登录
+
+- **接口**: `POST /api/auth/login`
+- **请求体**:
+  ```json
+  {
+    "token": "admin123"
+  }
+  ```
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "sessionToken": "a1b2c3d4e5f6...",
+    "expiresIn": 86400
+  }
+  ```
+- **错误响应**:
+  - `400` - 未提供令牌
+  - `401` - 令牌错误
+
+### 2. 登出
+
+- **接口**: `POST /api/auth/logout`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+### 3. 检查会话
+
+- **接口**: `GET /api/auth/check`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  { "valid": true }
+  ```
+
+---
+
+## 配置接口
+
+所有配置接口均需认证。
+
+### 1. 获取配置
+
+返回系统当前配置（令牌脱敏）。
+
+- **接口**: `GET /api/config`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "auth": {
+      "token": "ad***23",
+      "tokenExpiryHours": 24
+    },
+    "storageRoot": "/home/user"
+  }
+  ```
+
+### 2. 修改配置
+
+- **接口**: `PUT /api/config`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**（所有字段可选）:
+  ```json
+  {
+    "auth": {
+      "token": "new-token",
+      "tokenExpiryHours": 48
+    },
+    "storageRoot": "/home/user/data"
+  }
+  ```
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "config": {
+      "auth": { "token": "ne***en", "tokenExpiryHours": 48 },
+      "storageRoot": "/home/user/data"
+    },
+    "sessionsCleared": true
+  }
+  ```
+- **说明**：
+  - `sessionsCleared: true` 表示令牌已修改，所有登录会话已失效，需重新登录
+  - 配置写入 `config.yml` 后自动热加载
+
+### 3. 重新加载配置
+
+手动从 `config.yml` 重新加载配置到内存（通常不需要，文件修改会自动热加载）。
+
+- **接口**: `POST /api/config/reload`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "message": "配置已重新加载"
+  }
+  ```
+
 ---
 
 ## 文件接口
@@ -295,6 +410,7 @@
 | HTTP 状态码 | 说明 |
 |------------|------|
 | `400` | 请求参数错误 |
+| `401` | 未认证或令牌错误 |
 | `404` | 文件/文件夹不存在 |
 | `500` | 服务器内部错误 |
 
@@ -302,6 +418,9 @@
 
 ## 安全说明
 
-1. **路径安全检查**: 所有路径操作都会验证是否在 `FILE_MANAGER_BASE_DIR` 目录下，防止路径遍历攻击
-2. **静态文件服务**: 生产环境下，后端会自动提供前端打包的静态文件（`backend/dist` 目录）
-3. **SPA 路由支持**: 所有未匹配的路由会返回 `index.html`，支持前端路由
+1. **令牌认证**: 除登录接口外，所有 API 请求需携带 `Authorization: Bearer <sessionToken>` 头部，未认证请求返回 401
+2. **Session 管理**: 基于内存的 Session 机制，有效期由 `config.yml` 中 `tokenExpiryHours` 控制；令牌修改后所有会话立即失效
+3. **配置安全**: 令牌通过 `config.yml` 管理，API 返回时自动脱敏（仅显示首尾 2 位字符）；配置文件支持热加载，修改无需重启
+4. **路径安全检查**: 所有路径操作都会验证是否在 `storageRoot`（优先于 `FILE_MANAGER_BASE_DIR`）目录下，防止路径遍历攻击
+5. **静态文件服务**: 生产环境下，后端会自动提供前端打包的静态文件（`backend/dist` 目录）
+6. **SPA 路由支持**: 所有未匹配的路由会返回 `index.html`，支持前端路由

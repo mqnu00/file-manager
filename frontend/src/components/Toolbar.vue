@@ -37,6 +37,9 @@
           <el-icon><Moon v-if="isCyber" /><Sunny v-else /></el-icon>
           {{ isCyber ? '赛博' : '亮色' }}
         </el-button>
+        <el-button size="small" @click="router.push('/config')">
+          <el-icon><Setting /></el-icon>
+        </el-button>
       </div>
     </div>
 
@@ -63,8 +66,12 @@
 </template>
 
 <script setup lang="ts">
-import { FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown, Delete, Rank, Download, FolderChecked, Moon, Sunny } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown, Delete, Rank, Download, FolderChecked, Moon, Sunny, Setting } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
+
+const router = useRouter()
+const { isCyber, toggle } = useTheme()
 
 defineProps<{
   breadcrumbParts: string[]
@@ -87,7 +94,6 @@ defineEmits<{
   'batch-zip': []
 }>()
 
-const { isCyber, toggle } = useTheme()
 </script>
 
 <style scoped>

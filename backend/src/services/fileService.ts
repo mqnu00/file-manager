@@ -4,7 +4,7 @@ import archiver from 'archiver'
 import mime from 'mime-types'
 import { Response } from 'express'
 import { FileInfo, SSEProgressMessage } from '../types'
-import { safePath, calculateDirSize } from '../utils/safePath'
+import { safePath, calculateDirSize, getStorageRoot } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
 
 /**
@@ -22,7 +22,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
   const fileList: FileInfo[] = files.map(file => {
     const filePath = path.join(targetPath, file.name)
     const stats = fs.statSync(filePath)
-    const relativePath = path.relative(process.env.FILE_MANAGER_BASE_DIR || '/', filePath)
+    const relativePath = path.relative(getStorageRoot(), filePath)
 
     return {
       name: file.name,
@@ -82,7 +82,7 @@ export const zipFolder = (folderPath: string, res: Response, activeArchives: Rec
   })
 
   output.on('close', () => {
-    const relativeZipPath = path.relative(process.env.FILE_MANAGER_BASE_DIR || '/', zipPath).replace(/\\/g, '/')
+    const relativeZipPath = path.relative(getStorageRoot(), zipPath).replace(/\\/g, '/')
     sendSSEComplete(res, relativeZipPath)
     if (activeArchives[folderPath]) {
       delete activeArchives[folderPath]
