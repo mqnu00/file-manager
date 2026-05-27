@@ -1,10 +1,10 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    @update:model-value="$emit('update:model-value', $event)"
     :title="batchMode ? `批量移动 (${sourceNames.length} 项)` : '移动到'"
     width="500px"
     :close-on-click-modal="false"
+    @update:model-value="$emit('update:model-value', $event)"
   >
     <div class="move-dialog-content">
       <div class="move-dialog-info">
@@ -28,15 +28,15 @@
       </div>
       <PathSelector
         :model-value="targetPath"
-        @update:model-value="$emit('update:target-path', $event)"
         :exclude-path="batchMode ? undefined : sourcePath"
         placeholder="选择目标文件夹"
         :disabled="loading"
+        @update:model-value="$emit('update:target-path', $event)"
       />
     </div>
     <template #footer>
-      <el-button @click="$emit('update:model-value', false)" :disabled="loading">取消</el-button>
-      <el-button type="primary" @click="$emit('confirm')" :loading="loading">
+      <el-button :disabled="loading" @click="$emit('update:model-value', false)">取消</el-button>
+      <el-button type="primary" :loading="loading" @click="$emit('confirm')">
         {{ loading ? '移动中...' : '确定' }}
       </el-button>
     </template>

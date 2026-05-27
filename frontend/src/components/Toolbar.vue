@@ -16,7 +16,7 @@
       <div class="actions">
         <el-select :model-value="sortBy" size="small" @update:model-value="$emit('sort-change', $event)">
           <template #prefix>
-            <el-icon @click.stop="$emit('toggle-sort')" style="cursor: pointer; margin-right: 4px;">
+            <el-icon style="cursor: pointer; margin-right: 4px;" @click.stop="$emit('toggle-sort')">
               <ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else />
             </el-icon>
           </template>
@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <div class="bulk-actions" v-if="selectedCount > 0">
+    <div v-if="selectedCount > 0" class="bulk-actions">
       <span class="bulk-actions-count">已选择 <strong>{{ selectedCount }}</strong> 项</span>
       <el-button v-if="isSingleFileSelected" size="small" type="success" @click="$emit('batch-download')">
         <el-icon><Download /></el-icon>

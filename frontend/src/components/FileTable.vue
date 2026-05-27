@@ -2,11 +2,11 @@
   <div class="file-list">
     <el-table
       ref="tableRef"
+      v-loading="loading"
       :data="files"
       style="width: 100%"
       @row-contextmenu="handleContextmenu"
       @selection-change="handleSelectionChange"
-      v-loading="loading"
     >
       <el-table-column type="selection" width="55" :selectable="(row: FileItem) => !row.broken" />
       <el-table-column prop="name" label="名称" min-width="200">

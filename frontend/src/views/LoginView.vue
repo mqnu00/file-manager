@@ -5,7 +5,7 @@
         <h2>文件管理器</h2>
         <p>请输入访问令牌以继续</p>
       </div>
-      <el-form @submit.prevent="handleLogin" class="login-form">
+      <el-form class="login-form" @submit.prevent="handleLogin">
         <el-form-item>
           <el-input
             v-model="token"

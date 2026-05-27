@@ -1,14 +1,14 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    @update:model-value="$emit('update:model-value', $event)"
     title="新建文件夹"
     width="300px"
+    @update:model-value="$emit('update:model-value', $event)"
   >
     <el-input
       :model-value="folderName"
-      @update:model-value="$emit('update:folder-name', $event)"
       placeholder="请输入文件夹名称"
+      @update:model-value="$emit('update:folder-name', $event)"
       @keyup.enter="$emit('confirm')"
     />
     <template #footer>

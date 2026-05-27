@@ -1,13 +1,13 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    @update:model-value="$emit('update:model-value', $event)"
     title="压缩进度"
     width="400px"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     :show-close="false"
     :lock-scroll="true"
+    @update:model-value="$emit('update:model-value', $event)"
   >
     <div class="zip-progress-dialog">
       <el-progress :percentage="progress" :status="status" />

@@ -2,7 +2,7 @@
   <div class="config-container">
     <div class="config-card">
       <div style="padding-top: 10px; padding-left: 10px;">
-        <el-button text @click="router.push('/')" class="back-btn">
+        <el-button text class="back-btn" @click="router.push('/')">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
