@@ -5,7 +5,7 @@
 - **日期**: 2026-03-24
 - **目标**: 对前端 HomeView 页面进行模块化重构，提高代码可读性和可维护性
 
----
+***
 
 ## 重构概述
 
@@ -13,13 +13,13 @@
 
 ### 重构前后对比
 
-| 文件 | 重构前 | 重构后 |
-|------|--------|--------|
-| HomeView.vue | 230 行 | 210 行 (精简 9%) |
+| 文件            | 重构前   | 重构后           |
+| ------------- | ----- | ------------- |
+| HomeView\.vue | 230 行 | 210 行 (精简 9%) |
 | FileTable.vue | 110 行 | 95 行 (精简 14%) |
-| Dialogs.vue | 154 行 | 已删除 (拆分为独立组件) |
+| Dialogs.vue   | 154 行 | 已删除 (拆分为独立组件) |
 
----
+***
 
 ## 新的文件结构
 
@@ -48,19 +48,19 @@ frontend/src/
     └── index.ts                  # 类型定义
 ```
 
----
+***
 
 ## 模块职责
 
-| 模块 | 职责 | 行数 |
-|------|------|------|
-| `HomeView.vue` | 页面布局和路由协调 | ~210 行 |
-| `composables/useFileProgress.ts` | 文件移动/压缩进度管理 (SSE) | ~200 行 |
-| `utils/format.ts` | 格式化工具函数 | ~50 行 |
-| `components/dialogs/*.vue` | 独立对话框组件 | ~40-50 行/个 |
-| `components/FileTable.vue` | 文件列表展示 | ~95 行 |
+| 模块                               | 职责                | 行数          |
+| -------------------------------- | ----------------- | ----------- |
+| `HomeView.vue`                   | 页面布局和路由协调         | \~210 行     |
+| `composables/useFileProgress.ts` | 文件移动/压缩进度管理 (SSE) | \~200 行     |
+| `utils/format.ts`                | 格式化工具函数           | \~50 行      |
+| `components/dialogs/*.vue`       | 独立对话框组件           | \~40-50 行/个 |
+| `components/FileTable.vue`       | 文件列表展示            | \~95 行      |
 
----
+***
 
 ## 重构优势
 
@@ -70,7 +70,7 @@ frontend/src/
 4. **易于维护**: 每个组件职责单一，代码阅读更清晰
 5. **更好的类型安全**: 所有状态和事件都有明确的类型定义
 
----
+***
 
 ## Composables 设计
 
@@ -131,7 +131,7 @@ progress.zipFolder(path, () => refresh())
 </script>
 ```
 
----
+***
 
 ## 工具函数
 
@@ -158,7 +158,7 @@ import { formatSize, formatTime } from '@/utils/format'
 </template>
 ```
 
----
+***
 
 ## 对话框组件
 
@@ -212,7 +212,7 @@ import { formatSize, formatTime } from '@/utils/format'
 />
 ```
 
----
+***
 
 ## 重构原则
 
@@ -222,7 +222,7 @@ import { formatSize, formatTime } from '@/utils/format'
 4. **类型安全**: 所有 props 和 emits 都有明确类型定义
 5. **响应式数据**: 使用 `reactive` 管理复杂状态
 
----
+***
 
 ## 注意事项
 
@@ -231,13 +231,13 @@ import { formatSize, formatTime } from '@/utils/format'
 3. **错误处理**: 统一的错误提示机制 (ElMessage)
 4. **类型导出**: 确保所有接口和类型正确导出
 
----
+***
 
 ## 下一阶段重构计划 (2026-05-26)
 
 > 基于架构审查报告，按优先级排列的改进计划。
 
----
+***
 
 ### 🔴 高优先级
 
@@ -247,13 +247,13 @@ import { formatSize, formatTime } from '@/utils/format'
 
 **方案**: 将独立逻辑抽出为 composables：
 
-| 抽出内容 | 目标 composable | 行数估算 |
-|----------|----------------|---------|
-| 排序逻辑 (sortBy, sortOrder, sortFiles, handleSortChange) | `composables/useFileSort.ts` | ~40 行 |
-| 右键菜单 (contextMenuVisible, onRowContextmenu, closeContextMenu) | `composables/useContextMenu.ts` | ~30 行 |
-| 批量下载/压缩 (handleBatchDownload, handleBatchZip) | 合并到 `useBatchOperations.ts` | ~20 行 |
+| 抽出内容                                                          | 目标 composable                   | 行数估算   |
+| ------------------------------------------------------------- | ------------------------------- | ------ |
+| 排序逻辑 (sortBy, sortOrder, sortFiles, handleSortChange)         | `composables/useFileSort.ts`    | \~40 行 |
+| 右键菜单 (contextMenuVisible, onRowContextmenu, closeContextMenu) | `composables/useContextMenu.ts` | \~30 行 |
+| 批量下载/压缩 (handleBatchDownload, handleBatchZip)                 | 合并到 `useBatchOperations.ts`     | \~20 行 |
 
-**目标**: `HomeView.vue` 缩减到 ~150 行，只负责组合调用和模板协调。
+**目标**: `HomeView.vue` 缩减到 \~150 行，只负责组合调用和模板协调。
 
 **新建文件**: `composables/useFileSort.ts`, `composables/useContextMenu.ts`
 **改动文件**: [HomeView.vue](file:///home/lzh/code/vue/file-manager/frontend/src/views/HomeView.vue)
@@ -272,7 +272,7 @@ export function useFileSort(fileStore: ReturnType<typeof useFileStore>) {
 }
 ```
 
----
+***
 
 #### 2. `fileStore` 清理冗余字段
 
@@ -281,13 +281,14 @@ export function useFileSort(fileStore: ReturnType<typeof useFileStore>) {
 **方案**: 二选一：
 
 | 方案 A | 删除 store 中的 `selectedFiles`、`setSelectedFiles`，选中状态保持组件本地 |
-| 方案 B | 将 HomeView 的 `selectedFiles` 移入 store，统一由 store 管理选中态 |
+| :--- | :-------------------------------------------------------- |
+| 方案 B | 将 HomeView 的 `selectedFiles` 移入 store，统一由 store 管理选中态     |
 
 推荐 **方案 B**，因为批量操作依赖 `selectedFiles` 的地方不止一个（HomeView 传给 Toolbar 的 props 都基于它），移入 store 后无需 prop drilling。
 
 **目标文件**: [stores/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/file.ts), [HomeView.vue](file:///home/lzh/code/vue/file-manager/frontend/src/views/HomeView.vue), [Toolbar.vue](file:///home/lzh/code/vue/file-manager/frontend/src/components/Toolbar.vue)
 
----
+***
 
 ### 🟡 中优先级
 
@@ -295,11 +296,11 @@ export function useFileSort(fileStore: ReturnType<typeof useFileStore>) {
 
 **问题**: [useFileProgress.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useFileProgress.ts) 混合了两种不同层级的职责：
 
-| 职责 | 属性 |
-|------|------|
-| **状态管理** | `moveState`, `zipState`, `hideMoveDialog`, `showMoveDialog` |
-| **业务调用** | `moveOneFile`(EventSource), `moveFiles`(顺序移动), `zipFolder`, `cancelZip` |
-| **UI 反馈** | `ElMessage.error`, `ElMessage.success` |
+| 职责        | 属性                                                                      |
+| --------- | ----------------------------------------------------------------------- |
+| **状态管理**  | `moveState`, `zipState`, `hideMoveDialog`, `showMoveDialog`             |
+| **业务调用**  | `moveOneFile`(EventSource), `moveFiles`(顺序移动), `zipFolder`, `cancelZip` |
+| **UI 反馈** | `ElMessage.error`, `ElMessage.success`                                  |
 
 **方案**: 将 EventSource 的创建/关闭/事件解析逻辑抽到 API 层，composable 只保留响应式状态和面向组件的接口。
 
@@ -328,24 +329,24 @@ export function useFileProgress() {
 
 **目标文件**: [useFileProgress.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useFileProgress.ts), [api/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/file.ts)
 
----
+***
 
 #### 4. 常量集中管理
 
 **问题**: 以下字符串在多个文件中硬编码：
 
-| 常量 | 出现位置 | 建议定义位置 |
-|------|---------|------------|
-| `'session_token'` | 3 处 (auth store + api interceptor + logout) | `constants/index.ts` |
-| `'file-manager-theme'` | 1 处 (useTheme) | `constants/index.ts` |
-| `'/api'` | 1 处 (api/index.ts) | `constants/index.ts` |
+| 常量                     | 出现位置                                        | 建议定义位置               |
+| ---------------------- | ------------------------------------------- | -------------------- |
+| `'session_token'`      | 3 处 (auth store + api interceptor + logout) | `constants/index.ts` |
+| `'file-manager-theme'` | 1 处 (useTheme)                              | `constants/index.ts` |
+| `'/api'`               | 1 处 (api/index.ts)                          | `constants/index.ts` |
 
 **方案**: 新建 `constants/index.ts`，集中导出所有常量。
 
 **新建文件**: `constants/index.ts`
 **改动文件**: [stores/auth.ts](file:///home/lzh/code/vue/file-manager/frontend/src/stores/auth.ts), [api/index.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/index.ts), [composables/useTheme.ts](file:///home/lzh/code/vue/file-manager/frontend/src/composables/useTheme.ts)
 
----
+***
 
 #### 5. 类型去重
 
@@ -355,7 +356,7 @@ export function useFileProgress() {
 
 **目标文件**: [api/file.ts](file:///home/lzh/code/vue/file-manager/frontend/src/api/file.ts)
 
----
+***
 
 ### 🟢 低优先级
 
@@ -365,14 +366,14 @@ export function useFileProgress() {
 
 **方案**: 考虑以下替代方案之一：
 
-| 方案 | 适用场景 |
-|------|---------|
+| 方案                 | 适用场景                |
+| ------------------ | ------------------- |
 | **provide/inject** | 跨层级传递操作函数，避免逐层 emit |
-| **事件总线 (mitt)** | 解耦组件通信 |
+| **事件总线 (mitt)**    | 解耦组件通信              |
 
 当前项目层级不深（HomeView → Toolbar 只有一层），暂不紧急。
 
----
+***
 
 #### 7. 空 catch 块日志保留
 
