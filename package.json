@@ -10,7 +10,7 @@
     "build:backend": "cd backend && npm run build",
     "start": "node backend/src/app.js",
     "release": "node scripts/release.js",
-    "package": "npm run build && tar -czf file-manager.tar.gz --exclude='backend/node_modules' backend/",
+    "package": "npm run build && tar -czf file-manager.tar.gz --exclude='backend/node_modules' --exclude='src' --exclude='uploads' --exclude='tsconfig.json' --exclude='REFACTOR.md' --exclude='.eslintignore' --exclude='.eslintrc.json' backend/",
     "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/",
     "lint": "npm run lint:frontend && npm run lint:backend",
     "lint:check": "npm run lint:check:frontend && npm run lint:check:backend",
