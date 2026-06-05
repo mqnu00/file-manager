@@ -50,7 +50,7 @@ onUnmounted(() => {
     if (obj instanceof THREE.Mesh) {
       obj.geometry.dispose()
       if (Array.isArray(obj.material)) {
-        obj.material.forEach(m => m.dispose())
+        obj.material.forEach((m) => m.dispose())
       } else {
         obj.material.dispose()
       }
@@ -72,13 +72,21 @@ function createStarField() {
 
     const colorChoice = Math.random()
     if (colorChoice < 0.3) {
-      colors[i3] = 0.0; colors[i3 + 1] = 0.94; colors[i3 + 2] = 1.0   // cyan
+      colors[i3] = 0.0
+      colors[i3 + 1] = 0.94
+      colors[i3 + 2] = 1.0 // cyan
     } else if (colorChoice < 0.5) {
-      colors[i3] = 1.0; colors[i3 + 1] = 0.0; colors[i3 + 2] = 1.0    // magenta
+      colors[i3] = 1.0
+      colors[i3 + 1] = 0.0
+      colors[i3 + 2] = 1.0 // magenta
     } else if (colorChoice < 0.65) {
-      colors[i3] = 0.3; colors[i3 + 1] = 0.5; colors[i3 + 2] = 1.0    // blue
+      colors[i3] = 0.3
+      colors[i3 + 1] = 0.5
+      colors[i3 + 2] = 1.0 // blue
     } else {
-      colors[i3] = 0.9; colors[i3 + 1] = 0.9; colors[i3 + 2] = 1.0    // white
+      colors[i3] = 0.9
+      colors[i3 + 1] = 0.9
+      colors[i3 + 2] = 1.0 // white
     }
   }
 
@@ -91,7 +99,7 @@ function createStarField() {
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.8,
   })
 
   starField = new THREE.Points(geometry, material)
@@ -104,7 +112,7 @@ function createGrid() {
   const gridHelper = new THREE.PolarGridHelper(12, 40, 20, 256, 0x00f0ff, 0x00f0ff)
   gridHelper.position.z = -6
   gridHelper.rotation.x = -Math.PI / 2
-  gridHelper.children.forEach(child => {
+  gridHelper.children.forEach((child) => {
     if (child instanceof THREE.Line || child instanceof THREE.LineSegments) {
       const mat = child.material as ThreeType.LineBasicMaterial
       mat.transparent = true
@@ -129,7 +137,7 @@ function createOrbs() {
       transparent: true,
       opacity: 0.7,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
     })
     const orb = new THREE.Mesh(orbGeometry, material)
 
@@ -142,7 +150,7 @@ function createOrbs() {
       speedY: (Math.random() - 0.5) * 0.003,
       speedZ: (Math.random() - 0.5) * 0.002,
       amplitude: 0.3 + Math.random() * 0.6,
-      phase: Math.random() * Math.PI * 2
+      phase: Math.random() * Math.PI * 2,
     }
 
     scene.add(orb)
@@ -158,7 +166,7 @@ function createLightBeams() {
       transparent: true,
       opacity: 0.08,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
     })
     const beam = new THREE.Mesh(geometry, material)
     beam.position.x = (i - 1) * 3
