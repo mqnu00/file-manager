@@ -4,16 +4,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import * as THREE from 'three'
+import type * as ThreeType from 'three'
+
+const THREE = window.THREE
 
 const canvasRef = ref<HTMLCanvasElement>()
 let animationId: number = 0
-let scene: THREE.Scene
-let camera: THREE.PerspectiveCamera
-let renderer: THREE.WebGLRenderer
-let starField: THREE.Points
-let grid: THREE.Group
-let orbs: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>[]
+let scene: ThreeType.Scene
+let camera: ThreeType.PerspectiveCamera
+let renderer: ThreeType.WebGLRenderer
+let starField: ThreeType.Points
+let grid: ThreeType.Group
+let orbs: ThreeType.Mesh<ThreeType.SphereGeometry, ThreeType.MeshBasicMaterial>[]
 
 const ORB_COUNT = 5
 
@@ -104,7 +106,7 @@ function createGrid() {
   gridHelper.rotation.x = -Math.PI / 2
   gridHelper.children.forEach(child => {
     if (child instanceof THREE.Line || child instanceof THREE.LineSegments) {
-      const mat = child.material as THREE.LineBasicMaterial
+      const mat = child.material as ThreeType.LineBasicMaterial
       mat.transparent = true
       mat.opacity = 0.15
       mat.blending = THREE.AdditiveBlending
@@ -191,8 +193,8 @@ function animate() {
 
   scene.children.forEach((child) => {
     if (child.userData && child.userData.index !== undefined) {
-      const beam = child as THREE.Mesh
-      const mat = beam.material as THREE.MeshBasicMaterial
+      const beam = child as ThreeType.Mesh
+      const mat = beam.material as ThreeType.MeshBasicMaterial
       beam.rotation.z += 0.002 + child.userData.index * 0.001
       mat.opacity = 0.05 + Math.sin(time * 1.5 + child.userData.index) * 0.03
     }
