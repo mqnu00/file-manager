@@ -16,6 +16,7 @@ backend/config.yml
 logs/
 *.log
 npm-debug.log*
+frontend/stats.html
 
 # 编辑器
 .vscode/
