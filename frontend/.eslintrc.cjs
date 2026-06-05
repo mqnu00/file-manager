@@ -43,5 +43,6 @@ module.exports = {
     defineEmits: 'readonly',
     defineExpose: 'readonly',
     withDefaults: 'readonly',
+    THREE: 'readonly',
   },
 };
