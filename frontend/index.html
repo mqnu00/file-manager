@@ -8,6 +8,11 @@
   </head>
   <body>
     <div id="app"></div>
+    <script type="module">
+      import * as THREE from 'https://unpkg.com/three@0.184.0/build/three.module.js'      
+      // 如果需要用到 window.THREE，手动设置
+      window.THREE = THREE
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

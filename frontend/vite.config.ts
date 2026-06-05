@@ -4,9 +4,11 @@ import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import { resolve } from 'path';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig({
   plugins: [
+    visualizer({ open: false }),
     vue(),
     // 自动导入 Vue 相关的 API（如 ref, computed 等）和 Element Plus 的 API（如 ElMessage）
     AutoImport({
@@ -39,5 +41,14 @@ export default defineConfig({
   build: {
     outDir: '../backend/dist',
     emptyOutDir: true,
+    rollupOptions: {
+      external: ['three'],
+      output: {
+        globals: {
+          three: 'THREE',
+        },
+      },
+      treeshake: true,
+    },
   },
 });
