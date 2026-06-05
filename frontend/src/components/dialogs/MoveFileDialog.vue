@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import PathSelector from '../PathSelector.vue'
 import { formatProgress, formatSpeed } from '@/utils/format'
+import {ProgressProps} from 'element-plus'
 
 const props = defineProps<{
   modelValue: boolean
@@ -55,7 +56,7 @@ const props = defineProps<{
   targetPath: string
   loading: boolean
   progress: number
-  status: string
+  status: ProgressProps["status"]
   speed: number
   batchMode: boolean
 }>()

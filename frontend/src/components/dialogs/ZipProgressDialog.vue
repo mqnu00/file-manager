@@ -30,10 +30,11 @@
 </template>
 
 <script setup lang="ts">
+import { ProgressProps } from 'element-plus'
 defineProps<{
   modelValue: boolean
   progress: number
-  status: string
+  status: ProgressProps["status"]
   folderPath: string
   error: string
 }>()
