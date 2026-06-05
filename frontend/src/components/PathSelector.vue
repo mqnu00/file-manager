@@ -85,7 +85,7 @@ const loadNode = async (node: any, resolve: (data: TreeNode[]) => void) => {
     const children = filteredFolders.map((f: any) => ({
       label: f.name,
       path: f.path,
-      disabled: false
+      disabled: false,
     }))
 
     resolve(children)
@@ -102,7 +102,7 @@ const loadRootNodes = async () => {
     treeData.value = filteredFolders.map((f: any) => ({
       label: f.name,
       path: f.path,
-      disabled: false
+      disabled: false,
     }))
   } catch (e) {
     treeData.value = []
@@ -120,18 +120,24 @@ const confirmSelection = () => {
   showTreeDialog.value = false
 }
 
-watch(() => props.excludePath, () => {
-  loadRootNodes()
-})
-
-watch(() => showTreeDialog.value, (newVal) => {
-  if (newVal) {
+watch(
+  () => props.excludePath,
+  () => {
     loadRootNodes()
-    if (props.modelValue) {
-      selectedPath.value = props.modelValue
+  }
+)
+
+watch(
+  () => showTreeDialog.value,
+  (newVal) => {
+    if (newVal) {
+      loadRootNodes()
+      if (props.modelValue) {
+        selectedPath.value = props.modelValue
+      }
     }
   }
-})
+)
 
 onMounted(() => {
   loadRootNodes()

@@ -8,18 +8,19 @@ export interface FileListResponse {
 
 // 获取文件列表
 export const getFiles = (path: string = ''): Promise<FileListResponse> => {
-  return api.get('/files', { params: { path } }).then(res => res.data)
+  return api.get('/files', { params: { path } }).then((res) => res.data)
 }
 
 // 获取文件夹列表（仅文件夹）
 export const getFolders = (path: string = ''): Promise<FileItem[]> => {
-  return api.get('/files', { params: { path } })
-    .then(res => res.data.files.filter((f: FileItem) => f.isDirectory))
+  return api
+    .get('/files', { params: { path } })
+    .then((res) => res.data.files.filter((f: FileItem) => f.isDirectory))
 }
 
 // 创建文件夹
 export const createFolder = (path: string, name: string): Promise<{ success: boolean }> => {
-  return api.post('/folders', { path, name }).then(res => res.data)
+  return api.post('/folders', { path, name }).then((res) => res.data)
 }
 
 // 移动文件/文件夹（返回 EventSource — 内部使用）
@@ -94,12 +95,12 @@ export const zipFolderAsync = (
 
 // 取消压缩
 export const cancelZip = (path: string): Promise<{ success: boolean }> => {
-  return api.post('/files/zip/cancel', { path }).then(res => res.data)
+  return api.post('/files/zip/cancel', { path }).then((res) => res.data)
 }
 
 // 删除文件/文件夹
 export const deleteFile = (path: string): Promise<{ success: boolean }> => {
-  return api.delete('/files', { params: { path } }).then(res => res.data)
+  return api.delete('/files', { params: { path } }).then((res) => res.data)
 }
 
 export interface BatchDeleteResponse {
@@ -109,12 +110,12 @@ export interface BatchDeleteResponse {
 
 // 批量删除文件/文件夹
 export const batchDeleteFiles = (paths: string[]): Promise<BatchDeleteResponse> => {
-  return api.post('/files/batch-delete', { paths }).then(res => res.data)
+  return api.post('/files/batch-delete', { paths }).then((res) => res.data)
 }
 
 // 重命名文件/文件夹
 export const renameFile = (path: string, newName: string): Promise<{ success: boolean }> => {
-  return api.put('/files/rename', { path, newName }).then(res => res.data)
+  return api.put('/files/rename', { path, newName }).then((res) => res.data)
 }
 
 export default api

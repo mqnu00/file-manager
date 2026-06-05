@@ -3,7 +3,7 @@ import { STORAGE_KEY_SESSION, API_BASE_URL } from '@/constants'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000
+  timeout: 10000,
 })
 
 api.interceptors.request.use((config) => {

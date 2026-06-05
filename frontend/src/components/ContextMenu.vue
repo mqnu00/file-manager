@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="context-menu"
-    :style="{ top: y + 'px', left: x + 'px' }"
-  >
+  <div class="context-menu" :style="{ top: y + 'px', left: x + 'px' }">
     <div class="context-menu-item" @click="$emit('create-folder')">
       <el-icon><FolderAdd /></el-icon>
       新建文件夹
@@ -34,12 +31,13 @@ defineEmits<{
   background: var(--app-panel);
   border-radius: 8px;
   border: 1px solid var(--app-border);
-  box-shadow: var(--app-glow), 0 4px 24px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    var(--app-glow),
+    0 4px 24px rgb(0 0 0 / 40%);
   padding: 8px 0;
   z-index: 9999;
   min-width: 150px;
   backdrop-filter: var(--app-blur);
-  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .context-menu-item {

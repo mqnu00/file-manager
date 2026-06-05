@@ -37,6 +37,8 @@ module.exports = {
     'no-debugger': 'warn',
     'prefer-const': 'error',
     'no-var': 'error',
+    semi: ['error', 'never'],
+    '@typescript-eslint/semi': ['error', 'never'],
   },
   globals: {
     defineProps: 'readonly',
@@ -45,4 +47,4 @@ module.exports = {
     withDefaults: 'readonly',
     THREE: 'readonly',
   },
-};
+}

@@ -36,7 +36,7 @@ export const useFileProgress = () => {
     progress: 0,
     status: '',
     speed: 0,
-    batchMode: false
+    batchMode: false,
   })
 
   const zipState = reactive<ZipProgressState>({
@@ -44,7 +44,7 @@ export const useFileProgress = () => {
     folderPath: '',
     progress: 0,
     status: '',
-    error: ''
+    error: '',
   })
 
   const hideMoveDialog = () => {
@@ -75,7 +75,7 @@ export const useFileProgress = () => {
       progress: 0,
       status: '',
       speed: 0,
-      batchMode: false
+      batchMode: false,
     })
   }
 
@@ -91,7 +91,7 @@ export const useFileProgress = () => {
       progress: 0,
       status: '',
       speed: 0,
-      batchMode: true
+      batchMode: true,
     })
   }
 
@@ -115,7 +115,9 @@ export const useFileProgress = () => {
       const srcName = moveState.sourceNames[i]
 
       const normalizedSourcePath = srcPath.startsWith('/') ? srcPath : '/' + srcPath
-      const normalizedTargetPath = moveState.targetPath.startsWith('/') ? moveState.targetPath : '/' + moveState.targetPath
+      const normalizedTargetPath = moveState.targetPath.startsWith('/')
+        ? moveState.targetPath
+        : '/' + moveState.targetPath
       const fullPath = normalizedTargetPath + '/' + srcName
 
       try {
@@ -158,20 +160,22 @@ export const useFileProgress = () => {
       folderPath: path,
       progress: 0,
       status: '',
-      error: ''
+      error: '',
     })
 
     zipFolderAsync(path, (progress) => {
       zipState.progress = progress
-    }).then(() => {
-      zipState.status = 'success'
-      zipState.progress = 100
-      ElMessage.success('压缩完成')
-      onRefresh?.()
-    }).catch((e: Error) => {
-      zipState.status = 'exception'
-      zipState.error = e.message || '压缩失败，请重试'
     })
+      .then(() => {
+        zipState.status = 'success'
+        zipState.progress = 100
+        ElMessage.success('压缩完成')
+        onRefresh?.()
+      })
+      .catch((e: Error) => {
+        zipState.status = 'exception'
+        zipState.error = e.message || '压缩失败，请重试'
+      })
   }
 
   const cancelZip = async (onSuccess?: () => void) => {
@@ -192,6 +196,6 @@ export const useFileProgress = () => {
     showBatchMoveDialog,
     moveFile: moveFiles,
     zipFolder,
-    cancelZip
+    cancelZip,
   }
 }

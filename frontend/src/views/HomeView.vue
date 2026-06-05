@@ -99,7 +99,8 @@ const fileSort = useFileSort(
 const { sortBy, sortOrder, handleSortChange, toggleSortOrder, sortFiles } = fileSort
 
 const contextMenu = useContextMenu()
-const { contextMenuVisible, contextMenuX, contextMenuY, onRowContextmenu, closeContextMenu } = contextMenu
+const { contextMenuVisible, contextMenuX, contextMenuY, onRowContextmenu, closeContextMenu } =
+  contextMenu
 
 // FileTable ref
 const fileTableRef = ref<InstanceType<typeof FileTable>>()
@@ -111,7 +112,7 @@ const newFolderName = ref('')
 const breadcrumbParts = computed(() => {
   const path = fileStore.currentPath
   if (!path) return ['']
-  return path.split('/').filter(p => p !== '')
+  return path.split('/').filter((p) => p !== '')
 })
 
 const navigateTo = (index: number) => {
@@ -209,7 +210,7 @@ const handleBatchMove = () => {
     return
   }
 
-  const names = fileStore.selectedFiles.map(path => {
+  const names = fileStore.selectedFiles.map((path) => {
     const parts = path.split('/')
     return parts[parts.length - 1]
   })

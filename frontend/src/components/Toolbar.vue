@@ -14,9 +14,13 @@
       </div>
 
       <div class="actions">
-        <el-select :model-value="sortBy" size="small" @update:model-value="$emit('sort-change', $event)">
+        <el-select
+          :model-value="sortBy"
+          size="small"
+          @update:model-value="$emit('sort-change', $event)"
+        >
           <template #prefix>
-            <el-icon style="cursor: pointer; margin-right: 4px;" @click.stop="$emit('toggle-sort')">
+            <el-icon style="cursor: pointer; margin-right: 4px" @click.stop="$emit('toggle-sort')">
               <ArrowUp v-if="sortOrder === 'asc'" /><ArrowDown v-else />
             </el-icon>
           </template>
@@ -44,12 +48,24 @@
     </div>
 
     <div v-if="selectedCount > 0" class="bulk-actions">
-      <span class="bulk-actions-count">已选择 <strong>{{ selectedCount }}</strong> 项</span>
-      <el-button v-if="isSingleFileSelected" size="small" type="success" @click="$emit('batch-download')">
+      <span class="bulk-actions-count"
+        >已选择 <strong>{{ selectedCount }}</strong> 项</span
+      >
+      <el-button
+        v-if="isSingleFileSelected"
+        size="small"
+        type="success"
+        @click="$emit('batch-download')"
+      >
         <el-icon><Download /></el-icon>
         下载
       </el-button>
-      <el-button v-if="isSingleFolderSelected" size="small" type="warning" @click="$emit('batch-zip')">
+      <el-button
+        v-if="isSingleFolderSelected"
+        size="small"
+        type="warning"
+        @click="$emit('batch-zip')"
+      >
         <el-icon><FolderChecked /></el-icon>
         压缩
       </el-button>
@@ -67,7 +83,20 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { FolderAdd, Refresh, HomeFilled, ArrowUp, ArrowDown, Delete, Rank, Download, FolderChecked, Moon, Sunny, Setting } from '@element-plus/icons-vue'
+import {
+  FolderAdd,
+  Refresh,
+  HomeFilled,
+  ArrowUp,
+  ArrowDown,
+  Delete,
+  Rank,
+  Download,
+  FolderChecked,
+  Moon,
+  Sunny,
+  Setting,
+} from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
@@ -93,7 +122,6 @@ defineEmits<{
   'batch-download': []
   'batch-zip': []
 }>()
-
 </script>
 
 <style scoped>
@@ -111,7 +139,6 @@ defineEmits<{
   border: 1px solid var(--app-border);
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
-  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .breadcrumb {
@@ -150,7 +177,6 @@ defineEmits<{
   border: 1px solid var(--app-accent-border-light);
   box-shadow: var(--app-shadow);
   backdrop-filter: var(--app-blur);
-  -webkit-backdrop-filter: var(--app-blur);
 }
 
 .bulk-actions-count {

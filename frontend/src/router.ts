@@ -8,20 +8,20 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('@/views/HomeView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/login',
       name: 'login',
-      component: () => import('@/views/LoginView.vue')
+      component: () => import('@/views/LoginView.vue'),
     },
     {
       path: '/config',
       name: 'config',
       component: () => import('@/views/ConfigView.vue'),
-      meta: { requiresAuth: true }
-    }
-  ]
+      meta: { requiresAuth: true },
+    },
+  ],
 })
 
 router.beforeEach(async (to, _from, next) => {

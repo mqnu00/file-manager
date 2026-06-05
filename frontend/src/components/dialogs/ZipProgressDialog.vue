@@ -12,17 +12,25 @@
     <div class="zip-progress-dialog">
       <el-progress :percentage="progress" :status="status" />
       <div class="zip-progress-dialog-text">
-        {{ status === 'exception' ? error : status === 'success' ? '压缩完成' : `正在压缩：${folderPath}` }}
+        {{
+          status === 'exception'
+            ? error
+            : status === 'success'
+              ? '压缩完成'
+              : `正在压缩：${folderPath}`
+        }}
       </div>
     </div>
     <template #footer>
-      <el-button v-if="status === ''" type="danger" @click="$emit('cancel')">
-        取消
-      </el-button>
+      <el-button v-if="status === ''" type="danger" @click="$emit('cancel')"> 取消 </el-button>
       <el-button v-else-if="status === 'exception'" @click="$emit('update:model-value', false)">
         关闭
       </el-button>
-      <el-button v-else-if="status === 'success'" type="primary" @click="$emit('update:model-value', false)">
+      <el-button
+        v-else-if="status === 'success'"
+        type="primary"
+        @click="$emit('update:model-value', false)"
+      >
         确定
       </el-button>
     </template>
@@ -34,7 +42,7 @@ import { ProgressProps } from 'element-plus'
 defineProps<{
   modelValue: boolean
   progress: number
-  status: ProgressProps["status"]
+  status: ProgressProps['status']
   folderPath: string
   error: string
 }>()

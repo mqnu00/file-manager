@@ -18,7 +18,13 @@ const { isCyber } = useTheme()
 }
 
 body {
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    'Segoe UI',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
   background: var(--app-bg);
   color: var(--app-text);
   overflow: hidden;
@@ -33,21 +39,21 @@ body {
 
 :root {
   --app-bg: #f5f7fa;
-  --app-panel: #ffffff;
-  --app-panel-solid: #ffffff;
+  --app-panel: #fff;
+  --app-panel-solid: #fff;
   --app-border: #e4e7ed;
-  --app-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --app-shadow: 0 2px 8px rgb(0 0 0 / 6%);
   --app-glow: none;
   --app-text: #606266;
   --app-text-dim: #909399;
   --app-text-bright: #303133;
   --app-accent: #409eff;
-  --app-accent-bg: rgba(64, 158, 255, 0.04);
-  --app-accent-bg-hover: rgba(64, 158, 255, 0.08);
-  --app-accent-bg-subtle: rgba(64, 158, 255, 0.04);
-  --app-accent-border: rgba(64, 158, 255, 0.2);
-  --app-accent-border-light: rgba(64, 158, 255, 0.15);
-  --app-input-bg: #ffffff;
+  --app-accent-bg: rgb(64 158 255 / 4%);
+  --app-accent-bg-hover: rgb(64 158 255 / 8%);
+  --app-accent-bg-subtle: rgb(64 158 255 / 4%);
+  --app-accent-border: rgb(64 158 255 / 20%);
+  --app-accent-border-light: rgb(64 158 255 / 15%);
+  --app-input-bg: #fff;
   --app-table-header-bg: #f5f7fa;
   --app-table-header-border: #ebeef5;
   --app-table-row-hover: #f5f7fa;
@@ -58,7 +64,7 @@ body {
   --app-text-glow-hover: none;
   --app-checkbox-border: #dcdfe6;
   --app-checkbox-shadow: none;
-  --app-mask-bg: rgba(255, 255, 255, 0.7);
+  --app-mask-bg: rgb(255 255 255 / 70%);
   --app-select-caret: #c0c4cc;
   --app-scrollbar-width: 6px;
   --app-scrollbar-track: transparent;
@@ -68,47 +74,47 @@ body {
 
 html.cyber {
   --app-bg: #060b1a;
-  --app-panel: rgba(10, 18, 40, 0.35);
-  --app-panel-solid: rgba(10, 18, 40, 0.6);
-  --app-border: rgba(0, 240, 255, 0.2);
+  --app-panel: rgb(10 18 40 / 35%);
+  --app-panel-solid: rgb(10 18 40 / 60%);
+  --app-border: rgb(0 240 255 / 20%);
   --app-shadow: none;
-  --app-glow: 0 0 12px rgba(0, 240, 255, 0.3);
+  --app-glow: 0 0 12px rgb(0 240 255 / 30%);
   --app-text: #e0e8ff;
   --app-text-dim: #6a7a99;
   --app-text-bright: #f0f4ff;
   --app-accent: #00f0ff;
-  --app-accent-bg: rgba(0, 240, 255, 0.06);
-  --app-accent-bg-hover: rgba(0, 240, 255, 0.08);
-  --app-accent-bg-subtle: rgba(0, 240, 255, 0.06);
-  --app-accent-border: rgba(0, 240, 255, 0.2);
-  --app-accent-border-light: rgba(0, 240, 255, 0.15);
-  --app-input-bg: rgba(6, 11, 26, 0.5);
-  --app-table-header-bg: rgba(0, 240, 255, 0.06);
-  --app-table-header-border: rgba(0, 240, 255, 0.2);
-  --app-table-row-hover: rgba(0, 240, 255, 0.06);
-  --app-table-cell-border: rgba(0, 240, 255, 0.06);
+  --app-accent-bg: rgb(0 240 255 / 6%);
+  --app-accent-bg-hover: rgb(0 240 255 / 8%);
+  --app-accent-bg-subtle: rgb(0 240 255 / 6%);
+  --app-accent-border: rgb(0 240 255 / 20%);
+  --app-accent-border-light: rgb(0 240 255 / 15%);
+  --app-input-bg: rgb(6 11 26 / 50%);
+  --app-table-header-bg: rgb(0 240 255 / 6%);
+  --app-table-header-border: rgb(0 240 255 / 20%);
+  --app-table-row-hover: rgb(0 240 255 / 6%);
+  --app-table-cell-border: rgb(0 240 255 / 6%);
   --app-blur: blur(6px);
-  --app-text-shadow: 0 0 6px rgba(0, 240, 255, 0.4);
-  --app-text-glow: 0 0 4px rgba(0, 240, 255, 0.3);
-  --app-text-glow-hover: 0 0 10px rgba(0, 240, 255, 0.6);
-  --app-checkbox-border: rgba(0, 240, 255, 0.3);
-  --app-checkbox-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
-  --app-mask-bg: rgba(6, 11, 26, 0.7);
+  --app-text-shadow: 0 0 6px rgb(0 240 255 / 40%);
+  --app-text-glow: 0 0 4px rgb(0 240 255 / 30%);
+  --app-text-glow-hover: 0 0 10px rgb(0 240 255 / 60%);
+  --app-checkbox-border: rgb(0 240 255 / 30%);
+  --app-checkbox-shadow: 0 0 6px rgb(0 240 255 / 50%);
+  --app-mask-bg: rgb(6 11 26 / 70%);
   --app-select-caret: #00f0ff;
   --app-scrollbar-width: 6px;
-  --app-scrollbar-track: rgba(6, 11, 26, 0.5);
-  --app-scrollbar-thumb: rgba(0, 240, 255, 0.25);
-  --app-scrollbar-thumb-hover: rgba(0, 240, 255, 0.4);
+  --app-scrollbar-track: rgb(6 11 26 / 50%);
+  --app-scrollbar-thumb: rgb(0 240 255 / 25%);
+  --app-scrollbar-thumb-hover: rgb(0 240 255 / 40%);
 }
 
 html.cyber .el-dialog {
   --el-dialog-bg-color: var(--app-panel-solid);
-  --el-dialog-box-shadow: var(--app-glow), 0 8px 32px rgba(0, 0, 0, 0.4);
+  --el-dialog-box-shadow: var(--app-glow), 0 8px 32px rgb(0 0 0 / 40%);
+
   background: var(--app-panel-solid) !important;
   border: 1px solid var(--app-border) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 html.cyber .el-dialog__header {
@@ -119,7 +125,7 @@ html.cyber .el-dialog__header {
 html.cyber .el-dialog__title {
   color: var(--app-accent) !important;
   font-weight: 600 !important;
-  text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+  text-shadow: 0 0 8px rgb(0 240 255 / 30%);
 }
 
 html.cyber .el-dialog__body {
@@ -149,9 +155,10 @@ html.cyber .el-button--default {
   --el-button-bg-color: transparent;
   --el-button-border-color: var(--app-border);
   --el-button-text-color: var(--app-accent);
-  --el-button-hover-bg-color: rgba(0, 240, 255, 0.08);
+  --el-button-hover-bg-color: rgb(0 240 255 / 8%);
   --el-button-hover-border-color: var(--app-accent);
   --el-button-hover-text-color: var(--app-accent);
+
   background: transparent !important;
   border-color: var(--app-border) !important;
   color: var(--app-accent) !important;
@@ -159,49 +166,53 @@ html.cyber .el-button--default {
 
 html.cyber .el-button--default:hover {
   border-color: var(--app-accent) !important;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 10px rgb(0 240 255 / 20%);
 }
 
 html.cyber .el-button--primary {
-  --el-button-bg-color: rgba(0, 240, 255, 0.15);
+  --el-button-bg-color: rgb(0 240 255 / 15%);
   --el-button-border-color: var(--app-accent);
   --el-button-text-color: var(--app-accent);
-  --el-button-hover-bg-color: rgba(0, 240, 255, 0.25);
+  --el-button-hover-bg-color: rgb(0 240 255 / 25%);
   --el-button-hover-border-color: var(--app-accent);
-  background: rgba(0, 240, 255, 0.15) !important;
+
+  background: rgb(0 240 255 / 15%) !important;
   border-color: var(--app-accent) !important;
   color: var(--app-accent) !important;
 }
 
 html.cyber .el-button--primary:hover {
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 16px rgb(0 240 255 / 30%);
 }
 
 html.cyber .el-button--success {
-  --el-button-bg-color: rgba(0, 255, 100, 0.12);
-  --el-button-border-color: rgba(0, 255, 100, 0.4);
-  background: rgba(0, 255, 100, 0.12) !important;
-  border-color: rgba(0, 255, 100, 0.4) !important;
+  --el-button-bg-color: rgb(0 255 100 / 12%);
+  --el-button-border-color: rgb(0 255 100 / 40%);
+
+  background: rgb(0 255 100 / 12%) !important;
+  border-color: rgb(0 255 100 / 40%) !important;
   color: #00ff64 !important;
 }
 
 html.cyber .el-button--danger {
-  --el-button-bg-color: rgba(255, 0, 80, 0.12);
-  --el-button-border-color: rgba(255, 0, 80, 0.4);
-  background: rgba(255, 0, 80, 0.12) !important;
-  border-color: rgba(255, 0, 80, 0.4) !important;
-  color: #ff3366 !important;
+  --el-button-bg-color: rgb(255 0 80 / 12%);
+  --el-button-border-color: rgb(255 0 80 / 40%);
+
+  background: rgb(255 0 80 / 12%) !important;
+  border-color: rgb(255 0 80 / 40%) !important;
+  color: #f36 !important;
 }
 
 html.cyber .el-button--danger:hover {
-  box-shadow: 0 0 12px rgba(255, 0, 80, 0.25);
+  box-shadow: 0 0 12px rgb(255 0 80 / 25%);
 }
 
 html.cyber .el-button--warning {
-  --el-button-bg-color: rgba(255, 160, 0, 0.12);
-  --el-button-border-color: rgba(255, 160, 0, 0.4);
-  background: rgba(255, 160, 0, 0.12) !important;
-  border-color: rgba(255, 160, 0, 0.4) !important;
+  --el-button-bg-color: rgb(255 160 0 / 12%);
+  --el-button-border-color: rgb(255 160 0 / 40%);
+
+  background: rgb(255 160 0 / 12%) !important;
+  border-color: rgb(255 160 0 / 40%) !important;
   color: #ffa000 !important;
 }
 
@@ -213,7 +224,7 @@ html.cyber .el-input__wrapper {
 }
 
 html.cyber .el-input__wrapper:hover {
-  border-color: rgba(0, 240, 255, 0.4) !important;
+  border-color: rgb(0 240 255 / 40%) !important;
 }
 
 html.cyber .el-input__inner {
@@ -229,29 +240,28 @@ html.cyber .el-message {
   border: 1px solid var(--app-border) !important;
   border-radius: 8px !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 html.cyber .el-message--success {
-  --el-message-bg-color: rgba(0, 255, 100, 0.1);
-  --el-message-border-color: rgba(0, 255, 100, 0.3);
+  --el-message-bg-color: rgb(0 255 100 / 10%);
+  --el-message-border-color: rgb(0 255 100 / 30%);
   --el-message-text-color: #00ff64;
 }
 
 html.cyber .el-message--warning {
-  --el-message-bg-color: rgba(255, 160, 0, 0.1);
-  --el-message-border-color: rgba(255, 160, 0, 0.3);
+  --el-message-bg-color: rgb(255 160 0 / 10%);
+  --el-message-border-color: rgb(255 160 0 / 30%);
   --el-message-text-color: #ffa000;
 }
 
 html.cyber .el-message--error {
-  --el-message-bg-color: rgba(255, 0, 80, 0.1);
-  --el-message-border-color: rgba(255, 0, 80, 0.3);
-  --el-message-text-color: #ff3366;
+  --el-message-bg-color: rgb(255 0 80 / 10%);
+  --el-message-border-color: rgb(255 0 80 / 30%);
+  --el-message-text-color: #f36;
 }
 
 html.cyber .el-message--info {
-  --el-message-bg-color: rgba(0, 240, 255, 0.08);
+  --el-message-bg-color: rgb(0 240 255 / 8%);
   --el-message-border-color: var(--app-border);
   --el-message-text-color: var(--app-text);
 }
@@ -261,7 +271,6 @@ html.cyber .el-message-box {
   border: 1px solid var(--app-border) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 html.cyber .el-message-box__title {
@@ -277,14 +286,14 @@ html.cyber .el-message-box__headerbtn .el-message-box__close {
 }
 
 html.cyber .el-progress-bar__outer {
-  background: rgba(0, 240, 255, 0.06) !important;
+  background: rgb(0 240 255 / 6%) !important;
   border-radius: 4px !important;
 }
 
 html.cyber .el-progress-bar__inner {
-  background: linear-gradient(90deg, var(--app-accent), #3355ff) !important;
+  background: linear-gradient(90deg, var(--app-accent), #35f) !important;
   border-radius: 4px !important;
-  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+  box-shadow: 0 0 8px rgb(0 240 255 / 40%);
 }
 
 html.cyber .el-tree {
@@ -297,7 +306,7 @@ html.cyber .el-tree-node__content:hover {
 }
 
 html.cyber .el-tree-node.is-current > .el-tree-node__content {
-  background: rgba(0, 240, 255, 0.1) !important;
+  background: rgb(0 240 255 / 10%) !important;
   color: var(--app-accent) !important;
 }
 
@@ -313,7 +322,6 @@ html.cyber .el-select-dropdown {
   background: var(--app-panel-solid) !important;
   border: 1px solid var(--app-border) !important;
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 html.cyber .el-select-dropdown__item {
@@ -345,16 +353,16 @@ html.cyber ::-webkit-scrollbar {
 }
 
 html.cyber ::-webkit-scrollbar-track {
-  background: rgba(6, 11, 26, 0.5);
+  background: rgb(6 11 26 / 50%);
   border-radius: 3px;
 }
 
 html.cyber ::-webkit-scrollbar-thumb {
-  background: rgba(0, 240, 255, 0.25);
+  background: rgb(0 240 255 / 25%);
   border-radius: 3px;
 }
 
 html.cyber ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 240, 255, 0.4);
+  background: rgb(0 240 255 / 40%);
 }
 </style>

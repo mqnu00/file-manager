@@ -18,11 +18,13 @@
             </el-icon>
             <span
               :class="['file-name-text', { 'is-folder': row.isDirectory && !row.broken }]"
-              @click="(row.isDirectory && !row.broken) && $emit('open', row.path)"
+              @click="row.isDirectory && !row.broken && $emit('open', row.path)"
             >
               {{ row.name }}
             </span>
-            <el-tag v-if="row.broken" type="danger" size="small" effect="dark">符号链接，目标不存在</el-tag>
+            <el-tag v-if="row.broken" type="danger" size="small" effect="dark"
+              >符号链接，目标不存在</el-tag
+            >
           </div>
         </template>
       </el-table-column>
@@ -68,7 +70,10 @@ const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
 }
 
 const handleSelectionChange = (rows: FileItem[]) => {
-  emit('selectionChange', rows.map(r => r.path))
+  emit(
+    'selectionChange',
+    rows.map((r) => r.path)
+  )
 }
 
 defineExpose({ tableRef })
@@ -83,7 +88,6 @@ defineExpose({ tableRef })
   border: 1px solid var(--app-border);
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
-  -webkit-backdrop-filter: var(--app-blur);
   overflow: auto;
 }
 

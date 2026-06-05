@@ -48,6 +48,6 @@ export function useFileSort(getFiles: () => FileItem[], setFiles: (files: FileIt
     sortOrder,
     handleSortChange,
     toggleSortOrder,
-    sortFiles
+    sortFiles,
   }
 }

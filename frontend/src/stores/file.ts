@@ -31,16 +31,24 @@ export const useFileStore = defineStore('file', () => {
 
   const selectedFileInfos = computed<FileItem[]>(() => {
     return selectedFiles.value
-      .map(path => files.value.find(f => f.path === path))
+      .map((path) => files.value.find((f) => f.path === path))
       .filter(Boolean) as FileItem[]
   })
 
   const isSingleFileSelected = computed(() => {
-    return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && !selectedFileInfos.value[0].isDirectory
+    return (
+      selectedFiles.value.length === 1 &&
+      selectedFileInfos.value.length === 1 &&
+      !selectedFileInfos.value[0].isDirectory
+    )
   })
 
   const isSingleFolderSelected = computed(() => {
-    return selectedFiles.value.length === 1 && selectedFileInfos.value.length === 1 && selectedFileInfos.value[0].isDirectory
+    return (
+      selectedFiles.value.length === 1 &&
+      selectedFileInfos.value.length === 1 &&
+      selectedFileInfos.value[0].isDirectory
+    )
   })
 
   return {
@@ -56,6 +64,6 @@ export const useFileStore = defineStore('file', () => {
     setError,
     selectedFileInfos,
     isSingleFileSelected,
-    isSingleFolderSelected
+    isSingleFolderSelected,
   }
 })

@@ -25,6 +25,6 @@ export function useContextMenu() {
     contextMenuX,
     contextMenuY,
     onRowContextmenu,
-    closeContextMenu
+    closeContextMenu,
   }
 }
