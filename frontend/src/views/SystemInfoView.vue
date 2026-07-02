@@ -107,24 +107,45 @@
               <div class="card-header">
                 <el-icon><Box /></el-icon>
                 <span>硬盘</span>
+                <el-select
+                  v-if="systemInfo.disks.length > 1"
+                  v-model="selectedDiskIndex"
+                  size="small"
+                  class="disk-select"
+                >
+                  <el-option
+                    v-for="(disk, index) in systemInfo.disks"
+                    :key="index"
+                    :label="`${disk.device} (${disk.mountpoint})`"
+                    :value="index"
+                  />
+                </el-select>
               </div>
             </template>
             <div class="info-list">
               <div class="info-item">
-                <span class="info-label">路径</span>
-                <span class="info-value version-text">{{ systemInfo.disk.path }}</span>
+                <span class="info-label">设备</span>
+                <span class="info-value">{{ selectedDisk?.device }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">挂载点</span>
+                <span class="info-value version-text">{{ selectedDisk?.mountpoint }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">文件系统</span>
+                <span class="info-value">{{ selectedDisk?.fstype }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">总量</span>
-                <span class="info-value">{{ systemInfo.disk.totalFormatted }}</span>
+                <span class="info-value">{{ selectedDisk?.totalFormatted }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">已用</span>
-                <span class="info-value">{{ systemInfo.disk.usedFormatted }}</span>
+                <span class="info-value">{{ selectedDisk?.usedFormatted }}</span>
               </div>
               <div class="info-item">
                 <span class="info-label">可用</span>
-                <span class="info-value">{{ systemInfo.disk.freeFormatted }}</span>
+                <span class="info-value">{{ selectedDisk?.freeFormatted }}</span>
               </div>
             </div>
           </el-card>
@@ -166,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getSystemInfo } from '@/api/system'
 import type { SystemInfo } from '@/types'
@@ -187,6 +208,12 @@ const router = useRouter()
 const systemInfo = ref<SystemInfo | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const selectedDiskIndex = ref(0)
+
+const selectedDisk = computed(() => {
+  if (!systemInfo.value) return null
+  return systemInfo.value.disks[selectedDiskIndex.value] || systemInfo.value.disk
+})
 
 async function fetchSystemInfo() {
   loading.value = true
@@ -274,6 +301,21 @@ onMounted(() => {
   gap: 8px;
   font-weight: 600;
   color: var(--app-accent);
+}
+
+.disk-select {
+  margin-left: auto;
+  width: 200px;
+}
+
+:deep(.disk-select .el-input__wrapper) {
+  background: var(--app-accent-bg) !important;
+  border: 1px solid var(--app-accent-border) !important;
+  box-shadow: none !important;
+}
+
+:deep(.disk-select .el-input__inner) {
+  color: var(--app-text-bright) !important;
 }
 
 .info-list {

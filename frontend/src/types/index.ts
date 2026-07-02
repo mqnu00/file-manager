@@ -13,6 +13,18 @@ export interface FileState {
   selectedFiles: string[]
 }
 
+export interface DiskInfo {
+  device: string
+  mountpoint: string
+  fstype: string
+  total: number
+  free: number
+  used: number
+  totalFormatted: string
+  freeFormatted: string
+  usedFormatted: string
+}
+
 export interface SystemInfo {
   os: {
     type: string
@@ -39,16 +51,8 @@ export interface SystemInfo {
     freeFormatted: string
     usedFormatted: string
   }
-  disk: {
-    path: string
-    total: number
-    free: number
-    used: number
-    usagePercent: number
-    totalFormatted: string
-    freeFormatted: string
-    usedFormatted: string
-  }
+  disk: DiskInfo
+  disks: DiskInfo[]
   node: {
     version: string
     pid: number

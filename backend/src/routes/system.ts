@@ -65,24 +65,69 @@ function getCpuBaseFrequency(): number {
   return cpus.length > 0 ? cpus[0].speed : 0
 }
 
-function getDiskInfo(): { path: string; total: number; free: number; used: number } {
-  const baseDir = process.env.FILE_MANAGER_BASE_DIR || '/'
+interface DiskInfo {
+  device: string
+  mountpoint: string
+  fstype: string
+  total: number
+  free: number
+  used: number
+  totalFormatted: string
+  freeFormatted: string
+  usedFormatted: string
+}
+
+function getAllDisks(): DiskInfo[] {
   try {
-    const output = execSync(`df -B1 "${baseDir}" 2>/dev/null`, { encoding: 'utf-8' })
-    const lines = output.trim().split('\n')
-    if (lines.length >= 2) {
-      const parts = lines[1].split(/\s+/)
-      if (parts.length >= 4) {
-        const total = parseInt(parts[1], 10) || 0
-        const free = parseInt(parts[3], 10) || 0
-        const used = total - free
-        return { path: baseDir, total, free, used }
+    // 使用 lsblk 获取所有磁盘设备
+    const output = execSync('lsblk -J -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE 2>/dev/null', {
+      encoding: 'utf-8',
+    })
+    const data = JSON.parse(output)
+    const disks: DiskInfo[] = []
+
+    if (data.blockdevices) {
+      for (const device of data.blockdevices) {
+        if (device.type === 'disk') {
+          // 尝试从 df 获取详细信息（仅对已挂载的磁盘有效）
+          let total = 0
+          let free = 0
+          let mountpoint = device.mountpoint || ''
+          let fstype = device.fstype || ''
+
+          if (mountpoint && mountpoint !== '[SWAP]') {
+            try {
+              const dfOutput = execSync(`df -B1 "${mountpoint}" 2>/dev/null`, { encoding: 'utf-8' })
+              const lines = dfOutput.trim().split('\n')
+              if (lines.length >= 2) {
+                const parts = lines[1].split(/\s+/)
+                if (parts.length >= 4) {
+                  total = parseInt(parts[1], 10) || 0
+                  free = parseInt(parts[3], 10) || 0
+                  if (!fstype) fstype = parts[0] ? 'unknown' : ''
+                }
+              }
+            } catch {}
+          }
+
+          disks.push({
+            device: `/dev/${device.name}`,
+            mountpoint: mountpoint || '未挂载',
+            fstype: fstype || 'unknown',
+            total,
+            free,
+            used: total - free,
+            totalFormatted: total > 0 ? formatBytes(total) : device.size || 'Unknown',
+            freeFormatted: free > 0 ? formatBytes(free) : '--',
+            usedFormatted: total > 0 ? formatBytes(total - free) : '--',
+          })
+        }
       }
     }
+    return disks
   } catch {
-    // fallback
+    return []
   }
-  return { path: baseDir, total: 0, free: 0, used: 0 }
 }
 
 router.get(
@@ -92,7 +137,8 @@ router.get(
     const totalMem = os.totalmem()
     const freeMem = os.freemem()
     const usedMem = totalMem - freeMem
-    const disk = getDiskInfo()
+    const disks = getAllDisks()
+    const defaultDisk = disks.find(d => d.mountpoint === (process.env.FILE_MANAGER_BASE_DIR || '/')) || disks[0]
     const cpuUsage = getCpuUsage()
 
     res.json({
@@ -121,16 +167,18 @@ router.get(
         freeFormatted: formatBytes(freeMem),
         usedFormatted: formatBytes(usedMem),
       },
-      disk: {
-        path: disk.path,
-        total: disk.total,
-        free: disk.free,
-        used: disk.used,
-        usagePercent: disk.total > 0 ? Math.round((disk.used / disk.total) * 1000) / 10 : 0,
-        totalFormatted: formatBytes(disk.total),
-        freeFormatted: formatBytes(disk.free),
-        usedFormatted: formatBytes(disk.used),
+      disk: defaultDisk || {
+        device: 'Unknown',
+        mountpoint: '/',
+        fstype: 'unknown',
+        total: 0,
+        free: 0,
+        used: 0,
+        totalFormatted: '0 B',
+        freeFormatted: '0 B',
+        usedFormatted: '0 B',
       },
+      disks: disks,
       node: {
         version: process.version,
         pid: process.pid,
