@@ -41,6 +41,30 @@ function getCpuUsage(): number {
   }
 }
 
+function getCpuBaseFrequency(): number {
+  // Linux: 使用 lscpu 获取 CPU 频率
+  try {
+    const output = execSync('lscpu | grep "CPU MHz"', { encoding: 'utf-8' })
+    const match = output.match(/CPU MHz:\s*([\d.]+)/)
+    if (match) {
+      return parseFloat(match[1])
+    }
+  } catch {}
+
+  // macOS: 使用 sysctl 获取 CPU 频率
+  try {
+    const output = execSync('sysctl -n hw.cpufrequency 2>/dev/null', { encoding: 'utf-8' }).trim()
+    const freqHz = parseInt(output, 10)
+    if (!isNaN(freqHz) && freqHz > 0) {
+      return Math.round(freqHz / 1000000) // 转换为 MHz
+    }
+  } catch {}
+
+  // 回退: 使用 os.cpus()
+  const cpus = os.cpus()
+  return cpus.length > 0 ? cpus[0].speed : 0
+}
+
 function getDiskInfo(): { path: string; total: number; free: number; used: number } {
   const baseDir = process.env.FILE_MANAGER_BASE_DIR || '/'
   try {
@@ -85,7 +109,7 @@ router.get(
         model: cpus.length > 0 ? cpus[0].model.replace(/\s+/g, ' ').trim() : 'Unknown',
         cores: cpus.length,
         physicalCores: cpus.length,
-        speed: cpus.length > 0 ? cpus[0].speed : 0,
+        speed: getCpuBaseFrequency(),
         usage: cpuUsage,
       },
       memory: {
