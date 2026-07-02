@@ -6,6 +6,7 @@ import fileRoutes from './routes/files'
 import folderRoutes from './routes/folders'
 import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
+import systemRoutes from './routes/system'
 import { errorHandler } from './middleware/errorHandler'
 
 const app = express()
@@ -19,6 +20,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/config', configRoutes)
 app.use('/api/files', fileRoutes)
 app.use('/api/folders', folderRoutes)
+app.use('/api/system', systemRoutes)
 
 // ===== 静态文件 =====
 

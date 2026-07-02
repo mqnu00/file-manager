@@ -41,6 +41,9 @@
           <el-icon><Moon v-if="isCyber" /><Sunny v-else /></el-icon>
           {{ isCyber ? '赛博' : '亮色' }}
         </el-button>
+        <el-button size="small" @click="router.push('/system')">
+          <el-icon><Monitor /></el-icon>
+        </el-button>
         <el-button size="small" @click="router.push('/config')">
           <el-icon><Setting /></el-icon>
         </el-button>
@@ -96,6 +99,7 @@ import {
   Moon,
   Sunny,
   Setting,
+  Monitor,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 

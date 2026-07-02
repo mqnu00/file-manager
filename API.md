@@ -400,6 +400,61 @@
 
 ---
 
+## 系统信息接口
+
+### 1. 获取系统信息
+
+获取当前服务器的系统和硬件信息。
+
+- **接口**: `GET /api/system`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "os": {
+      "type": "Linux",
+      "platform": "linux",
+      "arch": "x64",
+      "release": "5.15.0-91-generic",
+      "hostname": "server-name",
+      "uptime": 123456,
+      "uptimeFormatted": "1天 10小时 17分钟"
+    },
+    "cpu": {
+      "model": "Intel(R) Core(TM) i7-10700K",
+      "cores": 8,
+      "physicalCores": 8,
+      "speed": 3700,
+      "usage": 45.2
+    },
+    "memory": {
+      "total": 17179869184,
+      "free": 8589934592,
+      "used": 8589934592,
+      "usagePercent": 50.0,
+      "totalFormatted": "16 GB",
+      "freeFormatted": "8 GB",
+      "usedFormatted": "8 GB"
+    },
+    "disk": {
+      "path": "/",
+      "total": 500107862016,
+      "free": 250053931008,
+      "used": 250053931008,
+      "usagePercent": 50.0,
+      "totalFormatted": "465.8 GB",
+      "freeFormatted": "232.9 GB",
+      "usedFormatted": "232.9 GB"
+    },
+    "node": {
+      "version": "18.17.0",
+      "pid": 12345
+    }
+  }
+  ```
+
+---
+
 ## 错误响应
 
 所有接口在发生错误时返回统一格式：
