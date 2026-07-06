@@ -28,6 +28,12 @@
         "ignoreProperties": ["composes"]
       }
     ],
+    "property-no-vendor-prefix": [
+      true,
+      {
+        "ignoreProperties": ["box-shadow"]
+      }
+    ],
     "no-empty-source": null,
     "import-notation": null,
     "function-no-unknown": [

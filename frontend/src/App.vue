@@ -473,4 +473,13 @@ html.cyber .el-button--text:hover {
 html.cyber .el-button.is-text:not(.is-disabled):hover {
   background-color: var(--app-accent-bg-hover) !important;
 }
+
+/* 浏览器自动填充密码背景覆盖 */
+html.cyber input:-webkit-autofill,
+html.cyber input:-webkit-autofill:hover,
+html.cyber input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
+  -webkit-text-fill-color: var(--app-text-bright) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
 </style>
