@@ -16,6 +16,7 @@ export interface FileState {
 export interface DiskInfo {
   device: string
   mountpoint: string
+  mountpoints: string[]
   fstype: string
   total: number
   free: number

@@ -72,6 +72,7 @@ function getCpuBaseFrequency(): number {
 interface DiskInfo {
   device: string
   mountpoint: string
+  mountpoints: string[]
   fstype: string
   total: number
   free: number
@@ -81,7 +82,7 @@ interface DiskInfo {
   usedFormatted: string
 }
 
-function getDiskInfo(mountpoint: string, fstype: string, deviceSize: string): DiskInfo {
+function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, deviceSize: string): DiskInfo {
   let total = 0
   let free = 0
 
@@ -107,6 +108,7 @@ function getDiskInfo(mountpoint: string, fstype: string, deviceSize: string): Di
   return {
     device: '',
     mountpoint: mountpoint || '未挂载',
+    mountpoints: mountpoints.length > 0 ? mountpoints : [mountpoint || '未挂载'],
     fstype: fstype || 'unknown',
     total,
     free,
@@ -129,17 +131,18 @@ function getAllDisks(): DiskInfo[] {
     if (data.blockdevices) {
       for (const device of data.blockdevices) {
         if (device.type === 'disk') {
-          // 查找该磁盘下已挂载的分区（排除 SWAP）
+          // 查找该磁盘下所有已挂载的分区（排除 SWAP）
           const partitions = device.children || []
-          const mountedPartition = partitions.find(
+          const mountedPartitions = partitions.filter(
             (p: { mountpoint?: string }) => p.mountpoint && p.mountpoint !== '[SWAP]'
           )
 
-          // 优先使用分区的挂载信息，否则使用磁盘本身的
-          const mountpoint = mountedPartition?.mountpoint || device.mountpoint || ''
-          const fstype = mountedPartition?.fstype || device.fstype || ''
+          // 收集所有挂载点
+          const mountpoints = mountedPartitions.map((p: { mountpoint: string }) => p.mountpoint)
+          const mountpoint = mountpoints[0] || device.mountpoint || ''
+          const fstype = mountedPartitions[0]?.fstype || device.fstype || ''
 
-          const diskInfo = getDiskInfo(mountpoint, fstype, device.size)
+          const diskInfo = getDiskInfo(mountpoint, mountpoints, fstype, device.size)
           diskInfo.device = `/dev/${device.name}`
           disks.push(diskInfo)
         }

@@ -116,7 +116,7 @@
                   <el-option
                     v-for="(disk, index) in systemInfo.disks"
                     :key="index"
-                    :label="`${disk.device} (${disk.mountpoint})`"
+                    :label="`${disk.device} (${disk.mountpoints[0] || '未挂载'})`"
                     :value="index"
                   />
                 </el-select>
@@ -129,7 +129,11 @@
               </div>
               <div class="info-item">
                 <span class="info-label">挂载点</span>
-                <span class="info-value version-text">{{ selectedDisk?.mountpoint }}</span>
+                <span class="info-value version-text">
+                  {{ selectedDisk?.mountpoints && selectedDisk.mountpoints.length > 1 
+                    ? selectedDisk.mountpoints.join(', ') 
+                    : selectedDisk?.mountpoint }}
+                </span>
               </div>
               <div class="info-item">
                 <span class="info-label">文件系统</span>
