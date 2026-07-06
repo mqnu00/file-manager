@@ -5,6 +5,7 @@
       v-loading="loading"
       :data="files"
       style="width: 100%"
+      height="100%"
       @row-contextmenu="handleContextmenu"
       @selection-change="handleSelectionChange"
     >
