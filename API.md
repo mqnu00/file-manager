@@ -437,21 +437,59 @@
       "usedFormatted": "8 GB"
     },
     "disk": {
-      "path": "/",
+      "device": "/dev/sda",
+      "mountpoint": "/",
+      "mountpoints": ["/", "/home", "/data"],
+      "fstype": "ext4",
       "total": 500107862016,
       "free": 250053931008,
       "used": 250053931008,
-      "usagePercent": 50.0,
       "totalFormatted": "465.8 GB",
       "freeFormatted": "232.9 GB",
       "usedFormatted": "232.9 GB"
     },
+    "disks": [
+      {
+        "device": "/dev/sda",
+        "mountpoint": "/",
+        "mountpoints": ["/", "/home", "/data"],
+        "fstype": "ext4",
+        "total": 500107862016,
+        "free": 250053931008,
+        "used": 250053931008,
+        "totalFormatted": "465.8 GB",
+        "freeFormatted": "232.9 GB",
+        "usedFormatted": "232.9 GB"
+      },
+      {
+        "device": "/dev/sdb",
+        "mountpoint": "/mnt/backup",
+        "mountpoints": ["/mnt/backup"],
+        "fstype": "xfs",
+        "total": 1000204886016,
+        "free": 800163908813,
+        "used": 200040977203,
+        "totalFormatted": "931.5 GB",
+        "freeFormatted": "745.1 GB",
+        "usedFormatted": "186.3 GB"
+      }
+    ],
     "node": {
       "version": "18.17.0",
       "pid": 12345
     }
   }
   ```
+
+- **字段说明**:
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `disk` | object | 默认磁盘（与 `FILE_MANAGER_BASE_DIR` 或 `/` 匹配） |
+  | `disks` | array | 所有磁盘列表 |
+  | `disk.device` | string | 设备路径，如 `/dev/sda` |
+  | `disk.mountpoint` | string | 主挂载点（第一个挂载点） |
+  | `disk.mountpoints` | string[] | 所有挂载点列表（排除 SWAP） |
+  | `disk.fstype` | string | 文件系统类型，如 `ext4`、`xfs` |
 
 ---
 
