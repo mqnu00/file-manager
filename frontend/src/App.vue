@@ -325,6 +325,34 @@ html.cyber .el-tree-node__expand-icon.is-leaf {
   color: transparent !important;
 }
 
+/* el-select 触发器 */
+html.cyber .el-select__wrapper {
+  background: var(--app-input-bg) !important;
+  box-shadow: 0 0 0 1px var(--app-border) inset !important;
+}
+
+html.cyber .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px rgb(0 240 255 / 40%) inset !important;
+}
+
+html.cyber .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--app-accent) inset !important;
+}
+
+/* el-select 内容文字 */
+html.cyber .el-select__placeholder {
+  color: var(--app-text-bright) !important;
+}
+
+html.cyber .el-select__selected-item {
+  color: var(--app-text-bright) !important;
+}
+
+html.cyber .el-select__caret {
+  color: var(--app-accent) !important;
+}
+
+/* el-select 下拉菜单 */
 html.cyber .el-select-dropdown {
   background: var(--app-panel-solid) !important;
   border: 1px solid var(--app-border) !important;
@@ -335,13 +363,12 @@ html.cyber .el-select-dropdown__item {
   color: var(--app-text) !important;
 }
 
-html.cyber .el-select-dropdown__item.hover,
-html.cyber .el-select-dropdown__item:hover {
+html.cyber .el-select-dropdown__item.is-hovering {
   background: var(--app-accent-bg-hover) !important;
   color: var(--app-accent) !important;
 }
 
-html.cyber .el-select-dropdown__item.selected {
+html.cyber .el-select-dropdown__item.is-selected {
   color: var(--app-accent) !important;
   font-weight: 600;
 }
@@ -371,5 +398,72 @@ html.cyber ::-webkit-scrollbar-thumb {
 
 html.cyber ::-webkit-scrollbar-thumb:hover {
   background: rgb(0 240 255 / 40%);
+}
+
+/* el-card - 系统信息卡片 */
+html.cyber .el-card {
+  --el-card-bg-color: var(--app-panel-solid);
+
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+/* el-divider - 分割线 */
+html.cyber .el-divider {
+  border-color: var(--app-border) !important;
+}
+
+html.cyber .el-divider__text {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text-dim) !important;
+}
+
+/* el-input-number - 数字输入框 */
+html.cyber .el-input-number .el-input-number__decrease,
+html.cyber .el-input-number .el-input-number__increase {
+  background: var(--app-input-bg) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html.cyber .el-input-number .el-input-number__decrease:hover,
+html.cyber .el-input-number .el-input-number__increase:hover {
+  color: var(--app-accent) !important;
+}
+
+/* el-tag - 标签 */
+html.cyber .el-tag--danger {
+  --el-tag-bg-color: rgb(255 0 80 / 12%);
+  --el-tag-border-color: rgb(255 0 80 / 40%);
+  --el-tag-text-color: #f36;
+}
+
+/* el-table 选中行 */
+html.cyber .el-table__row.current > td {
+  background: var(--app-accent-bg) !important;
+}
+
+html.cyber .el-table__row.current > td .cell {
+  color: var(--app-accent) !important;
+}
+
+/* el-loading mask - 全局加载遮罩 */
+html.cyber .el-loading-mask {
+  background: var(--app-mask-bg) !important;
+}
+
+/* el-form-item - 表单标签 */
+html.cyber .el-form-item__label {
+  color: var(--app-text) !important;
+}
+
+/* el-button text - 文字按钮 */
+html.cyber .el-button--text {
+  color: var(--app-accent) !important;
+}
+
+html.cyber .el-button--text:hover {
+  color: var(--app-accent) !important;
+  text-shadow: var(--app-text-glow-hover);
 }
 </style>
