@@ -105,6 +105,9 @@ html.cyber {
   --app-scrollbar-track: rgb(6 11 26 / 50%);
   --app-scrollbar-thumb: rgb(0 240 255 / 25%);
   --app-scrollbar-thumb-hover: rgb(0 240 255 / 40%);
+
+  /* Element Plus 主题变量覆盖 */
+  --el-color-primary-light-9: rgb(0 240 255 / 10%);
 }
 
 html.cyber .el-dialog {
@@ -305,8 +308,12 @@ html.cyber .el-tree-node__content:hover {
   background: var(--app-accent-bg-hover) !important;
 }
 
-html.cyber .el-tree-node.is-current > .el-tree-node__content {
-  background: rgb(0 240 255 / 10%) !important;
+html.cyber .el-tree-node:focus > .el-tree-node__content {
+  background-color: var(--app-accent-bg-hover) !important;
+}
+
+html.cyber .el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+  background: var(--app-accent-bg-hover) !important;
   color: var(--app-accent) !important;
 }
 
