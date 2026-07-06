@@ -71,6 +71,8 @@ function getCpuBaseFrequency(): number {
 
 interface DiskInfo {
   device: string
+  vendor: string
+  model: string
   mountpoint: string
   mountpoints: string[]
   fstype: string
@@ -107,6 +109,8 @@ function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, 
 
   return {
     device: '',
+    vendor: '',
+    model: '',
     mountpoint: mountpoint || '未挂载',
     mountpoints: mountpoints.length > 0 ? mountpoints : [mountpoint || '未挂载'],
     fstype: fstype || 'unknown',
@@ -122,7 +126,7 @@ function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, 
 function getAllDisks(): DiskInfo[] {
   try {
     // 使用 lsblk 获取所有磁盘设备（包含子设备）
-    const output = execSync('lsblk -J -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE 2>/dev/null', {
+    const output = execSync('lsblk -J -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE,VENDOR,MODEL 2>/dev/null', {
       encoding: 'utf-8',
     })
     const data = JSON.parse(output)
@@ -144,6 +148,8 @@ function getAllDisks(): DiskInfo[] {
 
           const diskInfo = getDiskInfo(mountpoint, mountpoints, fstype, device.size)
           diskInfo.device = `/dev/${device.name}`
+          diskInfo.vendor = (device.vendor || '').trim()
+          diskInfo.model = (device.model || '').trim()
           disks.push(diskInfo)
         }
       }

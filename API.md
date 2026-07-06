@@ -451,6 +451,8 @@
     "disks": [
       {
         "device": "/dev/sda",
+        "vendor": "Samsung",
+        "model": "SSD 870 EVO 1TB",
         "mountpoint": "/",
         "mountpoints": ["/", "/home", "/data"],
         "fstype": "ext4",
@@ -463,6 +465,8 @@
       },
       {
         "device": "/dev/sdb",
+        "vendor": "Western Digital",
+        "model": "WD Blue 1TB",
         "mountpoint": "/mnt/backup",
         "mountpoints": ["/mnt/backup"],
         "fstype": "xfs",
@@ -487,6 +491,8 @@
   | `disk` | object | 默认磁盘（与 `FILE_MANAGER_BASE_DIR` 或 `/` 匹配） |
   | `disks` | array | 所有磁盘列表 |
   | `disk.device` | string | 设备路径，如 `/dev/sda` |
+  | `disk.vendor` | string | 制造商名称（可能为空） |
+  | `disk.model` | string | 硬盘型号（可能为空） |
   | `disk.mountpoint` | string | 主挂载点（第一个挂载点） |
   | `disk.mountpoints` | string[] | 所有挂载点列表（排除 SWAP） |
   | `disk.fstype` | string | 文件系统类型，如 `ext4`、`xfs` |

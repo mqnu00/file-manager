@@ -127,6 +127,14 @@
                 <span class="info-label">设备</span>
                 <span class="info-value">{{ selectedDisk?.device }}</span>
               </div>
+              <div v-if="selectedDisk?.vendor || selectedDisk?.model" class="info-item">
+                <span class="info-label">制造商</span>
+                <span class="info-value">{{ selectedDisk?.vendor || '未知' }}</span>
+              </div>
+              <div v-if="selectedDisk?.model" class="info-item">
+                <span class="info-label">型号</span>
+                <span class="info-value">{{ selectedDisk?.model }}</span>
+              </div>
               <div class="info-item">
                 <span class="info-label">挂载点</span>
                 <span class="info-value version-text">
