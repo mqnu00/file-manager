@@ -275,8 +275,10 @@ export const downloadFile = (filePath: string, res: Response): void => {
   }
 
   const mimeType = mime.lookup(fullPath) || 'application/octet-stream'
+  const filename = path.basename(fullPath)
+  const encodedFilename = encodeURIComponent(filename)
   res.setHeader('Content-Type', mimeType)
-  res.setHeader('Content-Disposition', `attachment; filename="${path.basename(fullPath)}"`)
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFilename}`)
   res.setHeader('Content-Length', stats.size)
 
   const stream = fs.createReadStream(fullPath)
