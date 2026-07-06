@@ -49,7 +49,9 @@ function getCpuBaseFrequency(): number {
     if (match) {
       return parseFloat(match[1])
     }
-  } catch {}
+  } catch {
+    // lscpu 不可用，继续尝试其他方法
+  }
 
   // macOS: 使用 sysctl 获取 CPU 频率
   try {
@@ -58,7 +60,9 @@ function getCpuBaseFrequency(): number {
     if (!isNaN(freqHz) && freqHz > 0) {
       return Math.round(freqHz / 1000000) // 转换为 MHz
     }
-  } catch {}
+  } catch {
+    // sysctl 不可用，使用默认值
+  }
 
   // 回退: 使用 os.cpus()
   const cpus = os.cpus()
@@ -77,9 +81,45 @@ interface DiskInfo {
   usedFormatted: string
 }
 
+function getDiskInfo(mountpoint: string, fstype: string, deviceSize: string): DiskInfo {
+  let total = 0
+  let free = 0
+
+  if (mountpoint && mountpoint !== '[SWAP]') {
+    try {
+      // 使用 df -T 获取文件系统类型和容量信息
+      const dfOutput = execSync(`df -T "${mountpoint}" 2>/dev/null`, { encoding: 'utf-8' })
+      const lines = dfOutput.trim().split('\n')
+      if (lines.length >= 2) {
+        const parts = lines[1].split(/\s+/)
+        // df -T 格式: Filesystem Type 1K-blocks Used Available Use% Mounted
+        if (parts.length >= 4) {
+          if (!fstype && parts[1]) fstype = parts[1]
+          total = (parseInt(parts[2], 10) || 0) * 1024 // 转换为字节
+          free = (parseInt(parts[4], 10) || 0) * 1024
+        }
+      }
+    } catch {
+      // df 命令失败，使用默认值
+    }
+  }
+
+  return {
+    device: '',
+    mountpoint: mountpoint || '未挂载',
+    fstype: fstype || 'unknown',
+    total,
+    free,
+    used: total - free,
+    totalFormatted: total > 0 ? formatBytes(total) : deviceSize || 'Unknown',
+    freeFormatted: free > 0 ? formatBytes(free) : '--',
+    usedFormatted: total > 0 ? formatBytes(total - free) : '--',
+  }
+}
+
 function getAllDisks(): DiskInfo[] {
   try {
-    // 使用 lsblk 获取所有磁盘设备
+    // 使用 lsblk 获取所有磁盘设备（包含子设备）
     const output = execSync('lsblk -J -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE 2>/dev/null', {
       encoding: 'utf-8',
     })
@@ -89,38 +129,19 @@ function getAllDisks(): DiskInfo[] {
     if (data.blockdevices) {
       for (const device of data.blockdevices) {
         if (device.type === 'disk') {
-          // 尝试从 df 获取详细信息（仅对已挂载的磁盘有效）
-          let total = 0
-          let free = 0
-          let mountpoint = device.mountpoint || ''
-          let fstype = device.fstype || ''
+          // 查找该磁盘下已挂载的分区（排除 SWAP）
+          const partitions = device.children || []
+          const mountedPartition = partitions.find(
+            (p: { mountpoint?: string }) => p.mountpoint && p.mountpoint !== '[SWAP]'
+          )
 
-          if (mountpoint && mountpoint !== '[SWAP]') {
-            try {
-              const dfOutput = execSync(`df -B1 "${mountpoint}" 2>/dev/null`, { encoding: 'utf-8' })
-              const lines = dfOutput.trim().split('\n')
-              if (lines.length >= 2) {
-                const parts = lines[1].split(/\s+/)
-                if (parts.length >= 4) {
-                  total = parseInt(parts[1], 10) || 0
-                  free = parseInt(parts[3], 10) || 0
-                  if (!fstype) fstype = parts[0] ? 'unknown' : ''
-                }
-              }
-            } catch {}
-          }
+          // 优先使用分区的挂载信息，否则使用磁盘本身的
+          const mountpoint = mountedPartition?.mountpoint || device.mountpoint || ''
+          const fstype = mountedPartition?.fstype || device.fstype || ''
 
-          disks.push({
-            device: `/dev/${device.name}`,
-            mountpoint: mountpoint || '未挂载',
-            fstype: fstype || 'unknown',
-            total,
-            free,
-            used: total - free,
-            totalFormatted: total > 0 ? formatBytes(total) : device.size || 'Unknown',
-            freeFormatted: free > 0 ? formatBytes(free) : '--',
-            usedFormatted: total > 0 ? formatBytes(total - free) : '--',
-          })
+          const diskInfo = getDiskInfo(mountpoint, fstype, device.size)
+          diskInfo.device = `/dev/${device.name}`
+          disks.push(diskInfo)
         }
       }
     }
@@ -138,7 +159,8 @@ router.get(
     const freeMem = os.freemem()
     const usedMem = totalMem - freeMem
     const disks = getAllDisks()
-    const defaultDisk = disks.find(d => d.mountpoint === (process.env.FILE_MANAGER_BASE_DIR || '/')) || disks[0]
+    const defaultDisk =
+      disks.find((d) => d.mountpoint === (process.env.FILE_MANAGER_BASE_DIR || '/')) || disks[0]
     const cpuUsage = getCpuUsage()
 
     res.json({
