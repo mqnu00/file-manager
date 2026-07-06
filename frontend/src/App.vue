@@ -150,18 +150,21 @@ html.cyber .el-dialog__headerbtn .el-dialog__close:hover {
 }
 
 html.cyber .el-button {
+  --el-button-text-color: var(--app-accent);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--app-border);
+  --el-button-hover-text-color: var(--app-accent);
+  --el-button-hover-bg-color: rgb(0 240 255 / 8%);
+  --el-button-hover-border-color: var(--app-accent);
+  --el-button-active-text-color: var(--app-accent);
+  --el-button-active-bg-color: rgb(0 240 255 / 12%);
+  --el-button-active-border-color: var(--app-accent);
+
   border-radius: 6px !important;
   font-weight: 500 !important;
 }
 
 html.cyber .el-button--default {
-  --el-button-bg-color: transparent;
-  --el-button-border-color: var(--app-border);
-  --el-button-text-color: var(--app-accent);
-  --el-button-hover-bg-color: rgb(0 240 255 / 8%);
-  --el-button-hover-border-color: var(--app-accent);
-  --el-button-hover-text-color: var(--app-accent);
-
   background: transparent !important;
   border-color: var(--app-border) !important;
   color: var(--app-accent) !important;
@@ -465,5 +468,9 @@ html.cyber .el-button--text {
 html.cyber .el-button--text:hover {
   color: var(--app-accent) !important;
   text-shadow: var(--app-text-glow-hover);
+}
+
+html.cyber .el-button.is-text:not(.is-disabled):hover {
+  background-color: var(--app-accent-bg-hover) !important;
 }
 </style>

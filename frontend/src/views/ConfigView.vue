@@ -164,10 +164,6 @@ async function handleSave() {
   padding: 4px 8px;
 }
 
-.back-btn:hover {
-  color: var(--app-accent);
-}
-
 .divider-label {
   color: var(--app-text-dim);
   font-size: 13px;

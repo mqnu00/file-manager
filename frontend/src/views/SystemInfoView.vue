@@ -271,10 +271,6 @@ onMounted(() => {
   padding: 4px 8px;
 }
 
-.back-btn:hover {
-  color: var(--app-accent);
-}
-
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
