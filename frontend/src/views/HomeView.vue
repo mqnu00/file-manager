@@ -221,7 +221,6 @@ const handleBatchMove = () => {
 const handleBatchDownload = () => {
   if (fileStore.isSingleFileSelected) {
     window.open('/api/files/download/' + fileStore.selectedFiles[0], '_blank')
-    fileStore.setSelectedFiles([])
   }
 }
 
