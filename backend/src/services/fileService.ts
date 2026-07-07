@@ -6,6 +6,7 @@ import { Response } from 'express'
 import { FileInfo, SSEProgressMessage } from '../types'
 import { safePath, calculateDirSize, getStorageRoot } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
+import { AppError } from '../utils/AppError'
 
 /**
  * 获取文件列表
@@ -15,7 +16,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
   const targetPath = safePath(userPath)
 
   if (!fs.existsSync(targetPath)) {
-    throw new Error('路径不存在')
+    throw new AppError('路径不存在')
   }
 
   const files = fs.readdirSync(targetPath, { withFileTypes: true })
@@ -68,12 +69,12 @@ export const zipFolder = (folderPath: string, res: Response, activeArchives: Rec
   const folderFullPath = safePath(folderPath)
 
   if (!fs.existsSync(folderFullPath)) {
-    throw new Error('文件夹不存在')
+    throw new AppError('文件夹不存在')
   }
 
   const stats = fs.statSync(folderFullPath)
   if (!stats.isDirectory()) {
-    throw new Error('只能压缩文件夹')
+    throw new AppError('只能压缩文件夹')
   }
 
   const zipFileName = `${path.basename(folderPath)}.zip`
@@ -146,7 +147,7 @@ export const moveFile = (
   const toFullPath = safePath(decodedToPath)
 
   if (!fs.existsSync(fromFullPath)) {
-    throw new Error('源文件不存在')
+    throw new AppError('源文件不存在')
   }
 
   const stats = fs.statSync(fromFullPath)
@@ -266,12 +267,12 @@ export const downloadFile = (filePath: string, res: Response): void => {
   const fullPath = safePath(filePath)
 
   if (!fs.existsSync(fullPath)) {
-    throw new Error('文件不存在')
+    throw new AppError('文件不存在')
   }
 
   const stats = fs.statSync(fullPath)
   if (stats.isDirectory()) {
-    throw new Error('不能下载文件夹')
+    throw new AppError('不能下载文件夹')
   }
 
   const mimeType = mime.lookup(fullPath) || 'application/octet-stream'
@@ -290,14 +291,14 @@ export const downloadFile = (filePath: string, res: Response): void => {
  */
 export const renameFile = (filePath: string, newName: string): void => {
   if (newName.includes('/') || newName.includes('\\') || newName === '..' || newName === '.') {
-    throw new Error('非法文件名')
+    throw new AppError('非法文件名')
   }
 
   const oldFullPath = safePath(filePath)
   const newFullPath = path.join(path.dirname(oldFullPath), newName)
 
   if (!fs.existsSync(oldFullPath)) {
-    throw new Error('文件不存在')
+    throw new AppError('文件不存在')
   }
 
   fs.renameSync(oldFullPath, newFullPath)
@@ -310,7 +311,7 @@ export const deleteFile = (filePath: string): void => {
   const fullPath = safePath(filePath)
 
   if (!fs.existsSync(fullPath)) {
-    throw new Error('文件不存在')
+    throw new AppError('文件不存在')
   }
 
   fs.rmSync(fullPath, { recursive: true, force: true })
@@ -342,14 +343,14 @@ export const deleteFiles = (filePaths: string[]): { success: number; failed: { p
  */
 export const createFolder = (parentPath: string | undefined, name: string): void => {
   if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
-    throw new Error('非法文件夹名称')
+    throw new AppError('非法文件夹名称')
   }
 
   const parentFullPath = safePath(parentPath || '')
   const newFolderPath = path.join(parentFullPath, name)
 
   if (fs.existsSync(newFolderPath)) {
-    throw new Error('文件夹已存在')
+    throw new AppError('文件夹已存在')
   }
 
   fs.mkdirSync(newFolderPath, { recursive: true })

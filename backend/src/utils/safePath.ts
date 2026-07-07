@@ -1,6 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import { getConfig } from '../config'
+import { AppError } from './AppError'
 
 function getBaseDir(): string {
   const configured = getConfig().storageRoot
@@ -40,7 +41,7 @@ export const safePath = (userPath: string): string => {
   }
   const resolved = path.join(BASE_DIR, userPath)
   if (!resolved.startsWith(BASE_DIR)) {
-    throw new Error('非法路径')
+    throw new AppError('非法路径')
   }
   return resolved
 }
