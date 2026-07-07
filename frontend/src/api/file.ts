@@ -23,12 +23,17 @@ export const createFolder = (path: string, name: string): Promise<{ success: boo
   return api.post('/folders', { path, name }).then((res) => res.data)
 }
 
-// 移动文件/文件夹（返回 EventSource — 内部使用）
-export const moveFile = (fromPath: string, toPath: string): EventSource => {
-  const params = new URLSearchParams()
-  params.append('fromPath', fromPath)
-  params.append('toPath', toPath)
-  return new EventSource(`/api/files/move?${params.toString()}`)
+// 移动文件/文件夹（返回 ReadableStream — 内部使用）
+export const moveFile = (fromPath: string, toPath: string): ReadableStream<Uint8Array> | null => {
+  const response = fetch('/api/files/move', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
+    },
+    body: JSON.stringify({ fromPath, toPath }),
+  })
+  return null // Will be handled by moveFileAsync
 }
 
 // 移动文件/文件夹（Promise 版本 + 进度回调 — 给 composable 使用）
@@ -38,25 +43,65 @@ export const moveFileAsync = (
   onProgress?: (progress: number, speed: number) => void
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const es = moveFile(fromPath, toPath)
+    fetch('/api/files/move', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
+      },
+      body: JSON.stringify({ fromPath, toPath }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('移动失败')
+        }
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error('无法读取响应流')
+        }
 
-    es.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        onProgress?.(data.progress, data.speed || 0)
-      } else if (data.type === 'complete') {
-        es.close()
-        resolve()
-      } else if (data.type === 'error') {
-        es.close()
-        reject(new Error(data.message || '移动失败'))
-      }
-    }
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-    es.onerror = () => {
-      es.close()
-      reject(new Error('移动失败，请重试'))
-    }
+        const processStream = (): void => {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              resolve()
+              return
+            }
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6))
+                  if (data.type === 'progress') {
+                    onProgress?.(data.progress, data.speed || 0)
+                  } else if (data.type === 'complete') {
+                    resolve()
+                    return
+                  } else if (data.type === 'error') {
+                    reject(new Error(data.message || '移动失败'))
+                    return
+                  }
+                } catch {
+                  // Ignore JSON parse errors
+                }
+              }
+            }
+
+            processStream()
+          })
+        }
+
+        processStream()
+      })
+      .catch((error) => {
+        reject(error instanceof Error ? error : new Error('移动失败'))
+      })
   })
 }
 

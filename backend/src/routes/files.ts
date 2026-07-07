@@ -77,9 +77,9 @@ router.post(
 /**
  * 移动文件（使用 SSE 发送进度）
  */
-router.get('/move', (req: Request, res: Response) => {
+router.post('/move', (req: Request, res: Response) => {
   try {
-    const { fromPath, toPath } = req.query as any;
+    const { fromPath, toPath } = req.body;
 
     if (!fromPath || !toPath) {
       return res.status(400).json({ message: '缺少必要参数' });
