@@ -19,6 +19,12 @@ export const useFileStore = defineStore('file', () => {
 
   const setSelectedFiles = (paths: string[]) => {
     selectedFiles.value = paths
+    selectedFiles.value.sort((a, b) => {
+      const aInfo = files.value.find((f) => f.path === a)
+      const bInfo = files.value.find((f) => f.path === b)
+      if (bInfo?.isDirectory) return 1
+      else return -1
+    }) // Sort the selected files for consistent order
   }
 
   const setLoading = (value: boolean) => {

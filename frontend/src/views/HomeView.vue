@@ -1,22 +1,39 @@
 <template>
   <div class="file-manager">
-    <Toolbar
-      :breadcrumb-parts="breadcrumbParts"
-      :sort-by="sortBy"
-      :sort-order="sortOrder"
-      :selected-count="fileStore.selectedFiles.length"
-      :is-single-file-selected="fileStore.isSingleFileSelected"
-      :is-single-folder-selected="fileStore.isSingleFolderSelected"
-      @navigate="navigateTo"
-      @sort-change="handleSortChange"
-      @toggle-sort="toggleSortOrder"
-      @create-folder="showCreateFolderDialog"
-      @refresh="refresh"
-      @batch-delete="handleBatchDelete"
-      @batch-move="handleBatchMove"
-      @batch-download="handleBatchDownload"
-      @batch-zip="handleBatchZip"
-    />
+    <div>
+      <Toolbar
+        :breadcrumb-parts="breadcrumbParts"
+        :sort-by="sortBy"
+        :sort-order="sortOrder"
+        :selected-count="fileStore.selectedFiles.length"
+        :is-single-file-selected="fileStore.isSingleFileSelected"
+        :is-single-folder-selected="fileStore.isSingleFolderSelected"
+        @navigate="navigateTo"
+        @sort-change="handleSortChange"
+        @toggle-sort="toggleSortOrder"
+        @create-folder="showCreateFolderDialog"
+        @refresh="refresh"
+        @batch-delete="handleBatchDelete"
+        @batch-move="handleBatchMove"
+        @batch-download="handleBatchDownload"
+        @batch-zip="handleBatchZip"
+      >
+      <template #extra>
+        <template v-for="item in fileStore.selectedFileInfos" :key="item">
+          <el-tag
+            style="margin-right: 4px; margin-bottom: 4px"
+            :type="item.isDirectory ? 'primary': 'info'"
+            size="small"
+            effect="plain"
+            closable
+            @close="removeSelectedFile(item)"
+          >
+            {{ item.name }} {{ item.isDirectory ? '(文件夹)' : '' }}
+          </el-tag>
+        </template>
+      </template>
+    </Toolbar>
+    </div>
 
     <FileTable
       ref="fileTableRef"
@@ -88,6 +105,7 @@ import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
 import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
 import ZipProgressDialog from '../components/dialogs/ZipProgressDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
+import { FileItem } from '@/types/index.ts'
 
 const fileStore = useFileStore()
 const progress = useFileProgress()
@@ -104,6 +122,14 @@ const { contextMenuVisible, contextMenuX, contextMenuY, onRowContextmenu, closeC
 
 // FileTable ref
 const fileTableRef = ref<InstanceType<typeof FileTable>>()
+
+// 移除选中的文件
+function removeSelectedFile(file: FileItem) {
+  fileTableRef.value?.tableRef?.toggleRowSelection(
+    fileStore.files.find((f) => f.path === file.path),
+    false
+  )
+}
 
 // 新建文件夹对话框
 const createFolderVisible = ref(false)

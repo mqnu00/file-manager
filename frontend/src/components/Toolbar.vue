@@ -51,35 +51,42 @@
     </div>
 
     <div v-if="selectedCount > 0" class="bulk-actions">
-      <span class="bulk-actions-count"
-        >已选择 <strong>{{ selectedCount }}</strong> 项</span
-      >
-      <el-button
-        v-if="isSingleFileSelected"
-        size="small"
-        type="success"
-        @click="$emit('batch-download')"
-      >
-        <el-icon><Download /></el-icon>
-        下载
-      </el-button>
-      <el-button
-        v-if="isSingleFolderSelected"
-        size="small"
-        type="warning"
-        @click="$emit('batch-zip')"
-      >
-        <el-icon><FolderChecked /></el-icon>
-        压缩
-      </el-button>
-      <el-button size="small" @click="$emit('batch-move')">
-        <el-icon><Rank /></el-icon>
-        移动
-      </el-button>
-      <el-button size="small" type="danger" @click="$emit('batch-delete')">
-        <el-icon><Delete /></el-icon>
-        删除
-      </el-button>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <span class="bulk-actions-count"
+            >已选择 <strong>{{ selectedCount }}</strong> 项</span
+          >
+          <el-button
+            v-if="isSingleFileSelected"
+            size="small"
+            type="success"
+            @click="$emit('batch-download')"
+          >
+            <el-icon><Download /></el-icon>
+            下载
+          </el-button>
+          <el-button
+            v-if="isSingleFolderSelected"
+            size="small"
+            type="warning"
+            @click="$emit('batch-zip')"
+          >
+            <el-icon><FolderChecked /></el-icon>
+            压缩
+          </el-button>
+          <el-button size="small" @click="$emit('batch-move')">
+            <el-icon><Rank /></el-icon>
+            移动
+          </el-button>
+          <el-button size="small" type="danger" @click="$emit('batch-delete')">
+            <el-icon><Delete /></el-icon>
+            删除
+          </el-button>
+        </div>
+        <div>
+          <slot name="extra"></slot>
+        </div>
+      </div>
     </div>
   </div>
 </template>
