@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import fs from 'fs';
 import * as fileService from '../services/fileService';
 import {
   ArchiveLocals,
@@ -8,6 +9,8 @@ import {
   ZipCancelRequest,
 } from '../types';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { safePath, calculateDirSize } from '../utils/safePath';
+import { AppError } from '../utils/AppError';
 
 const router = express.Router();
 
@@ -91,6 +94,29 @@ router.post('/move', (req: Request, res: Response) => {
     res.status(500).json({ message: e instanceof Error ? e.message : '移动失败' });
   }
 });
+
+/**
+ * 计算文件夹大小
+ */
+router.get(
+  '/dirsize',
+  asyncHandler((req: Request, res: Response) => {
+    const { path: dirPath } = req.query as { path?: string };
+
+    if (!dirPath) {
+      return res.status(400).json({ message: '缺少文件夹路径' });
+    }
+
+    const fullPath = safePath(dirPath);
+
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) {
+      throw new AppError('文件夹不存在');
+    }
+
+    const size = calculateDirSize(fullPath);
+    res.json({ size });
+  })
+);
 
 /**
  * 下载文件

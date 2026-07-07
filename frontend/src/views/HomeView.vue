@@ -53,9 +53,12 @@
       ref="fileTableRef"
       :files="fileStore.files"
       :loading="fileStore.loading"
+      :dir-size-cache="dirSizeCache"
+      :dir-size-loading="dirSizeLoading"
       @open="navigateInto"
       @contextmenu="onRowContextmenu"
       @selection-change="handleSelectionChange"
+      @load-dir-size="handleLoadDirSize"
     />
 
     <!-- 新建文件夹对话框 -->
@@ -119,7 +122,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
@@ -161,6 +164,22 @@ function removeSelectedFile(file: FileItem) {
 // 新建文件夹对话框
 const createFolderVisible = ref(false)
 const newFolderName = ref('')
+
+// 文件夹大小计算
+const dirSizeCache = ref<Record<string, number>>({})
+const dirSizeLoading = ref<Record<string, boolean>>({})
+
+const handleLoadDirSize = async (path: string) => {
+  dirSizeLoading.value[path] = true
+  try {
+    const { size } = await getDirSize(path)
+    dirSizeCache.value[path] = size
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '计算大小失败')
+  } finally {
+    dirSizeLoading.value[path] = false
+  }
+}
 
 const breadcrumbParts = computed(() => {
   const path = fileStore.currentPath

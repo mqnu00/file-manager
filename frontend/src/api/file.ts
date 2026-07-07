@@ -18,6 +18,11 @@ export const getFolders = (path: string = ''): Promise<FileItem[]> => {
     .then((res) => res.data.files.filter((f: FileItem) => f.isDirectory))
 }
 
+// 获取文件夹大小
+export const getDirSize = (path: string): Promise<{ size: number }> => {
+  return api.get('/files/dirsize', { params: { path } }).then((res) => res.data)
+}
+
 // 创建文件夹
 export const createFolder = (path: string, name: string): Promise<{ success: boolean }> => {
   return api.post('/folders', { path, name }).then((res) => res.data)

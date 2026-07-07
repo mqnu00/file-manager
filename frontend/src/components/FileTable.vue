@@ -32,7 +32,17 @@
       <el-table-column prop="size" label="大小" width="120">
         <template #default="{ row }">
           <span v-if="row.broken" class="broken-text">—</span>
-          <span v-else>{{ row.isDirectory ? '-' : formatSize(row.size) }}</span>
+          <span v-else-if="!row.isDirectory">{{ formatSize(row.size) }}</span>
+          <el-button
+            v-else-if="!dirSizeCache[row.path] && !dirSizeLoading[row.path]"
+            size="small"
+            link
+            @click="$emit('load-dir-size', row.path)"
+          >
+            计算大小
+          </el-button>
+          <el-button v-else-if="dirSizeLoading[row.path]" size="small" link loading />
+          <span v-else>{{ formatSize(dirSizeCache[row.path]) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="modified" label="修改时间" width="180">
@@ -54,12 +64,15 @@ import type { ElTable } from 'element-plus'
 defineProps<{
   files: FileItem[]
   loading: boolean
+  dirSizeCache: Record<string, number>
+  dirSizeLoading: Record<string, boolean>
 }>()
 
 const emit = defineEmits<{
   open: [path: string]
   contextmenu: [event: MouseEvent, row: FileItem]
   selectionChange: [paths: string[]]
+  'load-dir-size': [path: string]
 }>()
 
 const tableRef = ref<InstanceType<typeof ElTable>>()
