@@ -175,7 +175,10 @@ const handleLoadDirSize = async (path: string) => {
     const { size } = await getDirSize(path)
     dirSizeCache.value[path] = size
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '计算大小失败')
+    const msg = e.code === 'ECONNABORTED'
+      ? '计算超时，文件夹可能过大'
+      : (e.response?.data?.message || '计算大小失败')
+    ElMessage.error(msg)
   } finally {
     dirSizeLoading.value[path] = false
   }
