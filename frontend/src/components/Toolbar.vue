@@ -74,6 +74,14 @@
             <el-icon><FolderChecked /></el-icon>
             压缩
           </el-button>
+          <el-button
+            v-if="selectedCount === 1"
+            size="small"
+            @click="$emit('batch-rename')"
+          >
+            <el-icon><Edit /></el-icon>
+            重命名
+          </el-button>
           <el-button size="small" @click="$emit('batch-move')">
             <el-icon><Rank /></el-icon>
             移动
@@ -112,6 +120,7 @@ import {
   Sunny,
   Setting,
   Monitor,
+  Edit,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
@@ -137,6 +146,7 @@ defineEmits<{
   'batch-move': []
   'batch-download': []
   'batch-zip': []
+  'batch-rename': []
   'cancel-selection': []
 }>()
 </script>

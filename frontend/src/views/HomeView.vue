@@ -17,6 +17,7 @@
         @batch-move="handleBatchMove"
         @batch-download="handleBatchDownload"
         @batch-zip="handleBatchZip"
+        @batch-rename="showRenameDialogFromSelection"
         @cancel-selection="handleCancelSelection"
       >
       <template #extra>
@@ -94,12 +95,23 @@
       @cancel="() => progress.cancelZip()"
     />
 
+    <!-- 重命名对话框 -->
+    <RenameDialog
+      :model-value="renameVisible"
+      :new-name="renameNewName"
+      @update:model-value="renameVisible = $event"
+      @update:new-name="renameNewName = $event"
+      @confirm="handleRename"
+    />
+
     <ContextMenu
       v-if="contextMenuVisible"
       :x="contextMenuX"
       :y="contextMenuY"
+      :row="contextMenuRow"
       @create-folder="showCreateFolderDialog"
       @refresh="refresh"
+      @rename="showRenameDialogFromContextMenu"
     />
   </div>
 </template>
@@ -107,7 +119,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, batchDeleteFiles } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
@@ -118,6 +130,7 @@ import FileTable from '../components/FileTable.vue'
 import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
 import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
 import ZipProgressDialog from '../components/dialogs/ZipProgressDialog.vue'
+import RenameDialog from '../components/dialogs/RenameDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
 import { FileItem } from '@/types/index.ts'
 
@@ -131,7 +144,7 @@ const fileSort = useFileSort(
 const { sortBy, sortOrder, handleSortChange, toggleSortOrder, sortFiles } = fileSort
 
 const contextMenu = useContextMenu()
-const { contextMenuVisible, contextMenuX, contextMenuY, onRowContextmenu, closeContextMenu } =
+const { contextMenuVisible, contextMenuX, contextMenuY, contextMenuRow, onRowContextmenu, closeContextMenu } =
   contextMenu
 
 // FileTable ref
@@ -205,6 +218,54 @@ const createFolder = async () => {
     refresh()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '创建失败')
+  }
+}
+
+// 重命名对话框
+const renameVisible = ref(false)
+const renameNewName = ref('')
+const renameTarget = ref<FileItem | null>(null)
+
+const showRenameDialog = (file: FileItem) => {
+  renameTarget.value = file
+  renameNewName.value = file.name
+  renameVisible.value = true
+  closeContextMenu()
+}
+
+const showRenameDialogFromContextMenu = () => {
+  if (contextMenuRow.value) {
+    showRenameDialog(contextMenuRow.value)
+  }
+}
+
+const showRenameDialogFromSelection = () => {
+  if (fileStore.selectedFiles.length === 1) {
+    const file = fileStore.files.find((f) => f.path === fileStore.selectedFiles[0])
+    if (file) {
+      showRenameDialog(file)
+    }
+  }
+}
+
+const handleRename = async () => {
+  if (!renameTarget.value) return
+  if (!renameNewName.value.trim()) {
+    ElMessage.warning('请输入新名称')
+    return
+  }
+  if (renameNewName.value === renameTarget.value.name) {
+    renameVisible.value = false
+    return
+  }
+  try {
+    await renameFile(renameTarget.value.path, renameNewName.value)
+    ElMessage.success('重命名成功')
+    renameVisible.value = false
+    renameTarget.value = null
+    refresh()
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '重命名失败')
   }
 }
 

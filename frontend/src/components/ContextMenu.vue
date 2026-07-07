@@ -1,5 +1,9 @@
 <template>
   <div class="context-menu" :style="{ top: y + 'px', left: x + 'px' }">
+    <div v-if="row" class="context-menu-item" @click="$emit('rename')">
+      <el-icon><Edit /></el-icon>
+      重命名
+    </div>
     <div class="context-menu-item" @click="$emit('create-folder')">
       <el-icon><FolderAdd /></el-icon>
       新建文件夹
@@ -12,16 +16,19 @@
 </template>
 
 <script setup lang="ts">
-import { FolderAdd, Refresh } from '@element-plus/icons-vue'
+import { FolderAdd, Refresh, Edit } from '@element-plus/icons-vue'
+import type { FileItem } from '@/types'
 
 defineProps<{
   x: number
   y: number
+  row: FileItem | null
 }>()
 
 defineEmits<{
   'create-folder': []
   refresh: []
+  rename: []
 }>()
 </script>
 
