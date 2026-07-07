@@ -55,6 +55,7 @@
       :loading="fileStore.loading"
       :dir-size-cache="dirSizeCache"
       :dir-size-loading="dirSizeLoading"
+      :dir-size-timeout="dirSizeTimeout"
       @open="navigateInto"
       @contextmenu="onRowContextmenu"
       @selection-change="handleSelectionChange"
@@ -168,6 +169,7 @@ const newFolderName = ref('')
 // 文件夹大小计算
 const dirSizeCache = ref<Record<string, number>>({})
 const dirSizeLoading = ref<Record<string, boolean>>({})
+const dirSizeTimeout = ref<Record<string, boolean>>({})
 
 const handleLoadDirSize = async (path: string) => {
   dirSizeLoading.value[path] = true
@@ -175,10 +177,11 @@ const handleLoadDirSize = async (path: string) => {
     const { size } = await getDirSize(path)
     dirSizeCache.value[path] = size
   } catch (e: any) {
-    const msg = e.code === 'ECONNABORTED'
-      ? '计算超时，文件夹可能过大'
-      : (e.response?.data?.message || '计算大小失败')
-    ElMessage.error(msg)
+    if (e.code === 'ECONNABORTED') {
+      dirSizeTimeout.value[path] = true
+    } else {
+      ElMessage.error(e.response?.data?.message || '计算大小失败')
+    }
   } finally {
     dirSizeLoading.value[path] = false
   }

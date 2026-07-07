@@ -33,6 +33,7 @@
         <template #default="{ row }">
           <span v-if="row.broken" class="broken-text">—</span>
           <span v-else-if="!row.isDirectory">{{ formatSize(row.size) }}</span>
+          <span v-else-if="dirSizeTimeout[row.path]" class="timeout-text">计算超时</span>
           <el-button
             v-else-if="!dirSizeCache[row.path] && !dirSizeLoading[row.path]"
             size="small"
@@ -67,6 +68,7 @@ defineProps<{
   loading: boolean
   dirSizeCache: Record<string, number>
   dirSizeLoading: Record<string, boolean>
+  dirSizeTimeout: Record<string, boolean>
 }>()
 
 const emit = defineEmits<{
@@ -135,6 +137,11 @@ defineExpose({ tableRef })
 .broken-text {
   color: var(--app-text-dim);
   font-style: italic;
+}
+
+.timeout-text {
+  color: #f56c6c;
+  font-size: 12px;
 }
 
 :deep(.el-table) {
