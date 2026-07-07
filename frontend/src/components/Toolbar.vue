@@ -92,7 +92,7 @@
           </el-button>
           <el-button size="small" @click="$emit('cancel-selection')">
             <el-icon><CircleClose /></el-icon>
-            取消选择
+            取消
           </el-button>
         </div>
         <div>
