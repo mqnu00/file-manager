@@ -63,6 +63,12 @@ export const useFileProgress = () => {
     moveState.speed = 0
   }
 
+  const getParentPath = (filePath: string): string => {
+    const parts = filePath.split('/')
+    parts.pop()
+    return parts.join('/') || '/'
+  }
+
   const showMoveDialog = (path: string, name: string) => {
     Object.assign(moveState, {
       visible: true,
@@ -70,7 +76,7 @@ export const useFileProgress = () => {
       sourceName: name,
       sourceNames: [name],
       sourcePaths: [path],
-      targetPath: '',
+      targetPath: getParentPath(path),
       loading: false,
       progress: 0,
       status: '',
@@ -80,13 +86,14 @@ export const useFileProgress = () => {
   }
 
   const showBatchMoveDialog = (paths: string[], names: string[]) => {
+    const parentPath = paths[0] ? getParentPath(paths[0]) : ''
     Object.assign(moveState, {
       visible: true,
       sourcePath: paths[0] || '',
       sourceName: names[0] || '',
       sourceNames: names,
       sourcePaths: paths,
-      targetPath: '',
+      targetPath: parentPath,
       loading: false,
       progress: 0,
       status: '',
