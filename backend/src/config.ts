@@ -87,7 +87,7 @@ export function updateConfig(updates: Partial<AppConfig>): AppConfig {
 export function getSanitizedConfig(): Omit<AppConfig, 'auth'> & { auth: Omit<AuthConfig, 'token'> & { token: string } } {
   const cfg = getConfig()
   const masked = cfg.auth.token
-    ? cfg.auth.token.slice(0, 2) + '***' + cfg.auth.token.slice(-2)
+    ? cfg.auth.token.slice(0, 3) + '***'
     : ''
   return {
     ...cfg,
@@ -96,4 +96,8 @@ export function getSanitizedConfig(): Omit<AppConfig, 'auth'> & { auth: Omit<Aut
       token: masked
     }
   }
+}
+
+export function isDefaultToken(): boolean {
+  return getConfig().auth.token === DEFAULT_CONFIG.auth.token
 }
