@@ -20,16 +20,28 @@
       >
       <template #extra>
         <template v-for="item in fileStore.selectedFileInfos" :key="item">
-          <el-tag
-            style="margin-right: 4px; margin-bottom: 4px"
-            :type="item.isDirectory ? 'primary': 'info'"
-            size="small"
-            effect="plain"
-            closable
-            @close="removeSelectedFile(item)"
-          >
-            {{ item.name }} {{ item.isDirectory ? '(文件夹)' : '' }}
-          </el-tag>
+          <el-tooltip placement="top" :show-after="300">
+            <template #content>
+              <div style="line-height: 1.8">
+                <div><strong>名称：</strong>{{ item.name }}</div>
+                <div><strong>路径：</strong>{{ item.path }}</div>
+                <div><strong>类型：</strong>{{ item.isDirectory ? '文件夹' : '文件' }}</div>
+                <div v-if="!item.isDirectory"><strong>大小：</strong>{{ formatSize(item.size) }}</div>
+                <div><strong>修改时间：</strong>{{ formatTime(item.modified) }}</div>
+                <div v-if="item.broken"><strong>状态：</strong><span style="color: #f56c6c">符号链接，目标不存在</span></div>
+              </div>
+            </template>
+            <el-tag
+              style="margin-right: 4px; margin-bottom: 4px"
+              :type="item.isDirectory ? 'primary': 'info'"
+              size="small"
+              effect="plain"
+              closable
+              @close="removeSelectedFile(item)"
+            >
+              {{ item.name }} {{ item.isDirectory ? '(文件夹)' : '' }}
+            </el-tag>
+          </el-tooltip>
         </template>
       </template>
     </Toolbar>
@@ -98,6 +110,7 @@ import { getFiles, createFolder as createFolderApi, batchDeleteFiles } from '@/a
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
+import { formatSize, formatTime } from '@/utils/format'
 import { useContextMenu } from '@/composables/useContextMenu'
 import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
