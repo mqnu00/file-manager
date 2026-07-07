@@ -17,6 +17,7 @@
         @batch-move="handleBatchMove"
         @batch-download="handleBatchDownload"
         @batch-zip="handleBatchZip"
+        @cancel-selection="handleCancelSelection"
       >
       <template #extra>
         <template v-for="item in fileStore.selectedFileInfos" :key="item">
@@ -268,6 +269,11 @@ const handleBatchZip = () => {
     progress.zipFolder(fileStore.selectedFiles[0], refresh)
     fileStore.setSelectedFiles([])
   }
+}
+
+const handleCancelSelection = () => {
+  fileTableRef.value?.tableRef?.clearSelection()
+  fileStore.setSelectedFiles([])
 }
 
 onMounted(() => {

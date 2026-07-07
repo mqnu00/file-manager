@@ -82,6 +82,10 @@
             <el-icon><Delete /></el-icon>
             删除
           </el-button>
+          <el-button size="small" @click="$emit('cancel-selection')">
+            <el-icon><CircleClose /></el-icon>
+            取消选择
+          </el-button>
         </div>
         <div>
           <slot name="extra"></slot>
@@ -103,6 +107,7 @@ import {
   Rank,
   Download,
   FolderChecked,
+  CircleClose,
   Moon,
   Sunny,
   Setting,
@@ -132,6 +137,7 @@ defineEmits<{
   'batch-move': []
   'batch-download': []
   'batch-zip': []
+  'cancel-selection': []
 }>()
 </script>
 
