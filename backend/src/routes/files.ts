@@ -30,7 +30,7 @@ router.get(
 /**
  * 压缩文件夹（使用 SSE 发送进度）
  */
-router.get('/zip', (req: Request, res: Response) => {
+router.get('/zip', async (req: Request, res: Response) => {
   try {
     const folderPath = req.query.path as string;
 
@@ -43,7 +43,7 @@ router.get('/zip', (req: Request, res: Response) => {
       (req.app.locals as ArchiveLocals).activeArchives = activeArchives;
     }
 
-    fileService.zipFolder(folderPath, res, activeArchives);
+    await fileService.zipFolder(folderPath, res, activeArchives);
   } catch (e) {
     console.error('压缩失败:', e);
     res.status(500).json({ message: e instanceof Error ? e.message : '压缩失败' });
@@ -100,7 +100,7 @@ router.post('/move', (req: Request, res: Response) => {
  */
 router.get(
   '/dirsize',
-  asyncHandler((req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { path: dirPath } = req.query as { path?: string };
 
     if (!dirPath) {
@@ -113,7 +113,7 @@ router.get(
       throw new AppError('文件夹不存在');
     }
 
-    const size = calculateDirSize(fullPath);
+    const size = await calculateDirSize(fullPath);
     res.json({ size });
   })
 );

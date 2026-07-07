@@ -36,6 +36,7 @@ declare module 'vue' {
     FileTable: typeof import('./components/FileTable.vue')['default']
     MoveFileDialog: typeof import('./components/dialogs/MoveFileDialog.vue')['default']
     PathSelector: typeof import('./components/PathSelector.vue')['default']
+    RenameDialog: typeof import('./components/dialogs/RenameDialog.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SciFiBackground: typeof import('./components/SciFiBackground.vue')['default']

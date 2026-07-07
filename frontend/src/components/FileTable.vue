@@ -36,10 +36,11 @@
           <el-button
             v-else-if="!dirSizeCache[row.path] && !dirSizeLoading[row.path]"
             size="small"
+            type="primary"
             link
             @click="$emit('load-dir-size', row.path)"
           >
-            计算大小
+            计算
           </el-button>
           <el-button v-else-if="dirSizeLoading[row.path]" size="small" link loading />
           <span v-else>{{ formatSize(dirSizeCache[row.path]) }}</span>

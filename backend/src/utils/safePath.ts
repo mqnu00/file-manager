@@ -47,21 +47,21 @@ export const safePath = (userPath: string): string => {
 }
 
 /**
- * 递归计算目录总大小
+ * 递归计算目录总大小（异步，不阻塞事件循环）
  * @param dir 目录路径
  * @returns 目录总字节数
  */
-export const calculateDirSize = (dir: string): number => {
+export const calculateDirSize = async (dir: string): Promise<number> => {
   let totalBytes = 0
 
-  const walkDir = (currentDir: string): void => {
-    const files = fs.readdirSync(currentDir)
-    for (const file of files) {
-      const filePath = path.join(currentDir, file)
+  const walkDir = async (currentDir: string): Promise<void> => {
+    const entries = await fs.promises.readdir(currentDir, { withFileTypes: true })
+    for (const entry of entries) {
+      const filePath = path.join(currentDir, entry.name)
       try {
-        const stat = fs.statSync(filePath)
+        const stat = await fs.promises.stat(filePath)
         if (stat.isDirectory()) {
-          walkDir(filePath)
+          await walkDir(filePath)
         } else {
           totalBytes += stat.size
         }
@@ -72,6 +72,6 @@ export const calculateDirSize = (dir: string): number => {
     }
   }
 
-  walkDir(dir)
+  await walkDir(dir)
   return totalBytes
 }

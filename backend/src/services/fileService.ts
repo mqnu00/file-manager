@@ -65,7 +65,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
 /**
  * 压缩文件夹（使用 SSE 发送进度）
  */
-export const zipFolder = (folderPath: string, res: Response, activeArchives: Record<string, archiver.Archiver>): void => {
+export const zipFolder = async (folderPath: string, res: Response, activeArchives: Record<string, archiver.Archiver>): Promise<void> => {
   const folderFullPath = safePath(folderPath)
 
   if (!fs.existsSync(folderFullPath)) {
@@ -79,7 +79,7 @@ export const zipFolder = (folderPath: string, res: Response, activeArchives: Rec
 
   const zipFileName = `${path.basename(folderPath)}.zip`
   const zipPath = path.join(path.dirname(folderFullPath), zipFileName)
-  const totalBytes = calculateDirSize(folderFullPath)
+  const totalBytes = await calculateDirSize(folderFullPath)
 
   const output = fs.createWriteStream(zipPath)
   const archive = archiver.create('zip', { zlib: { level: 9 } })
