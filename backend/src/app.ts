@@ -8,6 +8,7 @@ import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
 import systemRoutes from './routes/system'
 import { errorHandler } from './middleware/errorHandler'
+import { authMiddleware } from './middleware/auth'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -18,9 +19,9 @@ app.use(express.json())
 
 app.use('/api/auth', authRoutes)
 app.use('/api/config', configRoutes)
-app.use('/api/files', fileRoutes)
-app.use('/api/folders', folderRoutes)
-app.use('/api/system', systemRoutes)
+app.use('/api/files', authMiddleware, fileRoutes)
+app.use('/api/folders', authMiddleware, folderRoutes)
+app.use('/api/system', authMiddleware, systemRoutes)
 
 // ===== 静态文件 =====
 
