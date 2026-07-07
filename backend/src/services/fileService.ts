@@ -289,6 +289,10 @@ export const downloadFile = (filePath: string, res: Response): void => {
  * 重命名文件
  */
 export const renameFile = (filePath: string, newName: string): void => {
+  if (newName.includes('/') || newName.includes('\\') || newName === '..' || newName === '.') {
+    throw new Error('非法文件名')
+  }
+
   const oldFullPath = safePath(filePath)
   const newFullPath = path.join(path.dirname(oldFullPath), newName)
 
@@ -337,6 +341,10 @@ export const deleteFiles = (filePaths: string[]): { success: number; failed: { p
  * 创建文件夹
  */
 export const createFolder = (parentPath: string | undefined, name: string): void => {
+  if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
+    throw new Error('非法文件夹名称')
+  }
+
   const parentFullPath = safePath(parentPath || '')
   const newFolderPath = path.join(parentFullPath, name)
 
