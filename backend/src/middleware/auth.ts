@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import crypto from 'crypto'
 import { getConfig } from '../config'
 
 interface SessionEntry {
@@ -38,12 +39,7 @@ export function clearAllSessions(): void {
 }
 
 function generateToken(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+  return crypto.randomBytes(length).toString('base64url').slice(0, length)
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
