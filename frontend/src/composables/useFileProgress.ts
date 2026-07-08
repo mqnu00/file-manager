@@ -1,6 +1,7 @@
 import { reactive } from 'vue'
-import { moveFileAsync, zipFolderAsync, cancelZip as cancelZipApi } from '@/api/file'
+import { moveFileAsync, zipFolderAsync, cancelZip as cancelZipApi, getFiles } from '@/api/file'
 import { ElMessage } from 'element-plus'
+import type { FileItem } from '@/types'
 
 export interface MoveProgressState {
   visible: boolean
@@ -113,6 +114,23 @@ export const useFileProgress = () => {
     moveState.status = ''
     moveState.speed = 0
 
+    // 检查目标目录是否有同名文件
+    const normalizedTargetPath = moveState.targetPath.startsWith('/')
+      ? moveState.targetPath
+      : '/' + moveState.targetPath
+    try {
+      const res = await getFiles(normalizedTargetPath)
+      const existingNames = new Set(res.files.map((f: FileItem) => f.name))
+      const conflicts = moveState.sourceNames.filter(name => existingNames.has(name))
+      if (conflicts.length > 0) {
+        ElMessage.warning(`目标目录已存在同名文件：${conflicts.join('、')}，移动已取消`)
+        moveState.loading = false
+        return
+      }
+    } catch {
+      // 目标目录不存在，继续移动（后端会创建）
+    }
+
     const total = moveState.sourcePaths.length
     let completed = 0
     let failed = 0
@@ -122,9 +140,6 @@ export const useFileProgress = () => {
       const srcName = moveState.sourceNames[i]
 
       const normalizedSourcePath = srcPath.startsWith('/') ? srcPath : '/' + srcPath
-      const normalizedTargetPath = moveState.targetPath.startsWith('/')
-        ? moveState.targetPath
-        : '/' + moveState.targetPath
       const fullPath = normalizedTargetPath + '/' + srcName
 
       // 同目录移动跳过
