@@ -10,7 +10,7 @@
       <div style="padding: 20px 36px">
         <div class="config-header">
           <h3 class="config-title">系统信息</h3>
-          <el-button size="small" @click="fetchSystemInfo" :loading="loading">
+          <el-button size="small" :loading="loading" @click="fetchSystemInfo">
             <el-icon><Refresh /></el-icon>
             刷新
           </el-button>
@@ -147,17 +147,14 @@
                 <span class="info-label">文件系统</span>
                 <span class="info-value">{{ selectedDisk?.fstype }}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">总量</span>
-                <span class="info-value">{{ selectedDisk?.totalFormatted }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">已用</span>
-                <span class="info-value">{{ selectedDisk?.usedFormatted }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">可用</span>
-                <span class="info-value">{{ selectedDisk?.freeFormatted }}</span>
+              <div class="info-item disk-progress">
+                <el-tooltip :content="`已用 ${selectedDisk?.usedFormatted} / 可用 ${selectedDisk?.freeFormatted}`" placement="top">
+                  <el-progress
+                    :percentage="selectedDisk?.total ? Math.round((selectedDisk.used / selectedDisk.total) * 100) : 0"
+                    :format="(p: number) => `${p}% | ${selectedDisk?.totalFormatted || '0 B'}`"
+                    :color="diskUsageColor"
+                  />
+                </el-tooltip>
               </div>
             </div>
           </el-card>
@@ -225,6 +222,13 @@ const selectedDiskIndex = ref(0)
 const selectedDisk = computed(() => {
   if (!systemInfo.value) return null
   return systemInfo.value.disks[selectedDiskIndex.value] || systemInfo.value.disk
+})
+
+const diskUsageColor = computed(() => {
+  const disk = selectedDisk.value
+  if (!disk?.total) return ''
+  const percent = Math.round((disk.used / disk.total) * 100)
+  return percent > 85 ? '#F56C6C' : percent > 65 ? '#E6A23C' : '#409EFF'
 })
 
 async function fetchSystemInfo() {
@@ -354,6 +358,12 @@ onMounted(() => {
   max-width: 250px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.disk-progress {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
 
 .loading-state,
