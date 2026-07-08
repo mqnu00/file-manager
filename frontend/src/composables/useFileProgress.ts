@@ -127,6 +127,14 @@ export const useFileProgress = () => {
         : '/' + moveState.targetPath
       const fullPath = normalizedTargetPath + '/' + srcName
 
+      // 同目录移动跳过
+      const srcDir = normalizedSourcePath.substring(0, normalizedSourcePath.lastIndexOf('/'))
+      if (srcDir === normalizedTargetPath) {
+        ElMessage.warning(`${srcName} 与目标目录相同，已跳过`)
+        failed++
+        continue
+      }
+
       try {
         await moveFileAsync(normalizedSourcePath, fullPath, (fileProgress, fileSpeed) => {
           moveState.speed = fileSpeed

@@ -146,6 +146,10 @@ export const moveFile = (
   const fromFullPath = safePath(decodedFromPath)
   const toFullPath = safePath(decodedToPath)
 
+  if (fromFullPath === toFullPath) {
+    throw new AppError('源文件和目标路径相同')
+  }
+
   if (!fs.existsSync(fromFullPath)) {
     throw new AppError('源文件不存在')
   }
