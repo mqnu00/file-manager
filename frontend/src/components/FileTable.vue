@@ -35,7 +35,7 @@
           <span v-else-if="!row.isDirectory">{{ formatSize(row.size) }}</span>
           <span v-else-if="dirSizeTimeout[row.path]" class="timeout-text">计算超时</span>
           <el-button
-            v-else-if="!dirSizeCache[row.path] && !dirSizeLoading[row.path]"
+            v-else-if="!(row.path in dirSizeCache) && !dirSizeLoading[row.path]"
             size="small"
             type="primary"
             link
