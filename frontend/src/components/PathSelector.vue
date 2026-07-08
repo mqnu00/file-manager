@@ -19,16 +19,17 @@
       top="5vh"
       :close-on-click-modal="true"
       :append-to-body="true"
+      @opened="expandTreeNode"
     >
       <div class="tree-container">
         <el-tree
           ref="treeRef"
-          :data="treeData"
+          node-key="path"
           :props="{ children: 'children', label: 'label', disabled: 'disabled' }"
           :load="loadNode"
           lazy
           highlight-current
-          :expand-on-click-node="false"
+          :expand-on-click-node="true"
           @node-click="handleNodeClick"
         >
           <template #default="{ node }">
@@ -48,10 +49,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { Folder } from '@element-plus/icons-vue'
 import { getFolders } from '@/api/file'
 import type { ElTree } from 'element-plus'
+import type { FileItem } from '@/types'
 
 interface TreeNode {
   label: string
@@ -73,40 +75,37 @@ const emit = defineEmits<{
 
 const showTreeDialog = ref(false)
 const treeRef = ref<InstanceType<typeof ElTree>>()
-const treeData = ref<TreeNode[]>([])
 const selectedPath = ref('')
 
-const loadNode = async (node: any, resolve: (data: TreeNode[]) => void) => {
+interface LoadNode {
+  data?: { path?: string }
+}
+
+const loadNode = async (node: LoadNode, resolve: (data: TreeNode[]) => void) => {
   try {
     const parentPath = node.data?.path || ''
     const folders = await getFolders(parentPath)
-    const filteredFolders = folders.filter((f: any) => f.path !== props.excludePath)
-
-    const children = filteredFolders.map((f: any) => ({
-      label: f.name,
-      path: f.path,
-      disabled: false,
-    }))
-
+    const children = folders
+      .filter((f: FileItem) => f.path !== props.excludePath)
+      .map((f: FileItem) => ({ label: f.name, path: f.path }))
     resolve(children)
-  } catch (e) {
+  } catch {
     resolve([])
   }
 }
 
-const loadRootNodes = async () => {
-  try {
-    const folders = await getFolders('')
-    const filteredFolders = folders.filter((f: any) => f.path !== props.excludePath)
-
-    treeData.value = filteredFolders.map((f: any) => ({
-      label: f.name,
-      path: f.path,
-      disabled: false,
-    }))
-  } catch (e) {
-    treeData.value = []
-  }
+function waitForNodeLoaded(tree: InstanceType<typeof ElTree>, path: string): Promise<void> {
+  return new Promise((resolve) => {
+    const check = () => {
+      const n = tree.getNode(path)
+      if (n && !n.loading && n.loaded) {
+        resolve()
+      } else {
+        setTimeout(check, 50)
+      }
+    }
+    nextTick(check)
+  })
 }
 
 const handleNodeClick = (data: TreeNode) => {
@@ -120,27 +119,33 @@ const confirmSelection = () => {
   showTreeDialog.value = false
 }
 
-watch(
-  () => props.excludePath,
-  () => {
-    loadRootNodes()
-  }
-)
+async function expandTreeNode() {
+  const targetPath = props.modelValue
+  if (!targetPath || !treeRef.value) return
 
-watch(
-  () => showTreeDialog.value,
-  (newVal) => {
-    if (newVal) {
-      loadRootNodes()
-      if (props.modelValue) {
-        selectedPath.value = props.modelValue
-      }
+  // 重置所有已加载节点的状态
+  const store = treeRef.value.store
+  Object.values(store.nodesMap).forEach((node: { expanded: boolean; loaded: boolean; childNodes: unknown[] }) => {
+    node.expanded = false
+    node.loaded = false
+    node.childNodes = []
+  })
+
+  const parts = targetPath.split('/').filter(Boolean)
+  let currentPath = ''
+
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part
+    const node = treeRef.value.getNode(currentPath)
+    if (node && !node.expanded) {
+      node.expand()
+      await waitForNodeLoaded(treeRef.value, currentPath)
     }
+    treeRef.value.setCurrentKey(currentPath, true)
   }
-)
+}
 
 onMounted(() => {
-  loadRootNodes()
   if (props.modelValue) {
     selectedPath.value = props.modelValue
   }
