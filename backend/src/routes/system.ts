@@ -82,11 +82,18 @@ interface DiskInfo {
   totalFormatted: string
   freeFormatted: string
   usedFormatted: string
+  partitions: Array<{
+    mountpoint: string
+    totalFormatted: string
+    usedFormatted: string
+    percent: number
+  }>
 }
 
 function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, deviceSize: string): DiskInfo {
   let total = 0
   let free = 0
+  const partitions: DiskInfo['partitions'] = []
 
   // 遍历所有挂载点，累加各分区容量
   const targets = mountpoints.length > 0 ? mountpoints : [mountpoint]
@@ -99,8 +106,17 @@ function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, 
         const parts = lines[1].split(/\s+/)
         if (parts.length >= 4) {
           if (!fstype && parts[1]) fstype = parts[1]
-          total += (parseInt(parts[2], 10) || 0) * 1024
-          free += (parseInt(parts[4], 10) || 0) * 1024
+          const pTotal = (parseInt(parts[2], 10) || 0) * 1024
+          const pFree = (parseInt(parts[4], 10) || 0) * 1024
+          const pUsed = pTotal - pFree
+          total += pTotal
+          free += pFree
+          partitions.push({
+            mountpoint: mp,
+            totalFormatted: formatBytes(pTotal),
+            usedFormatted: formatBytes(pUsed),
+            percent: pTotal > 0 ? Math.round((pUsed / pTotal) * 100) : 0,
+          })
         }
       }
     } catch {
@@ -121,6 +137,7 @@ function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, 
     totalFormatted: total > 0 ? formatBytes(total) : deviceSize || 'Unknown',
     freeFormatted: free > 0 ? formatBytes(free) : '--',
     usedFormatted: total > 0 ? formatBytes(total - free) : '--',
+    partitions,
   }
 }
 

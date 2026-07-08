@@ -26,6 +26,12 @@ export interface DiskInfo {
   totalFormatted: string
   freeFormatted: string
   usedFormatted: string
+  partitions: Array<{
+    mountpoint: string
+    totalFormatted: string
+    usedFormatted: string
+    percent: number
+  }>
 }
 
 export interface SystemInfo {

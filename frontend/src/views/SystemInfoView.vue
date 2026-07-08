@@ -148,7 +148,12 @@
                 <span class="info-value">{{ selectedDisk?.fstype }}</span>
               </div>
               <div class="info-item disk-progress">
-                <el-tooltip :content="`已用 ${selectedDisk?.usedFormatted} / 可用 ${selectedDisk?.freeFormatted}`" placement="top">
+                <el-tooltip placement="top">
+                  <template #content>
+                    <div v-for="p in selectedDisk?.partitions" :key="p.mountpoint" style="white-space: nowrap">
+                      {{ p.mountpoint }}: {{ p.percent }}% | {{ p.usedFormatted }} / {{ p.totalFormatted }}
+                    </div>
+                  </template>
                   <el-progress
                     :percentage="selectedDisk?.total ? Math.round((selectedDisk.used / selectedDisk.total) * 100) : 0"
                     :format="(p: number) => `${p}% | ${selectedDisk?.totalFormatted || '0 B'}`"
