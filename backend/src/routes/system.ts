@@ -88,22 +88,23 @@ function getDiskInfo(mountpoint: string, mountpoints: string[], fstype: string, 
   let total = 0
   let free = 0
 
-  if (mountpoint && mountpoint !== '[SWAP]') {
+  // 遍历所有挂载点，累加各分区容量
+  const targets = mountpoints.length > 0 ? mountpoints : [mountpoint]
+  for (const mp of targets) {
+    if (!mp || mp === '[SWAP]') continue
     try {
-      // 使用 df -T 获取文件系统类型和容量信息
-      const dfOutput = execSync(`df -T "${mountpoint}" 2>/dev/null`, { encoding: 'utf-8' })
+      const dfOutput = execSync(`df -T "${mp}" 2>/dev/null`, { encoding: 'utf-8' })
       const lines = dfOutput.trim().split('\n')
       if (lines.length >= 2) {
         const parts = lines[1].split(/\s+/)
-        // df -T 格式: Filesystem Type 1K-blocks Used Available Use% Mounted
         if (parts.length >= 4) {
           if (!fstype && parts[1]) fstype = parts[1]
-          total = (parseInt(parts[2], 10) || 0) * 1024 // 转换为字节
-          free = (parseInt(parts[4], 10) || 0) * 1024
+          total += (parseInt(parts[2], 10) || 0) * 1024
+          free += (parseInt(parts[4], 10) || 0) * 1024
         }
       }
     } catch {
-      // df 命令失败，使用默认值
+      // df 命令失败，跳过该挂载点
     }
   }
 
