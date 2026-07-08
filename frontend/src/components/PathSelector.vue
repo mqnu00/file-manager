@@ -119,6 +119,37 @@ const confirmSelection = () => {
   showTreeDialog.value = false
 }
 
+async function scrollNodeToCenter(path: string) {
+  const container = document.querySelector('.tree-container')
+  if (!container || !treeRef.value) return
+
+  // 优先通过高亮类找到当前选中节点
+  const treeEl = treeRef.value.$el as HTMLElement
+  let nodeEl = treeEl.querySelector('.is-current .el-tree-node__content')
+    || treeEl.querySelector(`[data-key="${CSS.escape(path)}"]`)
+  const parts = path.split('/')
+  while (nodeEl?.textContent !== parts[parts.length - 1]) {
+    await new Promise(resolve => setTimeout(resolve, 50))
+    nodeEl = treeEl.querySelector('.is-current .el-tree-node__content')
+    || treeEl.querySelector(`[data-key="${CSS.escape(path)}"]`)
+  }
+  if (!nodeEl) return
+
+  const containerRect = container.getBoundingClientRect()
+  const nodeRect = nodeEl.getBoundingClientRect()
+  const offset = nodeRect.top - containerRect.top - containerRect.height / 2 + nodeRect.height / 2
+  let count = 0
+  while (Math.abs(container.scrollTop - offset) > 50 || count > 10) {
+    count++
+    if (offset < 0) {
+      break
+    }
+    container.scrollTop = offset
+    await new Promise(resolve => setTimeout(resolve, 50))
+  }
+  
+}
+
 async function expandTreeNode() {
   const targetPath = props.modelValue
   if (!targetPath || !treeRef.value) return
@@ -143,6 +174,8 @@ async function expandTreeNode() {
     }
     treeRef.value.setCurrentKey(currentPath, true)
   }
+
+  scrollNodeToCenter(targetPath)
 }
 
 onMounted(() => {
