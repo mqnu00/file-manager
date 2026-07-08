@@ -16,7 +16,21 @@ const app = express()
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || '0.0.0.0'
 
-app.use(helmet())
+app.use(
+  helmet({
+    hsts: { maxAge: 0 },
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", 'https://unpkg.com'],
+        upgradeInsecureRequests: null,
+      },
+    },
+  })
+)
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }))
 app.use(express.json({ limit: '10mb' }))
 
@@ -45,19 +59,23 @@ try {
 app.use(errorHandler)
 
 const startServer = (port: number): void => {
-  app.listen(port, HOST, () => {
-    console.log(`🚀 服务器运行在 http://localhost:${port}`)
-    if (isDefaultToken()) {
-      console.warn('\n⚠️  安全提示：您正在使用默认认证令牌 "admin123"，建议立即在 config.yml 中修改。\n')
-    }
-  }).on('error', (err: NodeJS.ErrnoException) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`端口 ${port} 已被占用`)
-      startServer(port + 1)
-    } else {
-      throw err
-    }
-  })
+  app
+    .listen(port, HOST, () => {
+      console.log(`🚀 服务器运行在 http://localhost:${port}`)
+      if (isDefaultToken()) {
+        console.warn(
+          '\n⚠️  安全提示：您正在使用默认认证令牌 "admin123"，建议立即在 config.yml 中修改。\n'
+        )
+      }
+    })
+    .on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`端口 ${port} 已被占用`)
+        startServer(port + 1)
+      } else {
+        throw err
+      }
+    })
 }
 
 startServer(Number(PORT))

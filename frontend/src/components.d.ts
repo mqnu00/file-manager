@@ -15,8 +15,6 @@ declare module 'vue' {
     CreateFolderDialog: typeof import('./components/dialogs/CreateFolderDialog.vue')['default']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
-    ElDescriptions: typeof import('element-plus/es')['ElDescriptions']
-    ElDescriptionsItem: typeof import('element-plus/es')['ElDescriptionsItem']
     ElDialog: typeof import('element-plus/es')['ElDialog']
     ElDivider: typeof import('element-plus/es')['ElDivider']
     ElForm: typeof import('element-plus/es')['ElForm']
