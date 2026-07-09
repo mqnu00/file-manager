@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import crypto from 'crypto'
 import { getConfig } from '../config'
+import { log } from '../utils/logger'
 
 interface SessionEntry {
   createdAt: number
@@ -45,11 +46,13 @@ function generateToken(length: number): string {
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    log('WARNING', 'auth', `未提供认证令牌 - ${req.ip}`)
     res.status(401).json({ error: '未提供认证令牌' })
     return
   }
   const token = authHeader.slice(7)
   if (!validateSession(token)) {
+    log('WARNING', 'auth', `令牌无效或已过期 - ${req.ip}`)
     res.status(401).json({ error: '令牌无效或已过期，请重新登录' })
     return
   }

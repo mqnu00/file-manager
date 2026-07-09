@@ -441,6 +441,77 @@ html.cyber .el-tag--danger {
   --el-tag-text-color: #f36;
 }
 
+html.cyber .el-tag--info {
+  --el-tag-bg-color: rgb(0 240 255 / 10%);
+  --el-tag-border-color: rgb(0 240 255 / 30%);
+  --el-tag-text-color: var(--app-accent);
+}
+
+html.cyber .el-tag--warning {
+  --el-tag-bg-color: rgb(255 165 0 / 12%);
+  --el-tag-border-color: rgb(255 165 0 / 40%);
+  --el-tag-text-color: #ffa500;
+}
+
+/* el-pagination */
+html.cyber .el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--app-text);
+  --el-pagination-button-bg-color: var(--app-panel-solid);
+  --el-pagination-button-color: var(--app-text);
+  --el-pagination-hover-color: var(--app-accent);
+}
+
+html.cyber .el-pagination .el-pager li {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+html.cyber .el-pagination .el-pager li.is-active {
+  background: var(--app-accent-bg) !important;
+  color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+}
+
+html.cyber .el-pagination .btn-prev,
+html.cyber .el-pagination .btn-next {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+/* el-table */
+html.cyber .el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--app-panel-solid);
+  --el-table-header-text-color: var(--app-text);
+  --el-table-text-color: var(--app-text);
+  --el-table-border-color: var(--app-border);
+  --el-table-row-hover-bg-color: var(--app-accent-bg);
+  --el-table-current-row-bg-color: var(--app-accent-bg);
+  --el-table-expanded-cell-bg-color: transparent;
+}
+
+html.cyber .el-table th.el-table__cell {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.cyber .el-table td.el-table__cell {
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.cyber .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: rgba(10, 18, 40, 50%) !important;
+}
+
+html.cyber .el-table__empty-text {
+  color: var(--app-text-dim) !important;
+}
+
 /* el-table 选中行 */
 html.cyber .el-table__row.current > td {
   background: var(--app-accent-bg) !important;

@@ -7,6 +7,7 @@ import { FileInfo, SSEProgressMessage } from '../types'
 import { safePath, calculateDirSize, getStorageRoot } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
 import { AppError } from '../utils/AppError'
+import { log } from '../utils/logger'
 
 /**
  * 获取文件列表
@@ -20,7 +21,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
   }
 
   const files = fs.readdirSync(targetPath, { withFileTypes: true })
-  const fileList: FileInfo[] = files.map(file => {
+  const fileList: FileInfo[] = files.map((file) => {
     const filePath = path.join(targetPath, file.name)
     const relativePath = path.relative(getStorageRoot(), filePath)
     const lstat = fs.lstatSync(filePath)
@@ -32,7 +33,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
         path: relativePath.replace(/\\/g, '/'),
         isDirectory: file.isDirectory(),
         size: stats.size,
-        modified: stats.mtime.toISOString()
+        modified: stats.mtime.toISOString(),
       }
     } catch (e: any) {
       if (e.code === 'ENOENT') {
@@ -42,7 +43,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
           isDirectory: file.isDirectory(),
           size: lstat.size,
           modified: lstat.mtime.toISOString(),
-          broken: true
+          broken: true,
         }
       }
       throw e
@@ -58,14 +59,18 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
 
   return {
     path: userPath || '',
-    files: fileList
+    files: fileList,
   }
 }
 
 /**
  * 压缩文件夹（使用 SSE 发送进度）
  */
-export const zipFolder = async (folderPath: string, res: Response, activeArchives: Record<string, archiver.Archiver>): Promise<void> => {
+export const zipFolder = async (
+  folderPath: string,
+  res: Response,
+  activeArchives: Record<string, archiver.Archiver>
+): Promise<void> => {
   const folderFullPath = safePath(folderPath)
 
   if (!fs.existsSync(folderFullPath)) {
@@ -122,7 +127,10 @@ export const zipFolder = async (folderPath: string, res: Response, activeArchive
 /**
  * 取消压缩任务
  */
-export const cancelZip = (folderPath: string, activeArchives: Record<string, archiver.Archiver>): boolean => {
+export const cancelZip = (
+  folderPath: string,
+  activeArchives: Record<string, archiver.Archiver>
+): boolean => {
   const archive = activeArchives[folderPath]
   if (!archive) {
     return false
@@ -135,11 +143,8 @@ export const cancelZip = (folderPath: string, activeArchives: Record<string, arc
 /**
  * 移动文件（使用 SSE 发送进度）
  */
-export const moveFile = (
-  fromPath: string,
-  toPath: string,
-  res: Response
-): void => {
+export const moveFile = (fromPath: string, toPath: string, res: Response): void => {
+  console.log('???')
   const decodedFromPath = decodeURIComponent(fromPath)
   const decodedToPath = decodeURIComponent(toPath)
 
@@ -147,12 +152,15 @@ export const moveFile = (
   const toFullPath = safePath(decodedToPath)
 
   if (fromFullPath === toFullPath) {
+    log('WARNING', 'move', `源和目标路径相同: ${decodedFromPath}`)
     throw new AppError('源文件和目标路径相同')
   }
 
   if (!fs.existsSync(fromFullPath)) {
     throw new AppError('源文件不存在')
   }
+
+  log('INFO', 'move', `${decodedFromPath} → ${decodedToPath}`)
 
   const stats = fs.statSync(fromFullPath)
   const fileSize = stats.size
@@ -306,6 +314,7 @@ export const renameFile = (filePath: string, newName: string): void => {
   }
 
   fs.renameSync(oldFullPath, newFullPath)
+  log('INFO', 'rename', `${filePath} → ${newName}`)
 }
 
 /**
@@ -319,9 +328,12 @@ export const deleteFile = (filePath: string): void => {
   }
 
   fs.rmSync(fullPath, { recursive: true, force: true })
+  log('INFO', 'delete', filePath)
 }
 
-export const deleteFiles = (filePaths: string[]): { success: number; failed: { path: string; message: string }[] } => {
+export const deleteFiles = (
+  filePaths: string[]
+): { success: number; failed: { path: string; message: string }[] } => {
   let success = 0
   const failed: { path: string; message: string }[] = []
 
@@ -339,6 +351,13 @@ export const deleteFiles = (filePaths: string[]): { success: number; failed: { p
     }
   }
 
+  if (success > 0) log('INFO', 'delete', `批量删除 ${success} 个文件`)
+  if (failed.length > 0)
+    log(
+      'WARNING',
+      'delete',
+      `批量删除失败 ${failed.length} 个: ${failed.map((f) => f.path).join(', ')}`
+    )
   return { success, failed }
 }
 
@@ -358,4 +377,5 @@ export const createFolder = (parentPath: string | undefined, name: string): void
   }
 
   fs.mkdirSync(newFolderPath, { recursive: true })
+  log('INFO', 'createFolder', `${parentPath || '/'}/${name}`)
 }

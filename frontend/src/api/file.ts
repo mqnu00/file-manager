@@ -168,4 +168,22 @@ export const renameFile = (path: string, newName: string): Promise<{ success: bo
   return api.put('/files/rename', { path, newName }).then((res) => res.data)
 }
 
+export interface LogQueryParams {
+  date?: string
+  level?: string
+  action?: string
+  keyword?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface LogQueryResponse {
+  logs: string[]
+  total: number
+}
+
+export const getLogs = (params: LogQueryParams = {}): Promise<LogQueryResponse> => {
+  return api.get('/logs', { params }).then((res) => res.data)
+}
+
 export default api

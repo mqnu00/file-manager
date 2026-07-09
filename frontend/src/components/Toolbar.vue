@@ -44,6 +44,9 @@
         <el-button size="small" @click="router.push('/system')">
           <el-icon><Monitor /></el-icon>
         </el-button>
+        <el-button size="small" @click="router.push('/logs')">
+          <el-icon><Document /></el-icon>
+        </el-button>
         <el-button size="small" @click="router.push('/config')">
           <el-icon><Setting /></el-icon>
         </el-button>
@@ -121,6 +124,7 @@ import {
   Setting,
   Monitor,
   Edit,
+  Document,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 

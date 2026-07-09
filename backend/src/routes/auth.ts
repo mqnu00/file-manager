@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { getConfig } from '../config'
 import { createSession, validateSession, destroySession, getTokenFromHeader } from '../middleware/auth'
+import { log } from '../utils/logger'
 
 const router = Router()
 
@@ -25,11 +26,13 @@ router.post('/login', loginLimiter, (req: Request, res: Response) => {
   const config = getConfig()
   if (token !== config.auth.token) {
     const remaining = (req as any).rateLimit?.remaining ?? 0
+    log('WARNING', 'login', `令牌错误 - ${req.ip}`)
     res.status(401).json({ error: '令牌错误', remaining })
     return
   }
 
   const sessionId = createSession()
+  log('INFO', 'login', `登录成功 - ${req.ip}`)
   res.json({
     success: true,
     sessionToken: sessionId,
