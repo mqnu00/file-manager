@@ -1,6 +1,6 @@
 {
   "name": "file-manager-backend",
-  "version": "2.4.3",
+  "version": "2.5.0",
   "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node src/app.ts",
