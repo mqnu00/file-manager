@@ -144,7 +144,6 @@ export const cancelZip = (
  * 移动文件（使用 SSE 发送进度）
  */
 export const moveFile = (fromPath: string, toPath: string, res: Response): void => {
-  console.log('???')
   const decodedFromPath = decodeURIComponent(fromPath)
   const decodedToPath = decodeURIComponent(toPath)
 
