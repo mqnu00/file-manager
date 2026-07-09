@@ -180,7 +180,31 @@
 
 ---
 
-### 2. 下载文件
+### 2. 计算文件夹大小
+
+异步计算指定文件夹的总大小。
+
+- **接口**: `GET /api/files/dirsize`
+- **参数**:
+  | 参数 | 类型 | 必填 | 说明 |
+  |------|------|------|------|
+  | `path` | string | 是 | 要计算大小的文件夹路径 |
+
+- **请求示例**:
+  ```bash
+  GET /api/files/dirsize?path=/documents
+  ```
+
+- **响应示例**:
+  ```json
+  {
+    "size": 1048576
+  }
+  ```
+
+---
+
+### 3. 下载文件
 
 下载指定文件。
 
@@ -198,7 +222,7 @@
 
 ---
 
-### 3. 压缩文件夹
+### 4. 压缩文件夹
 
 将指定文件夹压缩为 zip 文件，使用 SSE 发送压缩进度。
 
@@ -229,7 +253,7 @@
 
 ---
 
-### 4. 取消压缩
+### 5. 取消压缩
 
 取消正在进行的压缩任务。
 
@@ -250,11 +274,11 @@
 
 ---
 
-### 5. 移动文件/文件夹
+### 6. 移动文件/文件夹
 
 移动文件或文件夹到指定位置。
 
-- **接口**: `PUT /api/files/move`
+- **接口**: `POST /api/files/move`
 - **请求体**:
   | 参数 | 类型 | 必填 | 说明 |
   |------|------|------|------|
@@ -278,7 +302,7 @@
 
 ---
 
-### 6. 重命名文件/文件夹
+### 7. 重命名文件/文件夹
 
 重命名文件或文件夹。
 
@@ -306,7 +330,7 @@
 
 ---
 
-### 7. 删除文件/文件夹
+### 8. 删除文件/文件夹
 
 删除指定的文件或文件夹（支持递归删除）。
 
@@ -330,7 +354,7 @@
 
 ---
 
-### 8. 批量删除文件/文件夹
+### 9. 批量删除文件/文件夹
 
 批量删除多个文件或文件夹（支持递归删除）。
 
@@ -372,7 +396,7 @@
 
 ## 文件夹接口
 
-### 8. 创建文件夹
+### 创建文件夹
 
 在指定路径创建新文件夹。
 
@@ -461,7 +485,21 @@
         "used": 250053931008,
         "totalFormatted": "465.8 GB",
         "freeFormatted": "232.9 GB",
-        "usedFormatted": "232.9 GB"
+        "usedFormatted": "232.9 GB",
+        "partitions": [
+          {
+            "mountpoint": "/",
+            "totalFormatted": "200 GB",
+            "usedFormatted": "100 GB",
+            "percent": 50
+          },
+          {
+            "mountpoint": "/home",
+            "totalFormatted": "265.8 GB",
+            "usedFormatted": "132.9 GB",
+            "percent": 50
+          }
+        ]
       },
       {
         "device": "/dev/sdb",
@@ -496,6 +534,60 @@
   | `disk.mountpoint` | string | 主挂载点（第一个挂载点） |
   | `disk.mountpoints` | string[] | 所有挂载点列表（排除 SWAP） |
   | `disk.fstype` | string | 文件系统类型，如 `ext4`、`xfs` |
+  | `disk.partitions` | array | 各分区详情列表 |
+  | `disk.partitions[].mountpoint` | string | 分区挂载点 |
+  | `disk.partitions[].totalFormatted` | string | 分区总容量（格式化） |
+  | `disk.partitions[].usedFormatted` | string | 分区已用容量（格式化） |
+  | `disk.partitions[].percent` | number | 分区使用率百分比 |
+
+---
+
+## 日志接口
+
+所有日志接口均需认证。日志按天存储在 `logs/YYYY-MM-DD.log` 文件中。
+
+### 1. 查询日志
+
+获取指定日期的操作日志，支持按级别、操作类型、关键词筛选。
+
+- **接口**: `GET /api/logs`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **参数**:
+  | 参数 | 类型 | 必填 | 说明 |
+  |------|------|------|------|
+  | `date` | string | 否 | 查询日期，格式 `YYYY-MM-DD`，默认当天 |
+  | `level` | string | 否 | 日志级别筛选：`INFO`、`WARNING`、`ERROR` |
+  | `action` | string | 否 | 操作类型筛选：`move`、`copy`、`delete`、`rename`、`createFolder`、`login`、`auth` |
+  | `keyword` | string | 否 | 关键词搜索（匹配日志内容） |
+  | `page` | number | 否 | 页码，默认 `1` |
+  | `pageSize` | number | 否 | 每页条数，默认 `50`，最大 `200` |
+
+- **请求示例**:
+  ```bash
+  GET /api/logs?date=2026-07-08&level=INFO&action=move&page=1&pageSize=20
+  ```
+
+- **响应示例**:
+  ```json
+  {
+    "logs": [
+      "[2026-07-08 06:30:22 UTC] [INFO] [move] /documents/file.txt → /backup/file.txt",
+      "[2026-07-08 06:31:15 UTC] [INFO] [delete] /documents/old.txt"
+    ],
+    "total": 2
+  }
+  ```
+
+- **日志格式**:
+  ```text
+  [YYYY-MM-DD HH:mm:ss UTC] [级别] [操作] 详情
+  ```
+
+- **字段说明**:
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `logs` | string[] | 日志行数组（已按筛选条件过滤） |
+  | `total` | number | 符合条件的日志总条数（用于分页） |
 
 ---
 
