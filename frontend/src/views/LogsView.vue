@@ -181,19 +181,18 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 40px;
+  padding: 40px;
   min-height: calc(100vh - 60px);
-  overflow-y: auto;
 }
 
 .logs-card {
-  width: 900px;
+  width: 100%;
+  max-width: 1400px;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
-  margin-bottom: 40px;
 }
 
 .back-btn {
