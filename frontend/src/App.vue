@@ -505,7 +505,7 @@ html.cyber .el-table td.el-table__cell {
 }
 
 html.cyber .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background: rgba(10, 18, 40, 50%) !important;
+  background: rgb(10 18 40 / 50%) !important;
 }
 
 html.cyber .el-table__empty-text {
@@ -549,7 +549,7 @@ html.cyber .el-button.is-text:not(.is-disabled):hover {
 html.cyber input:-webkit-autofill,
 html.cyber input:-webkit-autofill:hover,
 html.cyber input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
+  box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
   -webkit-text-fill-color: var(--app-text-bright) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
