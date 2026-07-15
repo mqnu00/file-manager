@@ -14,7 +14,9 @@
         </div>
 
         <div class="filter-bar">
-          <el-date-picker
+          <div>
+            <div style=" display: flex; gap: 10px;">
+              <el-date-picker
             v-model="filterDateRange"
             type="daterange"
             range-separator="至"
@@ -24,7 +26,7 @@
             value-format="YYYY-MM-DD"
             :disabled-date="disabledDate"
             size="default"
-            style="width: 260px"
+            style="max-width: 260px"
           />
           <el-select v-model="filterLevel" placeholder="级别" clearable size="default" style="width: 100px">
             <el-option label="INFO" value="INFO" />
@@ -48,7 +50,11 @@
             style="width: 200px"
             @keyup.enter="fetchLogs"
           />
-          <el-button type="primary" @click="fetchLogs">搜索</el-button>
+            </div>
+          </div>
+          <div>
+            <el-button type="primary" @click="fetchLogs">搜索</el-button>
+          </div>
         </div>
 
         <el-table v-loading="loading" :data="logs" stripe style="width: 100%" max-height="calc(100vh - 280px)">
@@ -187,7 +193,6 @@ onMounted(() => {
 
 .logs-card {
   width: 100%;
-  max-width: 1400px;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;
@@ -216,6 +221,7 @@ onMounted(() => {
   margin-bottom: 16px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
 }
 
 .pagination-wrapper {
