@@ -10,6 +10,35 @@ import { AppError } from '../utils/AppError'
 import { log } from '../utils/logger'
 
 /**
+ * 判断路径是否属于虚拟文件系统（/proc、/sys）
+ * 这些文件系统中的文件大小不可靠（如 /proc/kcore 会报告 128TB）
+ */
+const isVirtualFs = (p: string): boolean => {
+  return p.startsWith('/proc/') || p.startsWith('/sys/') || p === '/proc' || p === '/sys'
+}
+
+/**
+ * 获取安全的文件大小
+ * - 非普通文件（设备文件、FIFO、socket 等）返回 0
+ * - 虚拟文件系统中的文件返回 0（大小无实际意义）
+ * - 符号链接指向虚拟文件系统的也返回 0
+ */
+const getSafeSize = (filePath: string, stats: fs.Stats): number => {
+  // 目录：返回目录条目本身的大小（正常行为）
+  if (stats.isDirectory()) return stats.size
+  // 非普通文件（设备、FIFO、socket 等）：大小无意义
+  if (!stats.isFile()) return 0
+  // 检查真实路径（跟随符号链接后）是否在虚拟文件系统中
+  try {
+    const realPath = fs.realpathSync(filePath)
+    if (isVirtualFs(realPath)) return 0
+  } catch {
+    // realpathSync 失败时保持原大小
+  }
+  return stats.size
+}
+
+/**
  * 获取文件列表
  */
 export const getFileList = (queryPath: string | undefined): { path: string; files: FileInfo[] } => {
@@ -32,7 +61,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
         name: file.name,
         path: relativePath.replace(/\\/g, '/'),
         isDirectory: file.isDirectory(),
-        size: stats.size,
+        size: getSafeSize(filePath, stats),
         modified: stats.mtime.toISOString(),
       }
     } catch (e: any) {

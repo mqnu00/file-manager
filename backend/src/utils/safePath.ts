@@ -51,6 +51,10 @@ export const safePath = (userPath: string): string => {
  * @param dir 目录路径
  * @returns 目录总字节数
  */
+const isVirtualFs = (p: string): boolean => {
+  return p.startsWith('/proc/') || p.startsWith('/sys/') || p === '/proc' || p === '/sys'
+}
+
 export const calculateDirSize = async (dir: string): Promise<number> => {
   let totalBytes = 0
 
@@ -62,9 +66,18 @@ export const calculateDirSize = async (dir: string): Promise<number> => {
         const stat = await fs.promises.stat(filePath)
         if (stat.isDirectory()) {
           await walkDir(filePath)
-        } else {
-          totalBytes += stat.size
+        } else if (stat.isFile()) {
+          // 跳过虚拟文件系统中的文件（大小不可靠）
+          try {
+            const realPath = await fs.promises.realpath(filePath)
+            if (!isVirtualFs(realPath)) {
+              totalBytes += stat.size
+            }
+          } catch {
+            totalBytes += stat.size
+          }
         }
+        // 非普通文件（设备文件等）不计算大小
       } catch (e: any) {
         if (e.code === 'ENOENT') continue
         throw e
