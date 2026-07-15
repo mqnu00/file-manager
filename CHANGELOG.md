@@ -1,5 +1,33 @@
 # 变更日志
 
+## v2.5.1 (2026-07-15)
+
+### ✨ 新增功能
+
+#### 日志查询增强
+
+- 后端新增 `GET /api/logs/dates` 接口，返回有日志的日期列表
+- 后端 `GET /api/logs` 支持 `startDate`/`endDate` 参数进行区间查询
+- 前端日志页面单日期选择器改为日期区间选择器（daterange）
+- 前端通过 `disabledDate` 禁用无日志日期（本地时间格式化修复时区偏移）
+
+### 🔧 工程改进
+
+#### 跨平台适配（Windows 兼容性）
+
+- 后端引入 `systeminformation` 依赖，替代所有 `execSync` Linux 专有命令调用
+- `system.ts` 重构：`lscpu`/`sysctl`/`df`/`lsblk` 替换为跨平台 API
+- CPU 频率四级回退链：`si.speed` → `si.speedMax` → `lscpu`(Linux) → `os.cpus()`
+- 磁盘设备路径按平台适配（Linux `/dev/sda`，Windows `C:`）
+- `safePath.ts` 默认回退路径 `'/'` → `process.cwd()`，`startsWith('/')` → `path.isAbsolute()`
+- `config.ts` `storageRoot` 默认值 `'/'` → `process.cwd()`
+
+### 📝 文档
+
+- 更新 API 文档，补充日志区间查询和可用日期接口说明
+
+---
+
 ## v2.5.0 (2026-07-08)
 
 ### ✨ 新增功能
