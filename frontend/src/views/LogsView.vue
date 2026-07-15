@@ -41,6 +41,7 @@
             <el-option label="创建文件夹" value="createFolder" />
             <el-option label="登录" value="login" />
             <el-option label="认证" value="auth" />
+            <el-option label="其他" value="other" />
           </el-select>
           <el-input
             v-model="filterKeyword"

@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
 import { AppError } from '../utils/AppError'
+import { log } from '../utils/logger'
 
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
   console.error(`${req.method} ${req.path}:`, err.message)
+  log('ERROR', 'other', `${req.method} ${req.path}: ${err.message}`)
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ message: err.message })
   } else {

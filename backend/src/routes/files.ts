@@ -11,6 +11,7 @@ import {
 import { asyncHandler } from '../middleware/asyncHandler';
 import { safePath, calculateDirSize } from '../utils/safePath';
 import { AppError } from '../utils/AppError';
+import { log } from '../utils/logger';
 
 const router = express.Router();
 
@@ -31,9 +32,8 @@ router.get(
  * 压缩文件夹（使用 SSE 发送进度）
  */
 router.get('/zip', async (req: Request, res: Response) => {
+  const folderPath = req.query.path as string
   try {
-    const folderPath = req.query.path as string;
-
     if (!folderPath) {
       return res.status(400).json({ message: '缺少文件夹路径' });
     }
@@ -45,8 +45,10 @@ router.get('/zip', async (req: Request, res: Response) => {
 
     await fileService.zipFolder(folderPath, res, activeArchives);
   } catch (e) {
-    console.error('压缩失败:', e);
-    res.status(500).json({ message: e instanceof Error ? e.message : '压缩失败' });
+    const errMsg = e instanceof Error ? e.message : '未知错误'
+    console.error('压缩失败:', e)
+    log('ERROR', 'other', `压缩失败 ${folderPath}: ${errMsg}`)
+    res.status(500).json({ message: errMsg })
   }
 });
 
