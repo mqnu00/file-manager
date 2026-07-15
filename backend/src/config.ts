@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import yaml from 'js-yaml'
 
@@ -12,7 +13,8 @@ export interface AppConfig {
   storageRoot: string
 }
 
-const CONFIG_PATH = path.join(__dirname, '../config.yml')
+const CONFIG_PATH = process.env.CONFIG_PATH
+  || path.join(__dirname, '../config.yml')
 
 const DEFAULT_CONFIG: AppConfig = {
   auth: {

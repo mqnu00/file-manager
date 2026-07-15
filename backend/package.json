@@ -1,11 +1,22 @@
 {
-  "name": "file-manager-backend",
+  "name": "@mqn00/file-manager",
   "version": "2.5.1",
   "main": "dist/app.js",
+  "bin": {
+    "file-manager": "dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "ts-node src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
+    "prepublishOnly": "npm --prefix ../frontend run build && npm run build",
     "lint": "eslint src/ --ext .ts --fix",
     "lint:check": "eslint src/ --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",

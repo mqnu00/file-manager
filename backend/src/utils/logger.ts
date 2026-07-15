@@ -1,7 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
-const LOG_DIR = path.join(__dirname, '../../logs')
+const LOG_DIR = process.env.LOG_DIR
+  || path.join(__dirname, '../../logs')
 
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) {
