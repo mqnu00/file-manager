@@ -5,10 +5,10 @@ const path = require('path')
 const args = process.argv.slice(2)
 const versionType = args[0] || 'patch' // patch, minor, major
 
-const packageJsonPath = path.join(__dirname, '..', 'package.json')
-const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+const rootPkgPath = path.join(__dirname, '..', 'package.json')
+const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf-8'))
 
-const [major, minor, patch] = pkg.version.split('.').map(Number)
+const [major, minor, patch] = rootPkg.version.split('.').map(Number)
 
 let newVersion
 switch (versionType) {
@@ -24,10 +24,16 @@ switch (versionType) {
     break
 }
 
-pkg.version = newVersion
-fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2))
+rootPkg.version = newVersion
+fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2))
 
-console.log(`📦 版本已更新到 v${newVersion}`)
+// 同步更新 backend/package.json 版本
+const backendPkgPath = path.join(__dirname, '..', 'backend', 'package.json')
+const backendPkg = JSON.parse(fs.readFileSync(backendPkgPath, 'utf-8'))
+backendPkg.version = newVersion
+fs.writeFileSync(backendPkgPath, JSON.stringify(backendPkg, null, 2))
+
+console.log(`📦 版本已更新到 v${newVersion}（根 package.json + backend/package.json）`)
 
 // 生成 changelog
 const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md')
@@ -45,7 +51,7 @@ console.log('📝 CHANGELOG.md 已更新')
 
 // Git 操作
 try {
-  execSync(`git add package.json CHANGELOG.md`, { stdio: 'inherit' })
+  execSync(`git add package.json backend/package.json CHANGELOG.md`, { stdio: 'inherit' })
   execSync(`git commit -m "chore: release v${newVersion}"`, { stdio: 'inherit' })
   execSync(`git tag v${newVersion}`, { stdio: 'inherit' })
   console.log('✅ Git 提交和标签已创建')
