@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "main": "dist/app.js",
   "bin": {
     "file-manager": "dist/cli.js"

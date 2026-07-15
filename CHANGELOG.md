@@ -1,3 +1,19 @@
+## v2.6.0 (2026-07-15)
+
+### ✨ 新增功能
+
+#### npm 包发布支持
+
+- 新增 CLI 入口 `backend/src/cli.ts`，支持 `file-manager` 全局命令（`-p`/`-c`/`-d`/`--daemon` 等选项）
+- 新增 `backend/README.md`，提供 npm 安装和使用说明
+- `backend/package.json` 配置 `bin`、`files`、`prepublishOnly` 等发布字段
+- 新增 `.github/workflows/publish.yml`，推送 `v*` 标签时自动 `npm publish` 至 `@mqn00/file-manager`
+- `scripts/release.js` 版本 bump 同步更新 `backend/package.json`
+
+### 🔧 工程改进
+
+- Node.js 最低版本要求从 >= 18 提升至 >= 22
+
 # 变更日志
 
 ## v2.5.1 (2026-07-15)
