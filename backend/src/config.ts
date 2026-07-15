@@ -19,7 +19,7 @@ const DEFAULT_CONFIG: AppConfig = {
     token: 'admin123',
     tokenExpiryHours: 24
   },
-  storageRoot: process.env.FILE_MANAGER_BASE_DIR || '/'
+  storageRoot: process.env.FILE_MANAGER_BASE_DIR || process.cwd()
 }
 
 function ensureConfig(): void {

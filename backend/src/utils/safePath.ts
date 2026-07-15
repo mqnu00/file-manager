@@ -20,7 +20,7 @@ function getBaseDir(): string {
     }
     return resolved
   }
-  return '/'
+  return process.cwd()
 }
 
 export function getStorageRoot(): string {
@@ -35,8 +35,8 @@ export function getStorageRoot(): string {
 export const safePath = (userPath: string): string => {
   const BASE_DIR = getBaseDir()
 
-  if (BASE_DIR === '/') {
-    const normalizedPath = userPath.startsWith('/') ? userPath : '/' + userPath
+  if (path.normalize(BASE_DIR) === path.resolve('/')) {
+    const normalizedPath = path.isAbsolute(userPath) ? userPath : path.posix.join('/', userPath)
     return path.normalize(normalizedPath)
   }
   const resolved = path.join(BASE_DIR, userPath)
