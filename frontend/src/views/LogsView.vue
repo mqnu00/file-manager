@@ -15,13 +15,16 @@
 
         <div class="filter-bar">
           <el-date-picker
-            v-model="filterDate"
-            type="date"
-            placeholder="选择日期"
+            v-model="filterDateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DD"
-            :clearable="false"
+            :disabled-date="disabledDate"
             size="default"
+            style="width: 260px"
           />
           <el-select v-model="filterLevel" placeholder="级别" clearable size="default" style="width: 100px">
             <el-option label="INFO" value="INFO" />
@@ -79,7 +82,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Document, ArrowLeft } from '@element-plus/icons-vue'
-import { getLogs } from '@/api/file'
+import { getLogs, getAvailableLogDates } from '@/api/file'
 
 const router = useRouter()
 
@@ -96,10 +99,32 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(50)
 
-const filterDate = ref(new Date().toISOString().split('T')[0])
+const filterDateRange = ref<[string, string]>([
+  new Date().toISOString().split('T')[0],
+  new Date().toISOString().split('T')[0],
+])
 const filterLevel = ref('')
 const filterAction = ref('')
 const filterKeyword = ref('')
+
+const availableDates = ref<Set<string>>(new Set())
+
+const disabledDate = (date: Date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const dateStr = `${y}-${m}-${d}`
+  return !availableDates.value.has(dateStr)
+}
+
+const fetchAvailableDates = async () => {
+  try {
+    const res = await getAvailableLogDates()
+    availableDates.value = new Set(res.dates)
+  } catch {
+    availableDates.value = new Set()
+  }
+}
 
 const parseLogLine = (line: string): LogItem => {
   // [2026-07-08 06:30:22 UTC] [INFO] [move] detail
@@ -125,8 +150,10 @@ const levelTagType = (level: string) => {
 const fetchLogs = async () => {
   loading.value = true
   try {
+    const [startDate, endDate] = filterDateRange.value
     const res = await getLogs({
-      date: filterDate.value,
+      startDate,
+      endDate,
       level: filterLevel.value || undefined,
       action: filterAction.value || undefined,
       keyword: filterKeyword.value || undefined,
@@ -143,7 +170,10 @@ const fetchLogs = async () => {
   }
 }
 
-onMounted(fetchLogs)
+onMounted(() => {
+  fetchAvailableDates()
+  fetchLogs()
+})
 </script>
 
 <style scoped>

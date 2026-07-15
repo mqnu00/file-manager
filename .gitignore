@@ -41,3 +41,4 @@ backend/files/
 # agent
 .mimocode/
 .qwen/
+.sema/

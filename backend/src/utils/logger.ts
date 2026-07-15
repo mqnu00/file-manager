@@ -46,3 +46,47 @@ export function readLogs(date: string, filters?: LogFilters): string[] {
     return true
   })
 }
+
+/**
+ * 扫描日志目录，返回所有可用日志文件的日期列表
+ */
+export function getAvailableDates(): string[] {
+  ensureLogDir()
+  const files = fs.readdirSync(LOG_DIR)
+  const datePattern = /^\d{4}-\d{2}-\d{2}\.log$/
+  return files
+    .filter((f) => datePattern.test(f))
+    .map((f) => f.replace(/\.log$/, ''))
+    .sort()
+}
+
+/**
+ * 生成从 start 到 end 范围内的所有日期字符串（含起止）
+ */
+function getDateRange(start: string, end: string): string[] {
+  const dates: string[] = []
+  const startDate = new Date(start + 'T00:00:00Z')
+  const endDate = new Date(end + 'T00:00:00Z')
+  const current = new Date(startDate)
+  while (current <= endDate) {
+    const y = current.getUTCFullYear()
+    const m = String(current.getUTCMonth() + 1).padStart(2, '0')
+    const d = String(current.getUTCDate()).padStart(2, '0')
+    dates.push(`${y}-${m}-${d}`)
+    current.setUTCDate(current.getUTCDate() + 1)
+  }
+  return dates
+}
+
+/**
+ * 按日期范围查询日志，日期格式 YYYY-MM-DD
+ */
+export function readLogsByRange(startDate: string, endDate: string, filters?: LogFilters): string[] {
+  const dateRange = getDateRange(startDate, endDate)
+  const allLogs: string[] = []
+  for (const date of dateRange) {
+    const logs = readLogs(date, filters)
+    allLogs.push(...logs)
+  }
+  return allLogs
+}

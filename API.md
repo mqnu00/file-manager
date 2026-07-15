@@ -548,14 +548,16 @@
 
 ### 1. 查询日志
 
-获取指定日期的操作日志，支持按级别、操作类型、关键词筛选。
+获取指定日期或日期范围内的操作日志，支持按级别、操作类型、关键词筛选。
 
 - **接口**: `GET /api/logs`
 - **请求头**: `Authorization: Bearer <sessionToken>`
 - **参数**:
   | 参数 | 类型 | 必填 | 说明 |
   |------|------|------|------|
-  | `date` | string | 否 | 查询日期，格式 `YYYY-MM-DD`，默认当天 |
+  | `date` | string | 否 | 查询日期，格式 `YYYY-MM-DD`，默认当天。当使用 `startDate` 时忽略此参数 |
+  | `startDate` | string | 否 | 查询起始日期，格式 `YYYY-MM-DD`，与 `endDate` 配合实现区间查询 |
+  | `endDate` | string | 否 | 查询结束日期，格式 `YYYY-MM-DD`，不传时与 `startDate` 相同 |
   | `level` | string | 否 | 日志级别筛选：`INFO`、`WARNING`、`ERROR` |
   | `action` | string | 否 | 操作类型筛选：`move`、`copy`、`delete`、`rename`、`createFolder`、`login`、`auth` |
   | `keyword` | string | 否 | 关键词搜索（匹配日志内容） |
@@ -564,7 +566,11 @@
 
 - **请求示例**:
   ```bash
+  # 单日期查询
   GET /api/logs?date=2026-07-08&level=INFO&action=move&page=1&pageSize=20
+
+  # 区间查询
+  GET /api/logs?startDate=2026-07-01&endDate=2026-07-08&level=ERROR
   ```
 
 - **响应示例**:
@@ -588,6 +594,31 @@
   |------|------|------|
   | `logs` | string[] | 日志行数组（已按筛选条件过滤） |
   | `total` | number | 符合条件的日志总条数（用于分页） |
+
+### 2. 获取可用日期列表
+
+获取日志目录中所有存在日志文件的日期列表。
+
+- **接口**: `GET /api/logs/dates`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **参数**: 无
+
+- **请求示例**:
+  ```bash
+  GET /api/logs/dates
+  ```
+
+- **响应示例**:
+  ```json
+  {
+    "dates": ["2026-07-01", "2026-07-02", "2026-07-08"]
+  }
+  ```
+
+- **字段说明**:
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `dates` | string[] | 有日志的日期列表（按日期升序） |
 
 ---
 

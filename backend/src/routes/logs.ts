@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express'
-import { readLogs } from '../utils/logger'
+import { readLogs, readLogsByRange, getAvailableDates } from '../utils/logger'
 
 const router = Router()
 
 router.get('/', (req: Request, res: Response) => {
-  const { date, level, action, keyword, page = '1', pageSize = '50' } = req.query as {
+  const { date, startDate, endDate, level, action, keyword, page = '1', pageSize = '50' } = req.query as {
     date?: string
+    startDate?: string
+    endDate?: string
     level?: string
     action?: string
     keyword?: string
@@ -13,8 +15,16 @@ router.get('/', (req: Request, res: Response) => {
     pageSize?: string
   }
 
-  const targetDate = date || new Date().toISOString().split('T')[0]
-  const allLogs = readLogs(targetDate, { level, action, keyword })
+  let allLogs: string[]
+
+  if (startDate) {
+    // 区间查询
+    allLogs = readLogsByRange(startDate, endDate || startDate, { level, action, keyword })
+  } else {
+    // 向后兼容：单日期查询
+    const targetDate = date || new Date().toISOString().split('T')[0]
+    allLogs = readLogs(targetDate, { level, action, keyword })
+  }
 
   const p = Math.max(1, parseInt(page, 10) || 1)
   const ps = Math.min(200, Math.max(1, parseInt(pageSize, 10) || 50))
@@ -22,6 +32,14 @@ router.get('/', (req: Request, res: Response) => {
   const logs = allLogs.slice(start, start + ps)
 
   res.json({ logs, total: allLogs.length })
+})
+
+/**
+ * 获取有日志的日期列表
+ */
+router.get('/dates', (_req: Request, res: Response) => {
+  const dates = getAvailableDates()
+  res.json({ dates })
 })
 
 export default router

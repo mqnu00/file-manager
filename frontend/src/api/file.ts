@@ -170,6 +170,8 @@ export const renameFile = (path: string, newName: string): Promise<{ success: bo
 
 export interface LogQueryParams {
   date?: string
+  startDate?: string
+  endDate?: string
   level?: string
   action?: string
   keyword?: string
@@ -184,6 +186,14 @@ export interface LogQueryResponse {
 
 export const getLogs = (params: LogQueryParams = {}): Promise<LogQueryResponse> => {
   return api.get('/logs', { params }).then((res) => res.data)
+}
+
+export interface AvailableDatesResponse {
+  dates: string[]
+}
+
+export const getAvailableLogDates = (): Promise<AvailableDatesResponse> => {
+  return api.get('/logs/dates').then((res) => res.data)
 }
 
 export default api
