@@ -94,7 +94,7 @@ file-manager/
 
 ### 环境要求
 
-- Node.js >= 18
+- Node.js >= 22
 - npm >= 9
 
 ### 安装依赖
