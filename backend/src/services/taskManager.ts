@@ -515,7 +515,6 @@ async function startCompressTask(taskId: string): Promise<void> {
   const metadata = entry.info.metadata as CompressTaskMetadata
   const { sourcePath, targetPath } = metadata
   const abortSignal = entry.abortController.signal
-  const startTime = now()
 
   try {
     await compressWithCancel(
@@ -528,18 +527,14 @@ async function startCompressTask(taskId: string): Promise<void> {
           metadata.totalBytes = totalBytes
         }
 
-        // 计算速度
-        const elapsed = Math.max(1, now() - startTime) / 1000
-        const speed = processedBytes / elapsed // bytes/s
-
         entry.info.progress = percent
-        entry.info.speed = speed
+        entry.info.speed = 0
         entry.info.totalSize = totalBytes
 
         broadcast(taskId, {
           type: 'progress',
           progress: percent,
-          speed,
+          speed: 0,
           totalSize: totalBytes,
           currentFile: sourcePath,
           completedCount: 0,
