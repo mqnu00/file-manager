@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { pipeline } from 'stream/promises'
+import { PassThrough } from 'stream'
 import archiver from 'archiver'
 import mime from 'mime-types'
 import { Response } from 'express'
@@ -163,7 +164,40 @@ export const cancelZip = (
 }
 
 /**
+ * 递归收集文件夹内所有文件
+ */
+interface FileEntry {
+  filePath: string
+  relativeName: string
+  size: number
+}
+
+async function collectFiles(
+  dir: string,
+  baseName: string,
+  prefix = ''
+): Promise<FileEntry[]> {
+  const result: FileEntry[] = []
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name)
+    const relPath = prefix ? `${prefix}/${entry.name}` : entry.name
+    const zipName = `${baseName}/${relPath}`
+    if (entry.isDirectory()) {
+      result.push(...(await collectFiles(fullPath, baseName, relPath)))
+    } else {
+      try {
+        const stat = await fs.promises.stat(fullPath)
+        result.push({ filePath: fullPath, relativeName: zipName, size: stat.size })
+      } catch { /* skip unreadable files */ }
+    }
+  }
+  return result
+}
+
+/**
  * 带取消信号的压缩（供后台任务系统使用）
+ * 使用手动目录遍历 + PassThrough 计数，实现 per-1MB 真实源数据进度
  * @param sourcePath 源文件夹路径
  * @param targetPath zip 文件目标路径
  * @param abortSignal 取消信号
@@ -177,13 +211,20 @@ export const compressWithCancel = async (
 ): Promise<void> => {
   const sourceFullPath = safePath(sourcePath)
   const targetFullPath = safePath(targetPath)
-  const totalBytes = await calculateDirSize(sourceFullPath)
+  const baseName = path.basename(sourcePath)
+  const THRESHOLD = 1024 * 1024 // 每 1MB 上报一次进度
+
+  // 遍历收集文件列表
+  const files = await collectFiles(sourceFullPath, baseName)
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0)
 
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(targetFullPath)
     const archive = archiver.create('zip', { zlib: { level: 9 } })
     let processedBytes = 0
+    let lastReportedBytes = 0
     let settled = false
+    let activeStream: fs.ReadStream | PassThrough | null = null
 
     const cleanup = () => {
       try {
@@ -196,6 +237,10 @@ export const compressWithCancel = async (
     const onAbort = () => {
       if (settled) return
       settled = true
+      if (activeStream) {
+        activeStream.destroy()
+        activeStream = null
+      }
       archive.abort()
       cleanup()
       reject(new Error('CANCELLED'))
@@ -207,23 +252,6 @@ export const compressWithCancel = async (
     }
 
     abortSignal.addEventListener('abort', onAbort, { once: true })
-
-    archive.on('entry', (entry) => {
-      if (abortSignal.aborted || settled) return
-      if (entry.stats && !entry.stats.isDirectory()) {
-        try {
-          const safeSize = getSafeSize(entry.name, entry.stats)
-          if (safeSize > 0) {
-            processedBytes += safeSize
-          }
-        } catch {
-          // 无法获取安全大小时使用原始大小
-          processedBytes += entry.stats.size
-        }
-        const percent = totalBytes > 0 ? Math.min(99, Math.round((processedBytes / totalBytes) * 100)) : 0
-        onProgress?.(percent, processedBytes, totalBytes)
-      }
-    })
 
     output.on('close', () => {
       if (settled) return
@@ -241,8 +269,72 @@ export const compressWithCancel = async (
     })
 
     archive.pipe(output)
-    archive.directory(sourceFullPath, path.basename(sourcePath))
-    archive.finalize()
+
+    // 逐文件 append（异步 IIFE，串行处理）
+    ;(async () => {
+      try {
+        for (const file of files) {
+          if (abortSignal.aborted || settled) break
+
+          await new Promise<void>((resolveFile, rejectFile) => {
+            const readStream = fs.createReadStream(file.filePath)
+            activeStream = readStream
+
+            const counter = new PassThrough()
+            counter.on('data', (chunk: Buffer) => {
+              processedBytes += chunk.length
+              if (processedBytes - lastReportedBytes >= THRESHOLD) {
+                lastReportedBytes = processedBytes
+                const percent = totalBytes > 0
+                  ? Math.min(99, Math.round((processedBytes / totalBytes) * 100))
+                  : 0
+                onProgress?.(percent, processedBytes, totalBytes)
+              }
+            })
+
+            counter.on('end', () => {
+              activeStream = null
+              // 文件末段可能不足 1MB，补报一次最终进度
+              if (processedBytes > lastReportedBytes) {
+                lastReportedBytes = processedBytes
+                const percent = totalBytes > 0
+                  ? Math.min(99, Math.round((processedBytes / totalBytes) * 100))
+                  : 0
+                onProgress?.(percent, processedBytes, totalBytes)
+              }
+              resolveFile()
+            })
+
+            counter.on('error', (e) => {
+              activeStream = null
+              readStream.destroy()
+              rejectFile(e)
+            })
+
+            readStream.on('error', (e) => {
+              activeStream = null
+              counter.destroy()
+              rejectFile(e)
+            })
+
+            readStream.pipe(counter)
+            archive.append(counter, { name: file.relativeName })
+          })
+        }
+
+        if (!abortSignal.aborted && !settled) {
+          archive.finalize()
+        }
+      } catch (e: any) {
+        if (e.message === 'CANCELLED') return
+        if (!settled) {
+          settled = true
+          abortSignal.removeEventListener('abort', onAbort)
+          cleanup()
+          reject(e)
+        }
+      }
+    })()
   })
 }
 
