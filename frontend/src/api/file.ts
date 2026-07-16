@@ -28,19 +28,6 @@ export const createFolder = (path: string, name: string): Promise<{ success: boo
   return api.post('/folders', { path, name }).then((res) => res.data)
 }
 
-// 移动文件/文件夹（返回 ReadableStream — 内部使用）
-export const moveFile = (fromPath: string, toPath: string): ReadableStream<Uint8Array> | null => {
-  const response = fetch('/api/files/move', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
-    },
-    body: JSON.stringify({ fromPath, toPath }),
-  })
-  return null // Will be handled by moveFileAsync
-}
-
 // 移动文件/文件夹（Promise 版本 + 进度回调 — 给 composable 使用）
 export const moveFileAsync = (
   fromPath: string,
@@ -110,37 +97,100 @@ export const moveFileAsync = (
   })
 }
 
-// 压缩文件夹（返回 EventSource — 内部使用）
-export const zipFolder = (path: string): EventSource => {
-  return new EventSource(`/api/files/zip?path=${encodeURIComponent(path)}`)
-}
-
 // 压缩文件夹（Promise 版本 + 进度回调 — 给 composable 使用）
 export const zipFolderAsync = (
   path: string,
   onProgress?: (progress: number) => void
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const es = zipFolder(path)
+    fetch('/api/files/zip', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
+      },
+      body: JSON.stringify({ path }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('压缩失败')
+        }
+        const reader = response.body?.getReader()
+        if (!reader) {
+          throw new Error('无法读取响应流')
+        }
 
-    es.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      if (data.type === 'progress') {
-        onProgress?.(data.progress)
-      } else if (data.type === 'complete') {
-        es.close()
-        resolve()
-      } else if (data.type === 'error') {
-        es.close()
-        reject(new Error(data.message || '压缩失败'))
-      }
-    }
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-    es.onerror = () => {
-      es.close()
-      reject(new Error('压缩失败，请重试'))
-    }
+        const processStream = (): void => {
+          reader.read().then(({ done, value }) => {
+            if (done) {
+              resolve()
+              return
+            }
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6))
+                  if (data.type === 'progress') {
+                    onProgress?.(data.progress)
+                  } else if (data.type === 'complete') {
+                    resolve()
+                    return
+                  } else if (data.type === 'error') {
+                    reject(new Error(data.message || '压缩失败'))
+                    return
+                  }
+                } catch {
+                  // Ignore JSON parse errors
+                }
+              }
+            }
+
+            processStream()
+          })
+        }
+
+        processStream()
+      })
+      .catch((error) => {
+        reject(error instanceof Error ? error : new Error('压缩失败'))
+      })
   })
+}
+
+// 下载文件（fetch + blob 方式，支持认证头）
+export const downloadFile = async (filePath: string): Promise<void> => {
+  const response = await fetch(`/api/files/download/${encodeURIComponent(filePath)}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
+    },
+  })
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ message: '下载失败' }))
+    throw new Error(errData.message || '下载失败')
+  }
+
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition')
+  const filenameMatch = disposition?.match(/filename\*=UTF-8''(.+)/)
+  const filename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : filePath.split('/').pop() || 'download'
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // 取消压缩
@@ -179,8 +229,15 @@ export interface LogQueryParams {
   pageSize?: number
 }
 
+export interface LogEntry {
+  time: string
+  level: string
+  action: string
+  detail: string
+}
+
 export interface LogQueryResponse {
-  logs: string[]
+  logs: LogEntry[]
   total: number
 }
 

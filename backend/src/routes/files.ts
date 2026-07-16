@@ -31,8 +31,8 @@ router.get(
 /**
  * 压缩文件夹（使用 SSE 发送进度）
  */
-router.get('/zip', async (req: Request, res: Response) => {
-  const folderPath = req.query.path as string
+router.post('/zip', async (req: Request, res: Response) => {
+  const folderPath = req.body.path as string
   try {
     if (!folderPath) {
       return res.status(400).json({ message: '缺少文件夹路径' });
@@ -46,7 +46,6 @@ router.get('/zip', async (req: Request, res: Response) => {
     await fileService.zipFolder(folderPath, res, activeArchives);
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : '未知错误'
-    console.error('压缩失败:', e)
     log('ERROR', 'other', `压缩失败 ${folderPath}: ${errMsg}`)
     res.status(500).json({ message: errMsg })
   }
@@ -83,17 +82,18 @@ router.post(
  * 移动文件（使用 SSE 发送进度）
  */
 router.post('/move', (req: Request, res: Response) => {
-  try {
-    const { fromPath, toPath } = req.body;
+  const { fromPath, toPath } = req.body;
 
+  try {
     if (!fromPath || !toPath) {
       return res.status(400).json({ message: '缺少必要参数' });
     }
 
     fileService.moveFile(fromPath, toPath, res);
   } catch (e) {
-    console.error('移动文件失败:', e);
-    res.status(500).json({ message: e instanceof Error ? e.message : '移动失败' });
+    const errMsg = e instanceof Error ? e.message : '移动失败'
+    log('ERROR', 'move', `${fromPath} → ${toPath}: ${errMsg}`)
+    res.status(500).json({ message: errMsg });
   }
 });
 

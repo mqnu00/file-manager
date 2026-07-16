@@ -35,11 +35,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const token = ref('')
 const loading = ref(false)
@@ -56,7 +57,8 @@ async function handleLogin() {
   loading.value = false
   if (success) {
     ElMessage.success('登录成功')
-    router.replace('/')
+    const redirect = route.query.redirect as string | undefined
+    router.replace(redirect || '/')
   } else {
     error.value = auth.loginError || '令牌错误'
   }

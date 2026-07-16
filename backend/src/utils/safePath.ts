@@ -35,6 +35,12 @@ export function getStorageRoot(): string {
 export const safePath = (userPath: string): string => {
   const BASE_DIR = getBaseDir()
 
+  // 防止路径遍历攻击：拒绝包含 ".." 组件的路径
+  const segments = userPath.replace(/\\/g, '/').split('/')
+  if (segments.includes('..')) {
+    throw new AppError('非法路径')
+  }
+
   if (path.normalize(BASE_DIR) === path.resolve('/')) {
     const normalizedPath = path.isAbsolute(userPath) ? userPath : path.posix.join('/', userPath)
     return path.normalize(normalizedPath)
@@ -51,7 +57,7 @@ export const safePath = (userPath: string): string => {
  * @param dir 目录路径
  * @returns 目录总字节数
  */
-const isVirtualFs = (p: string): boolean => {
+export const isVirtualFs = (p: string): boolean => {
   return p.startsWith('/proc/') || p.startsWith('/sys/') || p === '/proc' || p === '/sys'
 }
 

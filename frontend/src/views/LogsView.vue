@@ -35,7 +35,6 @@
           </el-select>
           <el-select v-model="filterAction" placeholder="操作" clearable size="default" style="width: 120px">
             <el-option label="移动" value="move" />
-            <el-option label="复制" value="copy" />
             <el-option label="删除" value="delete" />
             <el-option label="重命名" value="rename" />
             <el-option label="创建文件夹" value="createFolder" />
@@ -89,19 +88,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Document, ArrowLeft } from '@element-plus/icons-vue'
-import { getLogs, getAvailableLogDates } from '@/api/file'
+import { getLogs, getAvailableLogDates, type LogEntry } from '@/api/file'
 
 const router = useRouter()
 
-interface LogItem {
-  time: string
-  level: string
-  action: string
-  detail: string
-}
-
 const loading = ref(false)
-const logs = ref<LogItem[]>([])
+const logs = ref<LogEntry[]>([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(50)
@@ -133,19 +125,13 @@ const fetchAvailableDates = async () => {
   }
 }
 
-const parseLogLine = (line: string): LogItem => {
-  // [2026-07-08 06:30:22 UTC] [INFO] [move] detail
-  const match = line.match(/^\[(.+?)\]\s\[(.+?)\]\s\[(.+?)\]\s(.+)$/)
-  if (match) {
-    const utcTime = match[1].replace(' UTC', 'Z').replace(' ', 'T')
-    const localTime = new Date(utcTime).toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      hour12: false,
-    })
-    return { time: localTime, level: match[2], action: match[3], detail: match[4] }
-  }
-  return { time: '', level: '', action: '', detail: line }
+const formatLogTime = (utcTime: string): string => {
+  const zTime = utcTime.replace(' UTC', 'Z').replace(' ', 'T')
+  return new Date(zTime).toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  })
 }
 
 const levelTagType = (level: string) => {
@@ -167,7 +153,10 @@ const fetchLogs = async () => {
       page: currentPage.value,
       pageSize: pageSize.value,
     })
-    logs.value = res.logs.map(parseLogLine)
+    logs.value = res.logs.map((entry) => ({
+      ...entry,
+      time: formatLogTime(entry.time),
+    }))
     total.value = res.total
   } catch {
     logs.value = []

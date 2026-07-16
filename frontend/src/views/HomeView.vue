@@ -123,7 +123,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize, downloadFile } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
@@ -344,9 +344,13 @@ const handleBatchMove = () => {
   progress.showBatchMoveDialog(fileStore.selectedFiles, names)
 }
 
-const handleBatchDownload = () => {
+const handleBatchDownload = async () => {
   if (fileStore.isSingleFileSelected) {
-    window.open('/api/files/download/' + fileStore.selectedFiles[0], '_blank')
+    try {
+      await downloadFile(fileStore.selectedFiles[0])
+    } catch (e: any) {
+      ElMessage.error(e.message || '下载失败')
+    }
   }
 }
 
