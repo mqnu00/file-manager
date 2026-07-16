@@ -163,6 +163,90 @@ export const cancelZip = (
 }
 
 /**
+ * 带取消信号的压缩（供后台任务系统使用）
+ * @param sourcePath 源文件夹路径
+ * @param targetPath zip 文件目标路径
+ * @param abortSignal 取消信号
+ * @param onProgress 进度回调 (percent, processedBytes, totalBytes)
+ */
+export const compressWithCancel = async (
+  sourcePath: string,
+  targetPath: string,
+  abortSignal: AbortSignal,
+  onProgress?: (percent: number, processedBytes: number, totalBytes: number) => void
+): Promise<void> => {
+  const sourceFullPath = safePath(sourcePath)
+  const targetFullPath = safePath(targetPath)
+  const totalBytes = await calculateDirSize(sourceFullPath)
+
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(targetFullPath)
+    const archive = archiver.create('zip', { zlib: { level: 9 } })
+    let processedBytes = 0
+    let settled = false
+
+    const cleanup = () => {
+      try {
+        if (fs.existsSync(targetFullPath)) {
+          fs.unlinkSync(targetFullPath)
+        }
+      } catch { /* ignore */ }
+    }
+
+    const onAbort = () => {
+      if (settled) return
+      settled = true
+      archive.abort()
+      cleanup()
+      reject(new Error('CANCELLED'))
+    }
+
+    if (abortSignal.aborted) {
+      onAbort()
+      return
+    }
+
+    abortSignal.addEventListener('abort', onAbort, { once: true })
+
+    archive.on('entry', (entry) => {
+      if (abortSignal.aborted || settled) return
+      if (entry.stats && !entry.stats.isDirectory()) {
+        try {
+          const safeSize = getSafeSize(entry.name, entry.stats)
+          if (safeSize > 0) {
+            processedBytes += safeSize
+          }
+        } catch {
+          // 无法获取安全大小时使用原始大小
+          processedBytes += entry.stats.size
+        }
+        const percent = totalBytes > 0 ? Math.min(99, Math.round((processedBytes / totalBytes) * 100)) : 0
+        onProgress?.(percent, processedBytes, totalBytes)
+      }
+    })
+
+    output.on('close', () => {
+      if (settled) return
+      settled = true
+      abortSignal.removeEventListener('abort', onAbort)
+      resolve()
+    })
+
+    archive.on('error', (err) => {
+      if (settled) return
+      settled = true
+      abortSignal.removeEventListener('abort', onAbort)
+      cleanup()
+      reject(err)
+    })
+
+    archive.pipe(output)
+    archive.directory(sourceFullPath, path.basename(sourcePath))
+    archive.finalize()
+  })
+}
+
+/**
  * 移动文件（使用 SSE 发送进度）
  */
 export const moveFile = (fromPath: string, toPath: string, res: Response): void => {

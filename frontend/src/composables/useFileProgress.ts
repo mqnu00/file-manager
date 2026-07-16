@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import { zipFolderAsync, cancelZip as cancelZipApi, getFiles } from '@/api/file'
+import { getFiles } from '@/api/file'
 import { useTaskStore } from '@/stores/task'
 import { ElMessage } from 'element-plus'
 import type { FileItem } from '@/types'
@@ -11,14 +11,6 @@ export interface MoveProgressState {
   targetPath: string
 }
 
-export interface ZipProgressState {
-  visible: boolean
-  folderPath: string
-  progress: number
-  status: 'success' | 'exception' | ''
-  error: string
-}
-
 export const useFileProgress = () => {
   const taskStore = useTaskStore()
 
@@ -27,14 +19,6 @@ export const useFileProgress = () => {
     sourceNames: [],
     sourcePaths: [],
     targetPath: '',
-  })
-
-  const zipState = reactive<ZipProgressState>({
-    visible: false,
-    folderPath: '',
-    progress: 0,
-    status: '',
-    error: '',
   })
 
   const hideMoveDialog = () => {
@@ -94,47 +78,17 @@ export const useFileProgress = () => {
     await taskStore.startMoveTask(sourcePaths, sourceNames, normalizedTargetPath, onComplete)
   }
 
-  const zipFolder = (path: string, onRefresh?: () => void) => {
-    Object.assign(zipState, {
-      visible: true,
-      folderPath: path,
-      progress: 0,
-      status: '',
-      error: '',
-    })
-
-    zipFolderAsync(path, (progress) => {
-      zipState.progress = progress
-    })
-      .then(() => {
-        zipState.status = 'success'
-        zipState.progress = 100
-        ElMessage.success('压缩完成')
-        onRefresh?.()
-      })
-      .catch((e: Error) => {
-        zipState.status = 'exception'
-        zipState.error = e.message || '压缩失败，请重试'
-      })
-  }
-
-  const cancelZip = async (onSuccess?: () => void) => {
-    try {
-      await cancelZipApi(zipState.folderPath)
-      zipState.visible = false
-      ElMessage.info('已取消压缩')
-      onSuccess?.()
-    } catch (e: any) {
-      ElMessage.error(e.response?.data?.message || '取消失败')
-    }
+  /**
+   * 启动压缩后台任务
+   */
+  const startZipTask = (path: string, onComplete?: () => void) => {
+    taskStore.startCompressTask(path, onComplete)
   }
 
   return {
     moveState,
-    zipState,
     showBatchMoveDialog,
     moveFile: moveFiles,
-    zipFolder,
-    cancelZip,
+    startZipTask,
   }
 }

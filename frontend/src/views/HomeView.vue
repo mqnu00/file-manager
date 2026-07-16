@@ -81,17 +81,6 @@
       @confirm="() => progress.moveFile(makeConditionalRefresh(progress.moveState.sourcePaths))"
     />
 
-    <!-- 压缩进度对话框 -->
-    <ZipProgressDialog
-      :model-value="progress.zipState.visible"
-      :progress="progress.zipState.progress"
-      :status="progress.zipState.status"
-      :folder-path="progress.zipState.folderPath"
-      :error="progress.zipState.error"
-      @update:model-value="progress.zipState.visible = $event"
-      @cancel="() => progress.cancelZip()"
-    />
-
     <!-- 重命名对话框 -->
     <RenameDialog
       :model-value="renameVisible"
@@ -129,7 +118,6 @@ import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
 import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
 import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
-import ZipProgressDialog from '../components/dialogs/ZipProgressDialog.vue'
 import RenameDialog from '../components/dialogs/RenameDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
 import TaskPanel from '../components/TaskPanel.vue'
@@ -364,7 +352,8 @@ const handleBatchDownload = async () => {
 
 const handleBatchZip = () => {
   if (fileStore.isSingleFolderSelected) {
-    progress.zipFolder(fileStore.selectedFiles[0], refresh)
+    const sourcePath = fileStore.selectedFiles[0]
+    progress.startZipTask(sourcePath, makeConditionalRefresh([sourcePath]))
     fileStore.setSelectedFiles([])
   }
 }

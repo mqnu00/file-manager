@@ -44,7 +44,6 @@ declare module 'vue' {
     SciFiBackground: typeof import('./components/SciFiBackground.vue')['default']
     TaskPanel: typeof import('./components/TaskPanel.vue')['default']
     Toolbar: typeof import('./components/Toolbar.vue')['default']
-    ZipProgressDialog: typeof import('./components/dialogs/ZipProgressDialog.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

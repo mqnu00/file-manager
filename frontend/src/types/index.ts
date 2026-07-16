@@ -1,13 +1,20 @@
 // ===== 后台任务类型 =====
 
 export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed'
-export type TaskPhase = 'copy' | 'delete'
-export type TaskType = 'move'
+export type TaskPhase = 'copy' | 'delete' | 'compress'
+export type TaskType = 'move' | 'compress'
 
 export interface MoveTaskMetadata {
   sourcePaths: string[]
   sourceNames: string[]
   targetPath: string
+}
+
+export interface CompressTaskMetadata {
+  sourcePath: string
+  sourceName: string
+  targetPath: string
+  totalBytes: number
 }
 
 export interface TaskInfo {
@@ -19,7 +26,7 @@ export interface TaskInfo {
   speed: number
   totalSize: number
   startTime: number
-  metadata: MoveTaskMetadata
+  metadata: MoveTaskMetadata | CompressTaskMetadata
   currentFile?: string
   completedCount: number
   totalCount: number

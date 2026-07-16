@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TaskInfo } from '@/types'
-import { startMoveTask as startMoveTaskApi, getTasks, cancelTask as cancelTaskApi, subscribeTask } from '@/api/task'
+import { startMoveTask as startMoveTaskApi, startCompressTask as startCompressTaskApi, getTasks, cancelTask as cancelTaskApi, subscribeTask } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
 export const useTaskStore = defineStore('task', () => {
@@ -52,11 +52,13 @@ export const useTaskStore = defineStore('task', () => {
           task.currentFile = data.currentFile
           task.completedCount = data.completedCount
           task.totalCount = data.totalCount
-          task.phase = data.phase as TaskInfo['phase']
+          if (data.phase) {
+            task.phase = data.phase as TaskInfo['phase']
+          }
         }
       },
       onComplete() {
-        updateTaskFromServer(taskId, { status: 'completed', progress: 100, phase: 'delete' })
+        updateTaskFromServer(taskId, { status: 'completed', progress: 100 })
         unsubscribeFromTask(taskId)
         // 调用完成回调
         const cb = completeCallbacks.get(taskId)
@@ -145,6 +147,51 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
+   * 发起压缩任务
+   */
+  async function startCompressTask(
+    sourcePath: string,
+    onComplete?: () => void
+  ): Promise<void> {
+    try {
+      const { taskId } = await startCompressTaskApi(sourcePath)
+
+      const sourceName = sourcePath.split('/').pop() || sourcePath
+      const parentDir = sourcePath.substring(0, sourcePath.lastIndexOf('/'))
+      const targetPath = parentDir + '/' + sourceName + '.zip'
+
+      // 添加本地任务（乐观更新）
+      tasks.value.unshift({
+        id: taskId,
+        type: 'compress',
+        status: 'running',
+        phase: 'compress',
+        progress: 0,
+        speed: 0,
+        totalSize: 0,
+        startTime: Date.now(),
+        metadata: { sourcePath, sourceName, targetPath, totalBytes: 0 },
+        completedCount: 0,
+        totalCount: 1,
+        totalItemCount: 0,
+        processedItemCount: 0,
+      })
+
+      ElMessage.success('压缩任务已启动')
+
+      // 存储完成回调
+      if (onComplete) {
+        completeCallbacks.set(taskId, onComplete)
+      }
+
+      // 订阅 SSE 进度
+      subscribeToTask(taskId)
+    } catch (e: any) {
+      ElMessage.error(e.response?.data?.message || '启动压缩任务失败')
+    }
+  }
+
+  /**
    * 取消任务
    */
   async function cancelTask(taskId: string): Promise<void> {
@@ -170,6 +217,7 @@ export const useTaskStore = defineStore('task', () => {
     tasks,
     init,
     startMoveTask,
+    startCompressTask,
     cancelTask,
     dismissTask,
   }

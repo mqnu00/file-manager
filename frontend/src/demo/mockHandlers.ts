@@ -193,6 +193,12 @@ export function setupMockApi(api: AxiosInstance) {
       return mockResponse({ taskId })
     }
 
+    // POST /api/tasks/compress — 创建压缩任务
+    if (fullUrl === '/api/tasks/compress' && method === 'post') {
+      const taskId = 'demo-compress-' + Date.now()
+      return mockResponse({ taskId })
+    }
+
     // GET /api/tasks — 获取所有任务
     if (fullUrl === '/api/tasks' && method === 'get') {
       return mockResponse({ tasks: [] })

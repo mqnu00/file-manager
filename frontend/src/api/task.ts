@@ -12,6 +12,15 @@ export const startMoveTask = (
 }
 
 /**
+ * 创建压缩任务
+ */
+export const startCompressTask = (
+  sourcePath: string
+): Promise<{ taskId: string }> => {
+  return api.post('/tasks/compress', { sourcePath }).then((res) => res.data)
+}
+
+/**
  * 获取所有任务
  */
 export const getTasks = (): Promise<{ tasks: TaskInfo[] }> => {
@@ -52,24 +61,7 @@ export function subscribeTask(taskId: string, callbacks: TaskEventCallbacks): ()
   // Demo 模式：模拟 SSE 事件
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     let progress = 0
-
-    // 模拟首次状态快照
-    const task: TaskInfo = {
-      id: taskId,
-      type: 'move',
-      status: 'running',
-      phase: 'copy',
-      progress: 0,
-      speed: 5,
-      totalSize: 100 * 1024 * 1024,
-      startTime: Date.now(),
-      metadata: { sourcePaths: [], sourceNames: ['demo-file.txt'], targetPath: '/' },
-      completedCount: 0,
-      totalCount: 1,
-      totalItemCount: 1,
-      processedItemCount: 0,
-    }
-    callbacks.onState?.(task)
+    const totalBytes = 50 * 1024 * 1024 // 模拟 50MB
 
     const interval = setInterval(() => {
       if (aborted) {
@@ -77,24 +69,24 @@ export function subscribeTask(taskId: string, callbacks: TaskEventCallbacks): ()
         return
       }
 
-      progress += Math.random() * 20 + 5
+      const speed = Math.random() * 3 * 1024 * 1024 + 1 * 1024 * 1024 // 1-4 MB/s
+      progress += (speed * 0.4 / totalBytes) * 100 // 每 0.4s 的进度增量
       if (progress >= 100) {
         progress = 100
         clearInterval(interval)
-        callbacks.onProgress?.({ progress: 100, speed: 0, totalSize: 0, completedCount: 1, totalCount: 1, phase: 'delete' })
-        // 模拟短暂删除阶段后完成
+        callbacks.onProgress?.({ progress: 100, speed: 0, totalSize: totalBytes, completedCount: 1, totalCount: 1, phase: '' })
         setTimeout(() => {
           if (!aborted) callbacks.onComplete?.()
         }, 500)
       } else {
         callbacks.onProgress?.({
           progress: Math.round(progress),
-          speed: Math.random() * 20 + 5,
-          totalSize: 100 * 1024 * 1024,
-          currentFile: 'demo-file.txt',
+          speed,
+          totalSize: totalBytes,
+          currentFile: 'demo-folder',
           completedCount: 0,
           totalCount: 1,
-          phase: 'copy',
+          phase: '',
         })
       }
     }, 400)

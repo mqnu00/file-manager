@@ -71,12 +71,12 @@ export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 
 /**
  * 移动任务阶段：复制（可取消）→ 删除（不可取消）
  */
-export type TaskPhase = 'copy' | 'delete'
+export type TaskPhase = 'copy' | 'delete' | 'compress'
 
 /**
  * 任务类型
  */
-export type TaskType = 'move'
+export type TaskType = 'move' | 'compress'
 
 /**
  * 移动任务元数据
@@ -86,6 +86,21 @@ export interface MoveTaskMetadata {
   sourceNames: string[]
   targetPath: string
 }
+
+/**
+ * 压缩任务元数据
+ */
+export interface CompressTaskMetadata {
+  sourcePath: string
+  sourceName: string
+  targetPath: string    // zip 文件路径
+  totalBytes: number    // 源文件夹总字节数
+}
+
+/**
+ * 任务元数据联合类型
+ */
+export type TaskMetadata = MoveTaskMetadata | CompressTaskMetadata
 
 /**
  * 后台任务信息
@@ -99,7 +114,7 @@ export interface TaskInfo {
   speed: number            // MB/s
   totalSize: number        // bytes
   startTime: number        // timestamp
-  metadata: MoveTaskMetadata
+  metadata: TaskMetadata
   currentFile?: string     // 当前正在处理的文件名
   completedCount: number   // 已完成文件数
   totalCount: number       // 总文件数
@@ -114,6 +129,13 @@ export interface TaskInfo {
 export interface MoveTaskRequest {
   sourcePaths: string[]
   targetPath: string
+}
+
+/**
+ * 创建压缩任务请求
+ */
+export interface CompressTaskRequest {
+  sourcePath: string
 }
 
 /**
