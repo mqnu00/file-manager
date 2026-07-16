@@ -9,6 +9,11 @@
     "dist/",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mqnu00/file-manager.git"
+  },
+  "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
