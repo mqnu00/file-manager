@@ -1,21 +1,14 @@
 import fs from 'fs'
 import path from 'path'
+import { pipeline } from 'stream/promises'
 import archiver from 'archiver'
 import mime from 'mime-types'
 import { Response } from 'express'
 import { FileInfo, SSEProgressMessage } from '../types'
-import { safePath, calculateDirSize, getStorageRoot } from '../utils/safePath'
+import { safePath, calculateDirSize, getStorageRoot, isVirtualFs } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
 import { AppError } from '../utils/AppError'
 import { log } from '../utils/logger'
-
-/**
- * 判断路径是否属于虚拟文件系统（/proc、/sys）
- * 这些文件系统中的文件大小不可靠（如 /proc/kcore 会报告 128TB）
- */
-const isVirtualFs = (p: string): boolean => {
-  return p.startsWith('/proc/') || p.startsWith('/sys/') || p === '/proc' || p === '/sys'
-}
 
 /**
  * 获取安全的文件大小
@@ -249,9 +242,8 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
 
     readStream.pipe(writeStream)
   } else {
-    // 目录移动
-    const copyDir = (src: string, dest: string): void => {
-      const entries = fs.readdirSync(src, { withFileTypes: true })
+    // 目录移动（异步流式复制）
+    ;(async () => {
       let copied = 0
 
       const countFiles = (dir: string): number => {
@@ -268,9 +260,9 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
         return count
       }
 
-      const total = countFiles(src)
+      const total = countFiles(fromFullPath)
 
-      const copyRecursive = (srcDir: string, destDir: string) => {
+      const copyRecursive = async (srcDir: string, destDir: string): Promise<void> => {
         if (!fs.existsSync(destDir)) {
           fs.mkdirSync(destDir, { recursive: true })
         }
@@ -279,10 +271,11 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
           const srcPath = path.join(srcDir, entry.name)
           const destPath = path.join(destDir, entry.name)
           if (entry.isDirectory()) {
-            copyRecursive(srcPath, destPath)
+            await copyRecursive(srcPath, destPath)
           } else {
-            const data = fs.readFileSync(srcPath)
-            fs.writeFileSync(destPath, data)
+            const readStream = fs.createReadStream(srcPath)
+            const writeStream = fs.createWriteStream(destPath)
+            await pipeline(readStream, writeStream)
             copied++
             const progress = Math.min(99, Math.floor((copied / total) * 100))
             sendProgress(progress)
@@ -290,13 +283,16 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
         }
       }
 
-      copyRecursive(src, dest)
-    }
-
-    copyDir(fromFullPath, toFullPath)
-    fs.rmSync(fromFullPath, { recursive: true, force: true })
-    sendProgress(100, 0)
-    sendComplete()
+      copyRecursive(fromFullPath, toFullPath)
+        .then(() => {
+          fs.rmSync(fromFullPath, { recursive: true, force: true })
+          sendProgress(100, 0)
+          sendComplete()
+        })
+        .catch((err) => {
+          sendError(err.message)
+        })
+    })()
   }
 }
 

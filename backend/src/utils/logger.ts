@@ -30,22 +30,45 @@ export function log(level: 'INFO' | 'WARNING' | 'ERROR', action: string, detail:
   }
 }
 
+export interface LogEntry {
+  time: string
+  level: string
+  action: string
+  detail: string
+}
+
+const LOG_LINE_REGEX = /^\[(.+?)\]\s\[(.+?)\]\s\[(.+?)\]\s(.+)$/
+
+function parseLogLine(line: string): LogEntry | null {
+  const match = line.match(LOG_LINE_REGEX)
+  if (!match) return null
+  return {
+    time: match[1],
+    level: match[2],
+    action: match[3],
+    detail: match[4],
+  }
+}
+
 export interface LogFilters {
   level?: string
   action?: string
   keyword?: string
 }
 
-export function readLogs(date: string, filters?: LogFilters): string[] {
+export function readLogs(date: string, filters?: LogFilters): LogEntry[] {
   const filePath = path.join(LOG_DIR, `${date}.log`)
   if (!fs.existsSync(filePath)) return []
   const lines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(Boolean)
-  return lines.filter((line) => {
-    if (filters?.level && !line.includes(`[${filters.level}]`)) return false
-    if (filters?.action && !line.includes(`[${filters.action}]`)) return false
-    if (filters?.keyword && !line.includes(filters.keyword)) return false
-    return true
-  })
+  return lines
+    .map(parseLogLine)
+    .filter((entry): entry is LogEntry => {
+      if (!entry) return false
+      if (filters?.level && entry.level !== filters.level) return false
+      if (filters?.action && entry.action !== filters.action) return false
+      if (filters?.keyword && !entry.detail.includes(filters.keyword)) return false
+      return true
+    })
 }
 
 /**
@@ -82,12 +105,38 @@ function getDateRange(start: string, end: string): string[] {
 /**
  * 按日期范围查询日志，日期格式 YYYY-MM-DD
  */
-export function readLogsByRange(startDate: string, endDate: string, filters?: LogFilters): string[] {
+export function readLogsByRange(startDate: string, endDate: string, filters?: LogFilters): LogEntry[] {
   const dateRange = getDateRange(startDate, endDate)
-  const allLogs: string[] = []
+  const allLogs: LogEntry[] = []
   for (const date of dateRange) {
     const logs = readLogs(date, filters)
     allLogs.push(...logs)
   }
   return allLogs
+}
+
+/**
+ * 清理超过 maxDays 天的旧日志文件
+ * 建议在应用启动时调用
+ */
+export function cleanOldLogs(maxDays: number = 30): number {
+  try {
+    ensureLogDir()
+    const files = fs.readdirSync(LOG_DIR)
+    const datePattern = /^\d{4}-\d{2}-\d{2}\.log$/
+    const cutoff = Date.now() - maxDays * 24 * 60 * 60 * 1000
+    let deleted = 0
+    for (const file of files) {
+      if (!datePattern.test(file)) continue
+      const fileDate = file.replace(/\.log$/, '')
+      const timestamp = new Date(fileDate + 'T00:00:00Z').getTime()
+      if (timestamp < cutoff) {
+        fs.unlinkSync(path.join(LOG_DIR, file))
+        deleted++
+      }
+    }
+    return deleted
+  } catch {
+    return 0
+  }
 }

@@ -15,7 +15,7 @@ router.get('/', (req: Request, res: Response) => {
     pageSize?: string
   }
 
-  let allLogs: string[]
+  let allLogs: ReturnType<typeof readLogs>
 
   if (startDate) {
     // 区间查询

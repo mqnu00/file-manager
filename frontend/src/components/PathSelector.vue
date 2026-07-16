@@ -86,7 +86,11 @@ const loadNode = async (node: LoadNode, resolve: (data: TreeNode[]) => void) => 
     const parentPath = node.data?.path || ''
     const folders = await getFolders(parentPath)
     const children = folders
-      .filter((f: FileItem) => f.path !== props.excludePath)
+      .filter((f: FileItem) => {
+        if (!props.excludePath) return true
+        // 排除源路径自身及其所有子目录
+        return f.path !== props.excludePath && !f.path.startsWith(props.excludePath + '/')
+      })
       .map((f: FileItem) => ({ label: f.name, path: f.path }))
     resolve(children)
   } catch {

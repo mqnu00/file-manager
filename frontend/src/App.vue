@@ -1,5 +1,5 @@
 <template>
-  <SciFiBackground v-if="isCyber" />
+  <SciFiBackground v-show="isCyber" />
   <router-view />
 </template>
 

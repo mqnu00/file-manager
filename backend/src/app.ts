@@ -12,6 +12,13 @@ import logRoutes from './routes/logs'
 import { errorHandler } from './middleware/errorHandler'
 import { authMiddleware } from './middleware/auth'
 import { isDefaultToken } from './config'
+import { cleanOldLogs } from './utils/logger'
+
+// 启动时清理超过 30 天的旧日志
+const deletedLogs = cleanOldLogs(30)
+if (deletedLogs > 0) {
+  console.log(`已清理 ${deletedLogs} 个过期日志文件`)
+}
 
 const app = express()
 const PORT = process.env.PORT || 3000

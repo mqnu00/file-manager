@@ -7,12 +7,29 @@ export function useContextMenu() {
   const contextMenuY = ref(0)
   const contextMenuRow = ref<FileItem | null>(null)
 
+  // 菜单预估尺寸
+  const MENU_WIDTH = 160
+  const MENU_HEIGHT = 130
+
   const onRowContextmenu = (e: MouseEvent, row: FileItem) => {
     e.preventDefault()
     e.stopPropagation()
     contextMenuRow.value = row
-    contextMenuX.value = e.clientX
-    contextMenuY.value = e.clientY
+
+    let x = e.clientX
+    let y = e.clientY
+
+    // 防止菜单超出视口右侧
+    if (x + MENU_WIDTH > window.innerWidth) {
+      x = window.innerWidth - MENU_WIDTH - 8
+    }
+    // 防止菜单超出视口底部
+    if (y + MENU_HEIGHT > window.innerHeight) {
+      y = window.innerHeight - MENU_HEIGHT - 8
+    }
+
+    contextMenuX.value = x
+    contextMenuY.value = y
     contextMenuVisible.value = true
     setTimeout(() => {
       document.addEventListener('click', closeContextMenu, { once: true })
