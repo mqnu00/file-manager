@@ -54,9 +54,11 @@
           </el-form-item>
 
           <el-form-item label="立即清理">
-            <el-button :loading="cleaning" @click="handleCleanLogs">执行清理</el-button>
-            <div v-if="cleanResult !== null" class="form-item-tip">
-              {{ cleanResult > 0 ? `已清理 ${cleanResult} 个过期日志文件` : '没有过期的日志文件' }}
+            <div style="display: flex; flex-direction: row; gap: 10px;">
+              <el-button :loading="cleaning" @click="handleCleanLogs">执行清理</el-button>
+              <div v-if="cleanResult !== null" class="form-item-tip">
+                {{ cleanResult > 0 ? `已清理 ${cleanResult} 个过期日志文件` : '没有过期的日志文件' }}
+              </div>
             </div>
           </el-form-item>
 
