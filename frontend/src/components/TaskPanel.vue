@@ -1,8 +1,8 @@
 <template>
-  <div v-if="hasRunningTasks || !collapsed" class="task-panel" :class="{ 'task-panel--collapsed': collapsed }">
-    <!-- 折叠态：显示运行中任务数量的徽章 -->
+  <div class="task-panel" :class="{ 'task-panel--collapsed': collapsed }">
+    <!-- 折叠态：始终显示徽章 -->
     <div v-if="collapsed" class="task-badge" @click="collapsed = false">
-      <el-badge :value="runningCount" :max="99" class="task-badge__item">
+      <el-badge :value="runningCount" :max="99" :hidden="runningCount === 0" class="task-badge__item">
         <el-button circle size="small" class="task-badge__btn">
           <el-icon :size="16"><List /></el-icon>
         </el-button>
@@ -17,6 +17,10 @@
         <el-button circle size="small" text @click="collapsed = true">
           <el-icon :size="14"><ArrowDown /></el-icon>
         </el-button>
+      </div>
+
+      <div v-if="visibleTasks.length === 0" class="task-panel__empty">
+        暂无后台任务
       </div>
 
       <TransitionGroup name="task-item">
@@ -91,7 +95,6 @@ const visibleTasks = computed(() =>
 )
 
 const runningCount = computed(() => visibleTasks.value.length)
-const hasRunningTasks = computed(() => runningCount.value > 0)
 
 function phaseTagType(task: TaskInfo): 'primary' | 'warning' | 'info' {
   if (task.status === 'cancelling') return 'warning'
@@ -183,6 +186,18 @@ function handleCancel(taskId: string): void {
   padding: 12px 14px;
   box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
   backdrop-filter: blur(6px);
+}
+
+.task-panel__empty {
+  pointer-events: auto;
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--app-text-dim, #909399);
+  background: var(--app-panel-solid, #fff);
+  border: 1px solid var(--app-border, #e4e7ed);
+  border-radius: 10px;
+  box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
 }
 
 .task-card__header {
