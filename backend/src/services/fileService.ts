@@ -194,8 +194,8 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
 
   setSSEHeaders(res)
 
-  const sendProgress = (progress: number, speed?: number) => {
-    sendSSEProgress(res, progress, speed)
+  const sendProgress = (progress: number, speed?: number, totalSize?: number) => {
+    sendSSEProgress(res, progress, speed, totalSize)
   }
 
   const sendComplete = () => {
@@ -221,7 +221,7 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
       const elapsed = (Date.now() - startTime) / 1000
       const speed = elapsed > 0 ? copiedBytes / elapsed / 1024 / 1024 : 0
       const progress = Math.min(99, Math.floor((copiedBytes / fileSize) * 100))
-      sendProgress(progress, speed)
+      sendProgress(progress, speed, fileSize)
     })
 
     readStream.on('error', (err) => {

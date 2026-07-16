@@ -5,8 +5,6 @@ import type { FileItem } from '@/types'
 
 export interface MoveProgressState {
   visible: boolean
-  sourcePath: string
-  sourceName: string
   sourceNames: string[]
   sourcePaths: string[]
   targetPath: string
@@ -14,7 +12,7 @@ export interface MoveProgressState {
   progress: number
   status: 'success' | 'exception' | ''
   speed: number
-  batchMode: boolean
+  totalSize: number
 }
 
 export interface ZipProgressState {
@@ -28,8 +26,6 @@ export interface ZipProgressState {
 export const useFileProgress = () => {
   const moveState = reactive<MoveProgressState>({
     visible: false,
-    sourcePath: '',
-    sourceName: '',
     sourceNames: [],
     sourcePaths: [],
     targetPath: '',
@@ -37,7 +33,7 @@ export const useFileProgress = () => {
     progress: 0,
     status: '',
     speed: 0,
-    batchMode: false,
+    totalSize: 0,
   })
 
   const zipState = reactive<ZipProgressState>({
@@ -50,18 +46,16 @@ export const useFileProgress = () => {
 
   const hideMoveDialog = () => {
     moveState.visible = false
-    moveState.sourcePath = ''
-    moveState.sourceName = ''
     moveState.sourceNames = []
     moveState.sourcePaths = []
     moveState.targetPath = ''
-    moveState.batchMode = false
   }
 
   const resetMoveState = () => {
     moveState.loading = false
     moveState.status = ''
     moveState.speed = 0
+    moveState.totalSize = 0
   }
 
   const getParentPath = (filePath: string): string => {
@@ -70,28 +64,10 @@ export const useFileProgress = () => {
     return parts.join('/') || '/'
   }
 
-  const showMoveDialog = (path: string, name: string) => {
-    Object.assign(moveState, {
-      visible: true,
-      sourcePath: path,
-      sourceName: name,
-      sourceNames: [name],
-      sourcePaths: [path],
-      targetPath: getParentPath(path),
-      loading: false,
-      progress: 0,
-      status: '',
-      speed: 0,
-      batchMode: false,
-    })
-  }
-
   const showBatchMoveDialog = (paths: string[], names: string[]) => {
     const parentPath = paths[0] ? getParentPath(paths[0]) : ''
     Object.assign(moveState, {
       visible: true,
-      sourcePath: paths[0] || '',
-      sourceName: names[0] || '',
       sourceNames: names,
       sourcePaths: paths,
       targetPath: parentPath,
@@ -99,7 +75,6 @@ export const useFileProgress = () => {
       progress: 0,
       status: '',
       speed: 0,
-      batchMode: true,
     })
   }
 
@@ -151,8 +126,9 @@ export const useFileProgress = () => {
       }
 
       try {
-        await moveFileAsync(normalizedSourcePath, fullPath, (fileProgress, fileSpeed) => {
+        await moveFileAsync(normalizedSourcePath, fullPath, (fileProgress, fileSpeed, totalSize) => {
           moveState.speed = fileSpeed
+          moveState.totalSize = totalSize
           const overallProgress = Math.floor(((completed + fileProgress / 100) / total) * 100)
           moveState.progress = Math.min(99, overallProgress)
         })
@@ -222,7 +198,6 @@ export const useFileProgress = () => {
   return {
     moveState,
     zipState,
-    showMoveDialog,
     showBatchMoveDialog,
     moveFile: moveFiles,
     zipFolder,

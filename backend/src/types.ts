@@ -23,6 +23,7 @@ export interface SSEProgressMessage {
   zipPath?: string
   message?: string
   speed?: number
+  totalSize?: number
 }
 
 /**

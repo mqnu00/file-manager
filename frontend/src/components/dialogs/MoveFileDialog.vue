@@ -1,19 +1,14 @@
 <template>
   <el-dialog
     :model-value="modelValue"
-    :title="batchMode ? `批量移动 (${sourceNames.length} 项)` : '移动到'"
+    :title="`移动 (${sourceNames.length} 项)`"
     width="500px"
     :close-on-click-modal="false"
     @update:model-value="$emit('update:model-value', $event)"
   >
     <div class="move-dialog-content">
       <div class="move-dialog-info">
-        <template v-if="batchMode">
-          已选择 <strong>{{ sourceNames.length }}</strong> 个文件/文件夹
-        </template>
-        <template v-else>
-          当前移动：<strong>{{ sourceName }}</strong>
-        </template>
+        已选择 <strong>{{ sourceNames.length }}</strong> 个文件/文件夹
       </div>
       <div class="move-dialog-progress">
         <el-progress
@@ -28,7 +23,7 @@
       </div>
       <PathSelector
         :model-value="targetPath"
-        :exclude-path="batchMode ? undefined : sourcePath"
+        :exclude-path="undefined"
         placeholder="选择目标文件夹"
         :disabled="loading"
         @update:model-value="$emit('update:target-path', $event)"
@@ -45,20 +40,17 @@
 
 <script setup lang="ts">
 import PathSelector from '../PathSelector.vue'
-import { formatProgress, formatSpeed } from '@/utils/format'
+import { formatSpeed } from '@/utils/format'
 import { ProgressProps } from 'element-plus'
 
 const props = defineProps<{
   modelValue: boolean
-  sourcePath: string
-  sourceName: string
   sourceNames: string[]
   targetPath: string
   loading: boolean
   progress: number
   status: ProgressProps['status']
   speed: number
-  batchMode: boolean
 }>()
 
 defineEmits<{
@@ -67,12 +59,7 @@ defineEmits<{
   confirm: []
 }>()
 
-const formatProgressFn = (percent: number) => {
-  if (props.batchMode) {
-    return `${percent}%`
-  }
-  return formatProgress(percent, props.speed)
-}
+const formatProgressFn = (percent: number) => `${percent}%`
 </script>
 
 <style scoped>

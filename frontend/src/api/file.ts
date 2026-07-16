@@ -32,7 +32,7 @@ export const createFolder = (path: string, name: string): Promise<{ success: boo
 export const moveFileAsync = (
   fromPath: string,
   toPath: string,
-  onProgress?: (progress: number, speed: number) => void
+  onProgress?: (progress: number, speed: number, totalSize: number) => void
 ): Promise<void> => {
   // Demo 模式：模拟 SSE 进度
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
@@ -43,10 +43,10 @@ export const moveFileAsync = (
         if (progress >= 100) {
           progress = 100
           clearInterval(interval)
-          onProgress?.(100, 0)
+          onProgress?.(100, 0, 0)
           resolve()
         } else {
-          onProgress?.(Math.round(progress), Math.random() * 50 + 10)
+          onProgress?.(Math.round(progress), Math.random() * 50 + 10, 100 * 1024 * 1024)
         }
       }, 300)
     })
@@ -89,7 +89,7 @@ export const moveFileAsync = (
                 try {
                   const data = JSON.parse(line.slice(6))
                   if (data.type === 'progress') {
-                    onProgress?.(data.progress, data.speed || 0)
+                    onProgress?.(data.progress, data.speed || 0, data.totalSize || 0)
                   } else if (data.type === 'complete') {
                     resolve()
                     return

@@ -74,15 +74,12 @@
     <!-- 移动文件对话框 -->
     <MoveFileDialog
       :model-value="progress.moveState.visible"
-      :source-path="progress.moveState.sourcePath"
-      :source-name="progress.moveState.sourceName"
       :source-names="progress.moveState.sourceNames"
       :target-path="progress.moveState.targetPath"
       :loading="progress.moveState.loading"
       :progress="progress.moveState.progress"
       :status="progress.moveState.status"
       :speed="progress.moveState.speed"
-      :batch-mode="progress.moveState.batchMode"
       @update:model-value="progress.moveState.visible = $event"
       @update:target-path="progress.moveState.targetPath = $event"
       @confirm="() => progress.moveFile(refresh)"

@@ -42,9 +42,10 @@ export const formatSpeed = (speed: number): string => {
 /**
  * 格式化进度显示（含剩余时间估算）
  */
-export const formatProgress = (percent: number, speed: number): string => {
-  if (speed > 0 && percent < 100) {
-    const remainingMB = ((100 - percent) / 100) * 100
+export const formatProgress = (percent: number, speed: number, totalSize: number = 0): string => {
+  if (speed > 0 && percent < 100 && totalSize > 0) {
+    const totalMB = totalSize / 1024 / 1024
+    const remainingMB = (totalMB * (100 - percent)) / 100
     const eta = remainingMB / speed
     return `${percent}% (${eta < 60 ? `${eta.toFixed(0)}s` : `${(eta / 60).toFixed(1)}m`} 剩余)`
   }

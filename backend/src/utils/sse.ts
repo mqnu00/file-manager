@@ -20,8 +20,8 @@ export const sendSSEMessage = (res: Response, message: SSEProgressMessage): void
 /**
  * 发送 SSE 进度更新
  */
-export const sendSSEProgress = (res: Response, progress: number, speed?: number): void => {
-  sendSSEMessage(res, { type: 'progress', progress, speed })
+export const sendSSEProgress = (res: Response, progress: number, speed?: number, totalSize?: number): void => {
+  sendSSEMessage(res, { type: 'progress', progress, speed, totalSize })
 }
 
 /**
