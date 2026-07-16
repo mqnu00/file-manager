@@ -69,7 +69,7 @@
               </el-button>
             </template>
             <template v-else-if="task.phase === 'delete'">
-              <span class="task-card__deleting">正在清理源文件...</span>
+              <span class="task-card__deleting">清理中...</span>
             </template>
           </div>
         </div>
@@ -111,7 +111,7 @@ function phaseTagType(task: TaskInfo): 'primary' | 'warning' | 'info' {
 
 function phaseLabel(task: TaskInfo): string {
   if (task.status === 'cancelling') return '取消中...'
-  return task.phase === 'copy' ? '复制中...' : '删除中...'
+  return task.phase === 'copy' ? '移动中...' : '清理中...'
 }
 
 function handleCancel(taskId: string): void {
@@ -148,13 +148,13 @@ function handleCancel(taskId: string): void {
   border: 1px solid var(--app-border, #e4e7ed);
   border-radius: 20px;
   padding: 4px 12px 4px 4px;
-  box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
+  box-shadow: var(--app-shadow, 0 2px 8px rgb(0 0 0 / 6%));
   transition: all 0.2s ease;
 }
 
 .task-badge:hover {
   border-color: var(--app-accent, #409eff);
-  box-shadow: var(--app-glow, 0 0 12px rgba(0,240,255,0.2));
+  box-shadow: var(--app-glow, 0 0 12px rgb(0 240 255 / 20%));
 }
 
 .task-badge__btn {
@@ -177,7 +177,7 @@ function handleCancel(taskId: string): void {
   background: var(--app-panel-solid, #fff);
   border: 1px solid var(--app-border, #e4e7ed);
   border-radius: 10px;
-  box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
+  box-shadow: var(--app-shadow, 0 2px 8px rgb(0 0 0 / 6%));
 }
 
 .task-panel__title {
@@ -192,7 +192,7 @@ function handleCancel(taskId: string): void {
   border: 1px solid var(--app-border, #e4e7ed);
   border-radius: 10px;
   padding: 12px 14px;
-  box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
+  box-shadow: var(--app-shadow, 0 2px 8px rgb(0 0 0 / 6%));
   backdrop-filter: blur(6px);
 }
 
@@ -205,7 +205,7 @@ function handleCancel(taskId: string): void {
   background: var(--app-panel-solid, #fff);
   border: 1px solid var(--app-border, #e4e7ed);
   border-radius: 10px;
-  box-shadow: var(--app-shadow, 0 2px 8px rgba(0,0,0,0.06));
+  box-shadow: var(--app-shadow, 0 2px 8px rgb(0 0 0 / 6%));
 }
 
 .task-card__header {
@@ -269,13 +269,16 @@ function handleCancel(taskId: string): void {
 .task-item-enter-active {
   transition: all 0.3s ease;
 }
+
 .task-item-leave-active {
   transition: all 0.25s ease;
 }
+
 .task-item-enter-from {
   opacity: 0;
   transform: translateX(40px);
 }
+
 .task-item-leave-to {
   opacity: 0;
   transform: translateX(40px);
