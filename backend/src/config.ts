@@ -8,9 +8,15 @@ export interface AuthConfig {
   tokenExpiryHours: number
 }
 
+export interface LogConfig {
+  cleanupOnStartup: boolean
+  retentionDays: number
+}
+
 export interface AppConfig {
   auth: AuthConfig
   storageRoot: string
+  log: LogConfig
 }
 
 const CONFIG_PATH = process.env.CONFIG_PATH
@@ -21,7 +27,11 @@ const DEFAULT_CONFIG: AppConfig = {
     token: 'admin123',
     tokenExpiryHours: 24
   },
-  storageRoot: process.env.FILE_MANAGER_BASE_DIR || process.cwd()
+  storageRoot: process.env.FILE_MANAGER_BASE_DIR || process.cwd(),
+  log: {
+    cleanupOnStartup: true,
+    retentionDays: 30
+  }
 }
 
 function ensureConfig(): void {
@@ -78,6 +88,10 @@ export function updateConfig(updates: Partial<AppConfig>): AppConfig {
     auth: {
       ...current.auth,
       ...(updates.auth || {})
+    },
+    log: {
+      ...current.log,
+      ...(updates.log || {})
     }
   }
   const yamlStr = yaml.dump(merged, { lineWidth: -1, noRefs: true })
@@ -86,7 +100,7 @@ export function updateConfig(updates: Partial<AppConfig>): AppConfig {
   return merged
 }
 
-export function getSanitizedConfig(): Omit<AppConfig, 'auth'> & { auth: Omit<AuthConfig, 'token'> & { token: string } } {
+export function getSanitizedConfig() {
   const cfg = getConfig()
   const masked = cfg.auth.token
     ? cfg.auth.token.slice(0, 3) + '***'

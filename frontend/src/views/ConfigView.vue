@@ -35,6 +35,31 @@
             <div class="form-item-tip">修改后需重启服务生效</div>
           </el-form-item>
 
+          <el-divider content-position="left">
+            <span class="divider-label">日志清理</span>
+          </el-divider>
+
+          <el-form-item label="启动时清理旧日志">
+            <el-switch v-model="form.cleanupOnStartup" />
+          </el-form-item>
+
+          <el-form-item label="保留天数">
+            <el-select v-model="form.retentionDays" style="width: 160px">
+              <el-option label="7 天" :value="7" />
+              <el-option label="14 天" :value="14" />
+              <el-option label="30 天" :value="30" />
+              <el-option label="60 天" :value="60" />
+              <el-option label="90 天" :value="90" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="立即清理">
+            <el-button :loading="cleaning" @click="handleCleanLogs">执行清理</el-button>
+            <div v-if="cleanResult !== null" class="form-item-tip">
+              {{ cleanResult > 0 ? `已清理 ${cleanResult} 个过期日志文件` : '没有过期的日志文件' }}
+            </div>
+          </el-form-item>
+
           <el-form-item>
             <el-button type="primary" :loading="saving" @click="handleSave"> 保存配置 </el-button>
             <el-button @click="handleReset"> 重置 </el-button>
@@ -49,7 +74,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getConfig, updateConfig, type AppConfig } from '@/api/config'
+import { getConfig, updateConfig, cleanLogs, type AppConfig } from '@/api/config'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
@@ -58,11 +83,15 @@ const auth = useAuthStore()
 
 const config = reactive<Partial<AppConfig>>({})
 const saving = ref(false)
+const cleaning = ref(false)
+const cleanResult = ref<number | null>(null)
 
 const form = reactive({
   token: '',
   tokenExpiryHours: 24,
   storageRoot: '',
+  cleanupOnStartup: true,
+  retentionDays: 30,
 })
 
 onMounted(async () => {
@@ -71,6 +100,8 @@ onMounted(async () => {
     Object.assign(config, cfg)
     form.tokenExpiryHours = cfg.auth.tokenExpiryHours
     form.storageRoot = cfg.storageRoot || ''
+    form.cleanupOnStartup = cfg.log?.cleanupOnStartup ?? true
+    form.retentionDays = cfg.log?.retentionDays ?? 30
   } catch {
     ElMessage.error('获取配置失败')
   }
@@ -80,6 +111,21 @@ function handleReset() {
   form.token = ''
   form.tokenExpiryHours = config.auth?.tokenExpiryHours || 24
   form.storageRoot = config.storageRoot || ''
+  form.cleanupOnStartup = config.log?.cleanupOnStartup ?? true
+  form.retentionDays = config.log?.retentionDays ?? 30
+}
+
+async function handleCleanLogs() {
+  cleaning.value = true
+  cleanResult.value = null
+  try {
+    const res = await cleanLogs()
+    cleanResult.value = res.deleted
+    ElMessage.success(res.deleted > 0 ? `已清理 ${res.deleted} 个过期日志文件` : '没有过期的日志文件')
+  } catch {
+    ElMessage.error('清理失败')
+  }
+  cleaning.value = false
 }
 
 async function handleSave() {
@@ -98,6 +144,14 @@ async function handleSave() {
     }
     if (form.storageRoot !== (config.storageRoot || '')) {
       payload.storageRoot = form.storageRoot
+      hasChange = true
+    }
+    if (form.cleanupOnStartup !== (config.log?.cleanupOnStartup ?? true)) {
+      payload.log = { ...payload.log, cleanupOnStartup: form.cleanupOnStartup }
+      hasChange = true
+    }
+    if (form.retentionDays !== (config.log?.retentionDays ?? 30)) {
+      payload.log = { ...payload.log, retentionDays: form.retentionDays }
       hasChange = true
     }
 

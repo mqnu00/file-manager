@@ -11,14 +11,8 @@ import systemRoutes from './routes/system'
 import logRoutes from './routes/logs'
 import { errorHandler } from './middleware/errorHandler'
 import { authMiddleware } from './middleware/auth'
-import { isDefaultToken } from './config'
+import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
-
-// 启动时清理超过 30 天的旧日志
-const deletedLogs = cleanOldLogs(30)
-if (deletedLogs > 0) {
-  console.log(`已清理 ${deletedLogs} 个过期日志文件`)
-}
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -66,6 +60,15 @@ try {
 
 // ===== 统一错误处理中间件（必须放在所有路由之后） =====
 app.use(errorHandler)
+
+// 启动时日志清理（根据配置决定）
+const logCfg = getConfig().log
+if (logCfg.cleanupOnStartup) {
+  const deleted = cleanOldLogs(logCfg.retentionDays)
+  if (deleted > 0) {
+    console.log(`已清理 ${deleted} 个过期日志文件`)
+  }
+}
 
 const startServer = (port: number): void => {
   app
