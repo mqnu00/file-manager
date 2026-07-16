@@ -34,6 +34,24 @@ export const moveFileAsync = (
   toPath: string,
   onProgress?: (progress: number, speed: number) => void
 ): Promise<void> => {
+  // Demo 模式：模拟 SSE 进度
+  if (import.meta.env.VITE_DEMO_MODE === 'true') {
+    return new Promise((resolve) => {
+      let progress = 0
+      const interval = setInterval(() => {
+        progress += Math.random() * 25 + 10
+        if (progress >= 100) {
+          progress = 100
+          clearInterval(interval)
+          onProgress?.(100, 0)
+          resolve()
+        } else {
+          onProgress?.(Math.round(progress), Math.random() * 50 + 10)
+        }
+      }, 300)
+    })
+  }
+
   return new Promise((resolve, reject) => {
     fetch('/api/files/move', {
       method: 'POST',
@@ -102,6 +120,11 @@ export const zipFolderAsync = (
   path: string,
   onProgress?: (progress: number) => void
 ): Promise<void> => {
+  // Demo 模式：不支持压缩
+  if (import.meta.env.VITE_DEMO_MODE === 'true') {
+    return Promise.reject(new Error('演示模式不支持压缩操作'))
+  }
+
   return new Promise((resolve, reject) => {
     fetch('/api/files/zip', {
       method: 'POST',
@@ -167,6 +190,11 @@ export const zipFolderAsync = (
 
 // 下载文件（fetch + blob 方式，支持认证头）
 export const downloadFile = async (filePath: string): Promise<void> => {
+  // Demo 模式：不支持下载
+  if (import.meta.env.VITE_DEMO_MODE === 'true') {
+    throw new Error('演示模式不支持下载操作')
+  }
+
   const response = await fetch(`/api/files/download/${encodeURIComponent(filePath)}`, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,

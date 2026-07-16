@@ -1,8 +1,10 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+const isDemo = import.meta.env.VITE_DEMO_MODE === 'true'
+
 const router = createRouter({
-  history: createWebHistory(),
+  history: isDemo ? createWebHashHistory() : createWebHistory(),
   routes: [
     {
       path: '/',
@@ -37,6 +39,11 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, _from, next) => {
+  if (isDemo) {
+    next()
+    return
+  }
+
   const auth = useAuthStore()
 
   if (!auth.initialized) {

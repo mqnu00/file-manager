@@ -5,6 +5,7 @@ node_modules/
 # 构建输出
 dist/
 */dist/
+gh-pages-dist/
 
 # 环境变量
 .env

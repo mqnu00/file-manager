@@ -8,6 +8,8 @@
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "cd frontend && npm run build",
     "build:backend": "cd backend && npm run build",
+    "build:demo": "cd frontend && npm run build:demo",
+    "preview:demo": "mkdir -p /tmp/gh-pages-serve && ln -sfn \"$(pwd)/gh-pages-dist\" /tmp/gh-pages-serve/file-manager && npx serve /tmp/gh-pages-serve",
     "preview": "node ./backend/dist/app.js",
     "start": "node backend/src/app.js",
     "release": "node scripts/release.js",

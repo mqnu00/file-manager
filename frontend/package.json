@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
+    "build:demo": "vite build --mode demo",
     "preview": "vite preview",
     "lint": "npm run lint:base && npm run lint:style && npm run format",
     "lint:base": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx --fix",

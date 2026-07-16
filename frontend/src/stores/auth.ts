@@ -11,6 +11,13 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!sessionToken.value)
 
   async function init() {
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      sessionToken.value = 'demo-token'
+      localStorage.setItem(STORAGE_KEY_SESSION, 'demo-token')
+      initialized.value = true
+      return
+    }
+
     if (!sessionToken.value) {
       initialized.value = true
       return
