@@ -10,6 +10,9 @@ export const useTaskStore = defineStore('task', () => {
   // 活跃的 SSE 取消函数映射 taskId → cleanup
   const subscriptions = new Map<string, () => void>()
 
+  // 任务完成回调 taskId → callback
+  const completeCallbacks = new Map<string, () => void>()
+
   /**
    * 页面加载时初始化：获取任务列表，为 running 状态的任务建立 SSE 订阅
    */
@@ -55,6 +58,10 @@ export const useTaskStore = defineStore('task', () => {
       onComplete() {
         updateTaskFromServer(taskId, { status: 'completed', progress: 100, phase: 'delete' })
         unsubscribeFromTask(taskId)
+        // 调用完成回调
+        const cb = completeCallbacks.get(taskId)
+        completeCallbacks.delete(taskId)
+        if (cb) cb()
       },
       onCancelled(message) {
         updateTaskFromServer(taskId, { status: 'cancelled', progress: 0 })
@@ -100,7 +107,8 @@ export const useTaskStore = defineStore('task', () => {
   async function startMoveTask(
     sourcePaths: string[],
     sourceNames: string[],
-    targetPath: string
+    targetPath: string,
+    onComplete?: () => void
   ): Promise<void> {
     try {
       const { taskId } = await startMoveTaskApi(sourcePaths, targetPath)
@@ -123,6 +131,11 @@ export const useTaskStore = defineStore('task', () => {
       })
 
       ElMessage.success('移动任务已启动')
+
+      // 存储完成回调
+      if (onComplete) {
+        completeCallbacks.set(taskId, onComplete)
+      }
 
       // 订阅 SSE 进度
       subscribeToTask(taskId)

@@ -78,7 +78,7 @@
       :target-path="progress.moveState.targetPath"
       @update:model-value="progress.moveState.visible = $event"
       @update:target-path="progress.moveState.targetPath = $event"
-      @confirm="() => progress.moveFile()"
+      @confirm="() => progress.moveFile(makeConditionalRefresh(progress.moveState.sourcePaths))"
     />
 
     <!-- 压缩进度对话框 -->
@@ -340,6 +340,16 @@ const handleBatchMove = () => {
   })
 
   progress.showBatchMoveDialog(fileStore.selectedFiles, names)
+}
+
+/** 构建条件刷新回调：仅当当前目录是移动源目录时才刷新 */
+const makeConditionalRefresh = (sourcePaths: string[]) => {
+  return () => {
+    const sourceDirs = new Set(sourcePaths.map((p) => p.substring(0, p.lastIndexOf('/'))))
+    if (sourceDirs.has(fileStore.currentPath)) {
+      refresh()
+    }
+  }
 }
 
 const handleBatchDownload = async () => {

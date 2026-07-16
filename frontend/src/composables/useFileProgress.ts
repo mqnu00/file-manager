@@ -63,7 +63,7 @@ export const useFileProgress = () => {
   /**
    * 确认移动：检查冲突 → 启动后台任务 → 关闭对话框
    */
-  const moveFiles = async () => {
+  const moveFiles = async (onComplete?: () => void) => {
     if (!moveState.targetPath.trim()) {
       ElMessage.warning('请选择目标路径')
       return
@@ -91,7 +91,7 @@ export const useFileProgress = () => {
 
     hideMoveDialog()
 
-    await taskStore.startMoveTask(sourcePaths, sourceNames, normalizedTargetPath)
+    await taskStore.startMoveTask(sourcePaths, sourceNames, normalizedTargetPath, onComplete)
   }
 
   const zipFolder = (path: string, onRefresh?: () => void) => {

@@ -17,11 +17,6 @@ const CONFIG_DIR = process.env.CONFIG_PATH
 
 const TASKS_FILE = path.join(CONFIG_DIR, 'tasks.json')
 
-// ===== 任务清理定时器 =====
-// 已完成/已取消的任务保留 5 分钟后自动清除
-const TASK_RETENTION_MS = 5 * 60 * 1000
-let cleanupTimer: ReturnType<typeof setInterval> | null = null
-
 // ===== 任务注册表 =====
 interface TaskEntry {
   info: TaskInfo
@@ -84,6 +79,8 @@ function persist(): void {
       _completedCopies?: string[]
     }> = []
     for (const [, entry] of tasks) {
+      // 已完成/已取消的任务不持久化
+      if (entry.info.status === 'completed' || entry.info.status === 'cancelled') continue
       data.push({
         id: entry.info.id,
         type: entry.info.type,
@@ -325,24 +322,6 @@ export function subscribe(taskId: string, res: Response): void {
   })
 }
 
-// ===== 定时清理 =====
-
-function startCleanup(): void {
-  if (cleanupTimer) return
-  cleanupTimer = setInterval(() => {
-    const cutoff = now() - TASK_RETENTION_MS
-    for (const [id, entry] of tasks) {
-      if (
-        (entry.info.status === 'completed' || entry.info.status === 'cancelled' || entry.info.status === 'failed') &&
-        entry.info.startTime < cutoff
-      ) {
-        tasks.delete(id)
-      }
-    }
-    persist()
-  }, 60_000) // 每分钟检查一次
-}
-
 // ===== 任务执行器 =====
 
 async function startMoveTask(taskId: string): Promise<void> {
@@ -436,7 +415,8 @@ async function startMoveTask(taskId: string): Promise<void> {
     log('INFO', 'task', `移动任务 ${taskId} 已取消`)
 
     broadcast(taskId, { type: 'cancelled', message: '任务已取消' })
-    persist()
+    // 3 秒后从内存删除
+    setTimeout(() => { tasks.delete(taskId) }, 3000)
     return
   }
 
@@ -472,17 +452,18 @@ async function startMoveTask(taskId: string): Promise<void> {
     log('INFO', 'task', `移动任务 ${taskId} 完成`)
 
     broadcast(taskId, { type: 'complete' })
+    // 3 秒后从内存删除
+    setTimeout(() => { tasks.delete(taskId) }, 3000)
   } catch (e: any) {
     entry.info.status = 'failed'
     entry.info.error = `删除源文件失败: ${e.message}`
     log('ERROR', 'task', `移动任务 ${taskId} 删除阶段失败: ${e.message}`)
 
     broadcast(taskId, { type: 'error', message: entry.info.error })
+    // 3 秒后从内存删除
+    setTimeout(() => { tasks.delete(taskId) }, 3000)
   }
-
-  persist()
 }
 
 // ===== 初始化 =====
 load()
-startCleanup()

@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ContextMenu: typeof import('./components/ContextMenu.vue')['default']
     CreateFolderDialog: typeof import('./components/dialogs/CreateFolderDialog.vue')['default']
+    ElBadge: typeof import('element-plus/es')['ElBadge']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
     ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
