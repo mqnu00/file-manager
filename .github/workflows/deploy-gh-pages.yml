@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_run:
+    workflows: ['Build & Release']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -14,6 +17,7 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
 
     steps:
       - uses: actions/checkout@v4
