@@ -56,6 +56,70 @@ function countItems(filePath: string): number {
   }
 }
 
+// ===== 冲突检测 =====
+
+/**
+ * 判断两个路径是否存在冲突（一个包含另一个或相等）
+ */
+function isPathConflict(a: string, b: string): boolean {
+  const normA = a.replace(/\/$/, '')
+  const normB = b.replace(/\/$/, '')
+  return normA === normB || normA.startsWith(normB + '/') || normB.startsWith(normA + '/')
+}
+
+/**
+ * 提取任务占用的所有源路径（读取端）和目标路径（写入端）
+ */
+function getTaskPaths(entry: TaskEntry): { sources: string[]; targets: string[] } {
+  if (entry.info.type === 'move') {
+    const m = entry.info.metadata as MoveTaskMetadata
+    const targets = m.sourceNames.map((n) => m.targetPath.replace(/\/$/, '') + '/' + n)
+    return { sources: m.sourcePaths, targets }
+  } else {
+    const c = entry.info.metadata as CompressTaskMetadata
+    return { sources: [c.sourcePath], targets: [c.targetPath] }
+  }
+}
+
+/**
+ * 检查新任务是否与已有 running/cancelling 任务冲突
+ * @returns 冲突描述字符串，无冲突返回 null
+ */
+function checkConflict(newSources: string[], newTargets: string[]): string | null {
+  for (const [, entry] of tasks) {
+    if (entry.info.status !== 'running' && entry.info.status !== 'cancelling') continue
+
+    const existing = getTaskPaths(entry)
+
+    for (const ns of newSources) {
+      for (const es of existing.sources) {
+        if (isPathConflict(ns, es)) {
+          return `路径 "${ns}" 正被其他任务使用中`
+        }
+      }
+      for (const et of existing.targets) {
+        if (isPathConflict(ns, et)) {
+          return `路径 "${ns}" 与正在执行的任务目标冲突`
+        }
+      }
+    }
+
+    for (const nt of newTargets) {
+      for (const es of existing.sources) {
+        if (isPathConflict(nt, es)) {
+          return `路径 "${nt}" 与正在执行的任务源路径冲突`
+        }
+      }
+      for (const et of existing.targets) {
+        if (isPathConflict(nt, et)) {
+          return `路径 "${nt}" 正被其他任务使用中`
+        }
+      }
+    }
+  }
+  return null
+}
+
 // ===== 持久化 =====
 
 function persist(): void {
@@ -225,6 +289,15 @@ function updateTask(
 // ===== 公开 API =====
 
 export function createMoveTask(sourcePaths: string[], sourceNames: string[], targetPath: string): TaskInfo {
+  // 冲突检测
+  const targets = sourceNames.map((n) => targetPath.replace(/\/$/, '') + '/' + n)
+  const conflict = checkConflict(sourcePaths, targets)
+  if (conflict) {
+    const err = new Error(conflict)
+    ;(err as any).code = 'TASK_CONFLICT'
+    throw err
+  }
+
   const id = generateId()
 
   // 计算总条目数（含目录内嵌套文件）
@@ -267,10 +340,19 @@ export function createMoveTask(sourcePaths: string[], sourceNames: string[], tar
 }
 
 export function createCompressTask(sourcePath: string): TaskInfo {
-  const id = generateId()
   const sourceName = path.basename(sourcePath)
   const parentDir = path.dirname(sourcePath)
   const targetPath = parentDir + '/' + sourceName + '.zip'
+
+  // 冲突检测
+  const conflict = checkConflict([sourcePath], [targetPath])
+  if (conflict) {
+    const err = new Error(conflict)
+    ;(err as any).code = 'TASK_CONFLICT'
+    throw err
+  }
+
+  const id = generateId()
 
   const info: TaskInfo = {
     id,

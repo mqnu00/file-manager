@@ -33,8 +33,15 @@ router.post(
       return parts[parts.length - 1]
     })
 
-    const task = createMoveTask(sourcePaths, sourceNames, targetPath)
-    res.json({ taskId: task.id })
+    try {
+      const task = createMoveTask(sourcePaths, sourceNames, targetPath)
+      res.json({ taskId: task.id })
+    } catch (e: any) {
+      if (e.code === 'TASK_CONFLICT') {
+        return res.status(409).json({ message: e.message })
+      }
+      throw e
+    }
   })
 )
 
@@ -50,8 +57,15 @@ router.post(
       return res.status(400).json({ message: '缺少源文件夹路径' })
     }
 
-    const task = createCompressTask(sourcePath)
-    res.json({ taskId: task.id })
+    try {
+      const task = createCompressTask(sourcePath)
+      res.json({ taskId: task.id })
+    } catch (e: any) {
+      if (e.code === 'TASK_CONFLICT') {
+        return res.status(409).json({ message: e.message })
+      }
+      throw e
+    }
   })
 )
 
