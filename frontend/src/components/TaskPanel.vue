@@ -79,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { FolderOpened, List, ArrowDown } from '@element-plus/icons-vue'
 import { useTaskStore } from '@/stores/task'
 import type { TaskInfo } from '@/types'
@@ -95,6 +95,14 @@ const visibleTasks = computed(() =>
 )
 
 const runningCount = computed(() => visibleTasks.value.length)
+
+// 初始化无任务时默认折叠；所有任务完成后自动折叠
+onMounted(() => {
+  if (runningCount.value === 0) collapsed.value = true
+})
+watch(runningCount, (count) => {
+  if (count === 0) collapsed.value = true
+})
 
 function phaseTagType(task: TaskInfo): 'primary' | 'warning' | 'info' {
   if (task.status === 'cancelling') return 'warning'
