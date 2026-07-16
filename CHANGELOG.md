@@ -1,3 +1,46 @@
+## v2.7.0 (2026-07-16)
+
+### 🐛 Bug 修复
+
+- 修复 SSE 压缩接口 `GET /zip` 改为 `POST /zip`，前端改用 `fetch` + ReadableStream 携带认证头
+- 修复下载功能 `window.open` 改为 `fetch` + `blob` 携带认证头，解决认证失效问题
+- 修复登录后未跳转回原页面，现在读取 `redirect` 查询参数正确回跳
+- 修复路径遍历漏洞：检测 `..` 路径段，拒绝非法路径访问
+- 修复移动文件 handler 中 `fromPath`/`toPath` 变量作用域问题（移到 try 之前）
+- 修复前端日志页面幽灵"复制"选项
+- 修复虚拟文件系统中文件大小异常显示
+- 修复日志页面多余的 HTML 结束标签导致编译失败
+- 优化文件/文件夹操作提示样式（mobile-style → 标准位置）
+
+### 🔄 改进优化
+
+- 后端统一使用结构化日志（`LogEntry` 接口），替代原始字符串行
+- 日志自动清理：支持配置保留天数，启动时自动删除过期日志
+- 前端日志页面适配结构化数据，移除前端的 `parseLogLine` 解析逻辑
+- 前端日志卡片宽度改为响应式，自适应窗口大小
+- 移除 `errorHandler` 中间件冗余的 `console.error`，统一通过 `log()` 输出
+- 文件移动/压缩错误改用 `log()` 记录，移除 `console.error`
+- 导出 `isVirtualFs`，消除 `fileService.ts` 中的重复定义
+- 目录复制改为流式传输（`createReadStream` + `pipeline`），替代同步读写法
+- 右键菜单加入视口边界检测，避免溢出屏幕
+- `SciFiBackground` 从 `v-if` 改为 `v-show`，避免重复初始化 Three.js
+- 移动对话框 `PathSelector` 排除源目录及其子目录
+- 日志系统新增 `other` 操作类型，记录所有错误/失败操作
+
+### ✨ 新增功能
+
+- **设置页面日志清理配置**：可选启动时清理、保留天数下拉选择、立即执行清理
+- 后端新增 `POST /api/logs/clean` 清理接口
+- 日志配置（`cleanupOnStartup` / `retentionDays`）支持 `config.yml` 持久化和热加载
+- npm 包补充 `repository`、`license`、`keywords` 字段
+- 新增 `LICENSE` MIT 许可证文件
+
+### 🔧 工程改进
+
+- 升级 ESLint 及相关 lint 依赖版本
+
+---
+
 ## v2.6.0 (2026-07-15)
 
 ### ✨ 新增功能
