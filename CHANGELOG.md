@@ -34,6 +34,13 @@
 - 日志配置（`cleanupOnStartup` / `retentionDays`）支持 `config.yml` 持久化和热加载
 - npm 包补充 `repository`、`license`、`keywords` 字段
 - 新增 `LICENSE` MIT 许可证文件
+- **GitHub Pages Demo 部署**：构建 demo 模式前端，所有 API mock，可交互浏览文件管理界面
+  - `VITE_DEMO_MODE=true` 启用 mock 拦截器，自动跳过认证
+  - 模拟 3 层嵌套文件树、系统信息、配置、日志等数据
+  - 支持文件浏览、创建文件夹、删除、重命名、移动（模拟进度）、主题切换
+  - 路由切换 Hash 模式兼容 GitHub Pages，压缩/下载操作提示不支持
+  - tag 推送自动构建部署到 `gh-pages` 分支
+  - `npm run build:demo` / `npm run preview:demo` 本地预览
 
 ### 🔧 工程改进
 
