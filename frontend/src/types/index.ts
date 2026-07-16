@@ -1,3 +1,33 @@
+// ===== 后台任务类型 =====
+
+export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed'
+export type TaskPhase = 'copy' | 'delete'
+export type TaskType = 'move'
+
+export interface MoveTaskMetadata {
+  sourcePaths: string[]
+  sourceNames: string[]
+  targetPath: string
+}
+
+export interface TaskInfo {
+  id: string
+  type: TaskType
+  status: TaskStatus
+  phase: TaskPhase
+  progress: number
+  speed: number
+  totalSize: number
+  startTime: number
+  metadata: MoveTaskMetadata
+  currentFile?: string
+  completedCount: number
+  totalCount: number
+  totalItemCount: number
+  processedItemCount: number
+  error?: string
+}
+
 export interface FileItem {
   name: string
   path: string

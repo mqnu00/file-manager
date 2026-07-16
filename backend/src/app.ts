@@ -9,6 +9,7 @@ import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
 import systemRoutes from './routes/system'
 import logRoutes from './routes/logs'
+import taskRoutes from './routes/tasks'
 import { errorHandler } from './middleware/errorHandler'
 import { authMiddleware } from './middleware/auth'
 import { isDefaultToken, getConfig } from './config'
@@ -42,6 +43,7 @@ app.use('/api/files', authMiddleware, fileRoutes)
 app.use('/api/folders', authMiddleware, folderRoutes)
 app.use('/api/system', authMiddleware, systemRoutes)
 app.use('/api/logs', authMiddleware, logRoutes)
+app.use('/api/tasks', authMiddleware, taskRoutes)
 
 // ===== 静态文件 =====
 

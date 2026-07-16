@@ -43,3 +43,4 @@ backend/files/
 .mimocode/
 .qwen/
 .sema/
+backend/tasks.json

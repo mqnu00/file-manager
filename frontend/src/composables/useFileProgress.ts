@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
-import { moveFileAsync, zipFolderAsync, cancelZip as cancelZipApi, getFiles } from '@/api/file'
+import { zipFolderAsync, cancelZip as cancelZipApi, getFiles } from '@/api/file'
+import { useTaskStore } from '@/stores/task'
 import { ElMessage } from 'element-plus'
 import type { FileItem } from '@/types'
 
@@ -8,11 +9,6 @@ export interface MoveProgressState {
   sourceNames: string[]
   sourcePaths: string[]
   targetPath: string
-  loading: boolean
-  progress: number
-  status: 'success' | 'exception' | ''
-  speed: number
-  totalSize: number
 }
 
 export interface ZipProgressState {
@@ -24,16 +20,13 @@ export interface ZipProgressState {
 }
 
 export const useFileProgress = () => {
+  const taskStore = useTaskStore()
+
   const moveState = reactive<MoveProgressState>({
     visible: false,
     sourceNames: [],
     sourcePaths: [],
     targetPath: '',
-    loading: false,
-    progress: 0,
-    status: '',
-    speed: 0,
-    totalSize: 0,
   })
 
   const zipState = reactive<ZipProgressState>({
@@ -51,13 +44,6 @@ export const useFileProgress = () => {
     moveState.targetPath = ''
   }
 
-  const resetMoveState = () => {
-    moveState.loading = false
-    moveState.status = ''
-    moveState.speed = 0
-    moveState.totalSize = 0
-  }
-
   const getParentPath = (filePath: string): string => {
     const parts = filePath.split('/')
     parts.pop()
@@ -71,23 +57,17 @@ export const useFileProgress = () => {
       sourceNames: names,
       sourcePaths: paths,
       targetPath: parentPath,
-      loading: false,
-      progress: 0,
-      status: '',
-      speed: 0,
     })
   }
 
-  const moveFiles = async (onComplete?: () => void) => {
+  /**
+   * 确认移动：检查冲突 → 启动后台任务 → 关闭对话框
+   */
+  const moveFiles = async () => {
     if (!moveState.targetPath.trim()) {
       ElMessage.warning('请选择目标路径')
       return
     }
-
-    moveState.loading = true
-    moveState.progress = 0
-    moveState.status = ''
-    moveState.speed = 0
 
     // 检查目标目录是否有同名文件
     const normalizedTargetPath = moveState.targetPath.startsWith('/')
@@ -96,68 +76,22 @@ export const useFileProgress = () => {
     try {
       const res = await getFiles(normalizedTargetPath)
       const existingNames = new Set(res.files.map((f: FileItem) => f.name))
-      const conflicts = moveState.sourceNames.filter(name => existingNames.has(name))
+      const conflicts = moveState.sourceNames.filter((name) => existingNames.has(name))
       if (conflicts.length > 0) {
         ElMessage.warning(`目标目录已存在同名文件：${conflicts.join('、')}，移动已取消`)
-        moveState.loading = false
         return
       }
     } catch {
       // 目标目录不存在，继续移动（后端会创建）
     }
 
-    const total = moveState.sourcePaths.length
-    let completed = 0
-    let failed = 0
+    // 启动后台任务
+    const sourcePaths = moveState.sourcePaths.slice()
+    const sourceNames = moveState.sourceNames.slice()
 
-    for (let i = 0; i < moveState.sourcePaths.length; i++) {
-      const srcPath = moveState.sourcePaths[i]
-      const srcName = moveState.sourceNames[i]
+    hideMoveDialog()
 
-      const normalizedSourcePath = srcPath.startsWith('/') ? srcPath : '/' + srcPath
-      const fullPath = normalizedTargetPath + '/' + srcName
-
-      // 同目录移动跳过
-      const srcDir = normalizedSourcePath.substring(0, normalizedSourcePath.lastIndexOf('/'))
-      if (srcDir === normalizedTargetPath) {
-        ElMessage.warning(`${srcName} 与目标目录相同，已跳过`)
-        failed++
-        continue
-      }
-
-      try {
-        await moveFileAsync(normalizedSourcePath, fullPath, (fileProgress, fileSpeed, totalSize) => {
-          moveState.speed = fileSpeed
-          moveState.totalSize = totalSize
-          const overallProgress = Math.floor(((completed + fileProgress / 100) / total) * 100)
-          moveState.progress = Math.min(99, overallProgress)
-        })
-        completed++
-      } catch (e: any) {
-        failed++
-        ElMessage.error(`${srcName}: ${e.message}`)
-      }
-    }
-
-    moveState.speed = 0
-
-    if (failed === 0) {
-      moveState.progress = 100
-      moveState.status = 'success'
-      ElMessage.success(`移动完成，成功 ${completed} 个`)
-    } else if (completed > 0) {
-      moveState.progress = 100
-      moveState.status = 'success'
-      ElMessage.warning(`移动完成，成功 ${completed} 个，失败 ${failed} 个`)
-    } else {
-      moveState.status = 'exception'
-    }
-
-    setTimeout(() => {
-      hideMoveDialog()
-      resetMoveState()
-      onComplete?.()
-    }, 600)
+    await taskStore.startMoveTask(sourcePaths, sourceNames, normalizedTargetPath)
   }
 
   const zipFolder = (path: string, onRefresh?: () => void) => {

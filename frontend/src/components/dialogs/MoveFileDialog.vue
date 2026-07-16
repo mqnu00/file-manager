@@ -8,49 +8,29 @@
   >
     <div class="move-dialog-content">
       <div class="move-dialog-info">
-        已选择 <strong>{{ sourceNames.length }}</strong> 个文件/文件夹
-      </div>
-      <div class="move-dialog-progress">
-        <el-progress
-          v-if="loading"
-          :percentage="progress"
-          :status="status"
-          :format="formatProgressFn"
-        />
-        <div v-if="loading && speed > 0" class="move-dialog-speed">
-          速度：{{ formatSpeed(speed) }}
-        </div>
+        已选择 <strong>{{ sourceNames.length }}</strong> 个文件/文件夹，选择目标路径后点击确定即可启动后台移动任务
       </div>
       <PathSelector
         :model-value="targetPath"
         :exclude-path="undefined"
         placeholder="选择目标文件夹"
-        :disabled="loading"
         @update:model-value="$emit('update:target-path', $event)"
       />
     </div>
     <template #footer>
-      <el-button :disabled="loading" @click="$emit('update:model-value', false)">取消</el-button>
-      <el-button type="primary" :loading="loading" @click="$emit('confirm')">
-        {{ loading ? '移动中...' : '确定' }}
-      </el-button>
+      <el-button @click="$emit('update:model-value', false)">取消</el-button>
+      <el-button type="primary" @click="$emit('confirm')">确定</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import PathSelector from '../PathSelector.vue'
-import { formatSpeed } from '@/utils/format'
-import { ProgressProps } from 'element-plus'
 
-const props = defineProps<{
+defineProps<{
   modelValue: boolean
   sourceNames: string[]
   targetPath: string
-  loading: boolean
-  progress: number
-  status: ProgressProps['status']
-  speed: number
 }>()
 
 defineEmits<{
@@ -58,8 +38,6 @@ defineEmits<{
   'update:target-path': [value: string]
   confirm: []
 }>()
-
-const formatProgressFn = (percent: number) => `${percent}%`
 </script>
 
 <style scoped>
@@ -70,24 +48,13 @@ const formatProgressFn = (percent: number) => `${percent}%`
 }
 
 .move-dialog-info {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: var(--app-text);
   font-size: 14px;
 }
 
 .move-dialog-info strong {
   color: var(--app-accent);
-}
-
-.move-dialog-progress {
-  margin-bottom: 16px;
-}
-
-.move-dialog-speed {
-  text-align: center;
-  margin-top: 8px;
-  color: var(--app-text-dim);
-  font-size: 13px;
 }
 
 :deep(.el-dialog__body) {

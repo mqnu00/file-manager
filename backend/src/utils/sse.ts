@@ -8,12 +8,14 @@ export const setSSEHeaders = (res: Response): void => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
 }
 
 /**
- * 发送 SSE 进度消息
+ * 发送 SSE 消息（接受任意可被 JSON.stringify 的对象）
  */
-export const sendSSEMessage = (res: Response, message: SSEProgressMessage): void => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const sendSSEMessage = (res: Response, message: any): void => {
   res.write(`data: ${JSON.stringify(message)}\n\n`)
 }
 

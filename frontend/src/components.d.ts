@@ -41,6 +41,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SciFiBackground: typeof import('./components/SciFiBackground.vue')['default']
+    TaskPanel: typeof import('./components/TaskPanel.vue')['default']
     Toolbar: typeof import('./components/Toolbar.vue')['default']
     ZipProgressDialog: typeof import('./components/dialogs/ZipProgressDialog.vue')['default']
   }

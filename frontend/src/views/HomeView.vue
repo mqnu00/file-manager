@@ -76,13 +76,9 @@
       :model-value="progress.moveState.visible"
       :source-names="progress.moveState.sourceNames"
       :target-path="progress.moveState.targetPath"
-      :loading="progress.moveState.loading"
-      :progress="progress.moveState.progress"
-      :status="progress.moveState.status"
-      :speed="progress.moveState.speed"
       @update:model-value="progress.moveState.visible = $event"
       @update:target-path="progress.moveState.targetPath = $event"
-      @confirm="() => progress.moveFile(refresh)"
+      @confirm="() => progress.moveFile()"
     />
 
     <!-- 压缩进度对话框 -->
@@ -114,6 +110,8 @@
       @refresh="refresh"
       @rename="showRenameDialogFromContextMenu"
     />
+
+    <TaskPanel />
   </div>
 </template>
 
@@ -124,6 +122,7 @@ import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
+import { useTaskStore } from '@/stores/task'
 import { formatSize, formatTime } from '@/utils/format'
 import { useContextMenu } from '@/composables/useContextMenu'
 import Toolbar from '../components/Toolbar.vue'
@@ -133,10 +132,12 @@ import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
 import ZipProgressDialog from '../components/dialogs/ZipProgressDialog.vue'
 import RenameDialog from '../components/dialogs/RenameDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
+import TaskPanel from '../components/TaskPanel.vue'
 import { FileItem } from '@/types/index.ts'
 
 const fileStore = useFileStore()
 const progress = useFileProgress()
+const taskStore = useTaskStore()
 
 const fileSort = useFileSort(
   () => fileStore.files,
@@ -365,6 +366,7 @@ const handleCancelSelection = () => {
 
 onMounted(() => {
   loadFiles()
+  taskStore.init()
 })
 </script>
 

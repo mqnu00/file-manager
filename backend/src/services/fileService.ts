@@ -296,6 +296,205 @@ export const moveFile = (fromPath: string, toPath: string, res: Response): void 
   }
 }
 
+// ===== 后台任务：两阶段移动 =====
+
+/**
+ * 递归统计目录内文件数量
+ */
+function countFilesInDir(dir: string): number {
+  let count = 0
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+  for (const entry of entries) {
+    const p = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      count += countFilesInDir(p)
+    } else {
+      count++
+    }
+  }
+  return count
+}
+
+/**
+ * 流式复制单个文件（支持取消）
+ * 在 on('data') 事件中检查 abortSignal，取消时清理目标半成品
+ */
+function copyFileStream(
+  fromFullPath: string,
+  toFullPath: string,
+  fileSize: number,
+  abortSignal: AbortSignal
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (abortSignal.aborted) {
+      reject(new Error('CANCELLED'))
+      return
+    }
+
+    const readStream = fs.createReadStream(fromFullPath)
+    const writeStream = fs.createWriteStream(toFullPath)
+
+    const cleanup = () => {
+      readStream.destroy()
+      writeStream.destroy()
+      try {
+        if (fs.existsSync(toFullPath)) {
+          fs.unlinkSync(toFullPath)
+        }
+      } catch { /* ignore cleanup errors */ }
+    }
+
+    readStream.on('data', () => {
+      if (abortSignal.aborted) {
+        cleanup()
+        reject(new Error('CANCELLED'))
+      }
+    })
+
+    readStream.on('error', (err) => {
+      cleanup()
+      reject(err)
+    })
+
+    writeStream.on('error', (err) => {
+      cleanup()
+      reject(err)
+    })
+
+    writeStream.on('finish', () => resolve())
+
+    readStream.pipe(writeStream)
+  })
+}
+
+/**
+ * 复制（仅复制，不删除源文件），支持 AbortSignal 取消。
+ *
+ * @param fromPath  源路径（URL 编码形式）
+ * @param toPath    目标路径（URL 编码形式）
+ * @param abortSignal  取消信号
+ * @param onProgress   进度回调 (0-99)
+ * @returns 已复制的叶子文件数量
+ */
+export const copyWithCancel = async (
+  fromPath: string,
+  toPath: string,
+  abortSignal: AbortSignal,
+  onProgress?: (percent: number) => void
+): Promise<number> => {
+  const decodedFromPath = decodeURIComponent(fromPath)
+  const decodedToPath = decodeURIComponent(toPath)
+
+  const fromFullPath = safePath(decodedFromPath)
+  const toFullPath = safePath(decodedToPath)
+
+  if (!fs.existsSync(fromFullPath)) {
+    throw new AppError('源文件不存在: ' + decodedFromPath)
+  }
+
+  const stats = fs.statSync(fromFullPath)
+  const isDirectory = stats.isDirectory()
+
+  // 确保目标父目录存在
+  const toParentDir = path.dirname(toFullPath)
+  if (!fs.existsSync(toParentDir)) {
+    fs.mkdirSync(toParentDir, { recursive: true })
+  }
+
+  if (!isDirectory) {
+    // ----- 单文件复制 -----
+    if (abortSignal.aborted) throw new Error('CANCELLED')
+
+    const fileSize = stats.size
+    const readStream = fs.createReadStream(fromFullPath)
+    const writeStream = fs.createWriteStream(toFullPath)
+    let copiedBytes = 0
+    const startTime = Date.now()
+
+    return new Promise<number>((resolve, reject) => {
+      const cleanup = () => {
+        readStream.destroy()
+        writeStream.destroy()
+        try {
+          if (fs.existsSync(toFullPath)) fs.unlinkSync(toFullPath)
+        } catch { /* ignore */ }
+      }
+
+      readStream.on('data', (chunk: Buffer) => {
+        if (abortSignal.aborted) {
+          cleanup()
+          reject(new Error('CANCELLED'))
+          return
+        }
+        copiedBytes += chunk.length
+        const elapsed = (Date.now() - startTime) / 1000
+        const speed = elapsed > 0 ? copiedBytes / elapsed / 1024 / 1024 : 0
+        const percent = fileSize > 0 ? Math.min(99, Math.floor((copiedBytes / fileSize) * 100)) : 99
+        onProgress?.(percent)
+      })
+
+      readStream.on('error', (err) => { cleanup(); reject(err) })
+      writeStream.on('error', (err) => { cleanup(); reject(err) })
+
+      writeStream.on('finish', () => {
+        onProgress?.(100)
+        resolve(1)
+      })
+
+      readStream.pipe(writeStream)
+    })
+  }
+
+  // ----- 目录递归复制 -----
+  const totalFiles = countFilesInDir(fromFullPath)
+  let copied = 0
+
+  const copyRecursive = async (srcDir: string, destDir: string): Promise<void> => {
+    if (abortSignal.aborted) throw new Error('CANCELLED')
+
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true })
+    }
+
+    const entries = fs.readdirSync(srcDir, { withFileTypes: true })
+    for (const entry of entries) {
+      if (abortSignal.aborted) throw new Error('CANCELLED')
+
+      const srcPath = path.join(srcDir, entry.name)
+      const destPath = path.join(destDir, entry.name)
+
+      if (entry.isDirectory()) {
+        await copyRecursive(srcPath, destPath)
+      } else {
+        const fileStats = fs.statSync(srcPath)
+        await copyFileStream(srcPath, destPath, fileStats.size, abortSignal)
+        copied++
+        const percent = totalFiles > 0 ? Math.min(99, Math.floor((copied / totalFiles) * 100)) : 99
+        onProgress?.(percent)
+      }
+    }
+  }
+
+  await copyRecursive(fromFullPath, toFullPath)
+  onProgress?.(100)
+  return totalFiles
+}
+
+/**
+ * 删除源文件/目录（Phase 2，不可取消）
+ */
+export const removeSources = (paths: string[]): void => {
+  for (const p of paths) {
+    const decoded = decodeURIComponent(p)
+    const fullPath = safePath(decoded)
+
+    if (fs.existsSync(fullPath)) {
+      fs.rmSync(fullPath, { recursive: true, force: true })
+      log('INFO', 'move', `已删除源: ${decoded}`)
+    }
+  }
+}
+
 /**
  * 下载文件
  */

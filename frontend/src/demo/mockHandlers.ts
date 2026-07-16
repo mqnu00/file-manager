@@ -178,11 +178,50 @@ export function setupMockApi(api: AxiosInstance) {
     }
 
     // ============================================================
-    // SSE: Move (模拟)
+    // SSE: Move (模拟 — 旧接口，已废弃)
     // ============================================================
     if (fullUrl === '/api/files/move' && method === 'post') {
-      // SSE 流式响应在 moveFileAsync 中使用 fetch 直接处理，不走 axios。
-      // moveFileAsync 在 demo 模式下有独立 mock（见 api/file.ts）。
+      return mockResponse({ success: true })
+    }
+
+    // ============================================================
+    // Tasks: 后台任务
+    // ============================================================
+    // POST /api/tasks/move — 创建移动任务
+    if (fullUrl === '/api/tasks/move' && method === 'post') {
+      const taskId = 'demo-task-' + Date.now()
+      return mockResponse({ taskId })
+    }
+
+    // GET /api/tasks — 获取所有任务
+    if (fullUrl === '/api/tasks' && method === 'get') {
+      return mockResponse({ tasks: [] })
+    }
+
+    // GET /api/tasks/:id — 获取单个任务
+    if (fullUrl.startsWith('/api/tasks/') && !fullUrl.includes('/cancel') && !fullUrl.includes('/stream') && method === 'get') {
+      const taskId = fullUrl.replace('/api/tasks/', '')
+      return mockResponse({
+        task: {
+          id: taskId,
+          type: 'move',
+          status: 'completed',
+          phase: 'delete',
+          progress: 100,
+          speed: 0,
+          totalSize: 0,
+          startTime: Date.now() - 5000,
+          metadata: { sourcePaths: [], sourceNames: [], targetPath: '/' },
+          completedCount: 0,
+          totalCount: 0,
+          totalItemCount: 0,
+          processedItemCount: 0,
+        },
+      })
+    }
+
+    // POST /api/tasks/:id/cancel — 取消任务
+    if (fullUrl.startsWith('/api/tasks/') && fullUrl.endsWith('/cancel') && method === 'post') {
       return mockResponse({ success: true })
     }
 
