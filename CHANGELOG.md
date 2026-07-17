@@ -1,3 +1,30 @@
+## v2.8.0 (2026-07-17)
+
+### ✨ 新增功能
+
+#### Electron 桌面应用
+
+- 新增 `electron/` 目录，包含主进程 (`main.ts`) 和预加载脚本 (`preload.ts`)
+- 新增 `electron-builder.yml` 构建配置，支持 Linux AppImage 和 deb 格式
+- Electron 模式下自动禁用 CSP 限制、绑定 `127.0.0.1` 防止外部访问
+- 新增 `npm run electron:dev` / `electron:start` / `electron:build` 开发/启动/打包命令
+- 构建产物：AppImage (~108MB) + deb (~75MB)
+
+#### GitHub Actions Release 增强
+
+- Release 工作流新增 Electron 构建步骤 (`npm run electron:build`)
+- Release 附件从仅 `.tar.gz` 扩展为 `.tar.gz` + `.AppImage` + `.deb`
+- Node 版本从 20 升级到 22
+
+### 🔄 改进优化
+
+- 根 `package.json` 添加 `"type": "module"`，统一 ESM 模块规范
+- `scripts/dev.js` 和 `scripts/release.js` 从 CJS 转换为 ESM
+- `backend/src/cli.ts` 适配 `createServer` 导出模式
+- `.gitignore` 新增 `dist-electron/`、`release/` 排除项
+
+---
+
 ## v2.7.1-test.1 (2026-07-16)
 
 - 测试：GitHub Pages demo 部署 + npm 发布完整流水线
