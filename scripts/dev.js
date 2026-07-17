@@ -1,5 +1,8 @@
-const { spawn } = require('child_process')
-const path = require('path')
+import { spawn } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 console.log('🚀 启动开发模式...')
 
@@ -7,17 +10,17 @@ console.log('🚀 启动开发模式...')
 const backend = spawn('npm', ['run', 'dev'], {
   cwd: path.join(__dirname, '..', 'backend'),
   stdio: 'inherit',
-  shell: true
+  shell: true,
 })
 
 // 等待后端启动后再启动前端
 setTimeout(() => {
   console.log('🎨 启动前端...')
-  
+
   const frontend = spawn('npm', ['run', 'dev'], {
     cwd: path.join(__dirname, '..', 'frontend'),
     stdio: 'inherit',
-    shell: true
+    shell: true,
   })
 
   frontend.on('error', (err) => {

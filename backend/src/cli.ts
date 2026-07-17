@@ -93,4 +93,5 @@ if (daemon) {
 
 // === 启动服务 ===
 
-require('./app')
+const { createServer } = require('./app')
+createServer()

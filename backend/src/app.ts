@@ -16,24 +16,28 @@ import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 
 const app = express()
-const PORT = process.env.PORT || 3000
-const HOST = process.env.HOST || '0.0.0.0'
+const PORT = Number(process.env.PORT) || 3000
+const isElectron = !!process.env.ELECTRON
+const HOST = process.env.HOST || (isElectron ? '127.0.0.1' : '0.0.0.0')
 
-app.use(
-  helmet({
-    hsts: { maxAge: 0 },
-    crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", 'https://unpkg.com'],
-        upgradeInsecureRequests: null,
+// Helmet 配置：Electron 环境下禁用 CSP 以避免限制
+const helmetConfig: Record<string, unknown> = {
+  hsts: { maxAge: 0 },
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: isElectron
+    ? false
+    : {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", 'https://unpkg.com'],
+          upgradeInsecureRequests: null,
+        },
       },
-    },
-  })
-)
+}
+
+app.use(helmet(helmetConfig))
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:3000' }))
 app.use(express.json({ limit: '10mb' }))
 
@@ -72,26 +76,37 @@ if (logCfg.cleanupOnStartup) {
   }
 }
 
-const startServer = (port: number): void => {
-  app
-    .listen(port, HOST, () => {
-      console.log(`🚀 服务器运行在 http://localhost:${port}`)
-      if (isDefaultToken()) {
-        console.warn(
-          '\n⚠️  安全提示：您正在使用默认认证令牌 "admin123"，建议立即在 config.yml 中修改。\n'
-        )
-      }
-    })
-    .on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`端口 ${port} 已被占用`)
-        startServer(port + 1)
-      } else {
-        throw err
-      }
-    })
+function createServer(port?: number): Promise<number> {
+  const targetPort = port ?? PORT
+  return new Promise((resolve) => {
+    const tryListen = (p: number) => {
+      const server = app.listen(p, HOST, () => {
+        console.log(`🚀 服务器运行在 http://localhost:${p}`)
+        if (isDefaultToken()) {
+          console.warn(
+            '\n⚠️  安全提示：您正在使用默认认证令牌 "admin123"，建议立即在 config.yml 中修改。\n'
+          )
+        }
+        resolve(p)
+      })
+      server.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          console.log(`端口 ${p} 已被占用`)
+          server.close()
+          tryListen(p + 1)
+        } else {
+          throw err
+        }
+      })
+    }
+    tryListen(targetPort)
+  })
 }
 
-startServer(Number(PORT))
+// 直接运行时自动启动（非 import/require 场景）
+if (require.main === module) {
+  createServer()
+}
 
+export { app, createServer }
 export default app

@@ -1,0 +1,22 @@
+appId: com.filemanager.app
+productName: File Manager
+copyright: MIT
+
+icon: frontend/public/icon.svg
+
+directories:
+  output: release
+
+files:
+  - dist-electron/**/*
+  - backend/dist/**/*
+  - backend/node_modules/**/*
+  - backend/package.json
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+  synopsis: 全栈文件管理系统
+  description: 基于 Vue3 + Node.js 的全栈文件管理系统，支持文件浏览、上传、下载、压缩、移动等操作。
