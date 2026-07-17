@@ -4,6 +4,9 @@ copyright: MIT
 
 icon: frontend/public/icon.svg
 
+# 禁用自动发布
+publish: null
+
 directories:
   output: release
 
