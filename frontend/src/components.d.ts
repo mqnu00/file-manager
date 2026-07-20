@@ -43,6 +43,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SciFiBackground: typeof import('./components/SciFiBackground.vue')['default']
     TaskPanel: typeof import('./components/TaskPanel.vue')['default']
+    Terminal: typeof import('./components/Terminal.vue')['default']
     Toolbar: typeof import('./components/Toolbar.vue')['default']
   }
   export interface GlobalDirectives {

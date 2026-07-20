@@ -1,8 +1,11 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import http from 'http'
 import path from 'path'
 import fs from 'fs'
+import { WebSocketServer, WebSocket } from 'ws'
+import { URL } from 'url'
 import fileRoutes from './routes/files'
 import folderRoutes from './routes/folders'
 import authRoutes from './routes/auth'
@@ -10,10 +13,13 @@ import configRoutes from './routes/config'
 import systemRoutes from './routes/system'
 import logRoutes from './routes/logs'
 import taskRoutes from './routes/tasks'
+import smbRoutes from './routes/smb'
 import { errorHandler } from './middleware/errorHandler'
-import { authMiddleware } from './middleware/auth'
+import { authMiddleware, validateSession } from './middleware/auth'
 import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
+import { createSession, attachViewer } from './services/terminalManager'
+import { clearSambaCache } from './utils/sambaDetect'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -48,6 +54,7 @@ app.use('/api/folders', authMiddleware, folderRoutes)
 app.use('/api/system', authMiddleware, systemRoutes)
 app.use('/api/logs', authMiddleware, logRoutes)
 app.use('/api/tasks', authMiddleware, taskRoutes)
+app.use('/api/smb', authMiddleware, smbRoutes)
 
 // ===== 静态文件 =====
 
@@ -76,12 +83,58 @@ if (logCfg.cleanupOnStartup) {
   }
 }
 
+function setupWebSocket(httpServer: http.Server): void {
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws/terminal' })
+
+  wss.on('connection', (ws: WebSocket, req) => {
+    // 认证：从 URL 参数中提取 token
+    const url = new URL(req.url || '', `http://${req.headers.host}`)
+    const token = url.searchParams.get('token')
+
+    if (!token || !validateSession(token)) {
+      ws.send(JSON.stringify({ type: 'error', message: '认证失败，请刷新页面后重试' }))
+      ws.close()
+      return
+    }
+
+    const command = url.searchParams.get('cmd') || ''
+    const argsStr = url.searchParams.get('args') || ''
+
+    if (command) {
+      // 模式 A：提供了命令 → 创建新会话（安装等一次性操作）
+      const args = argsStr ? argsStr.split(' ') : []
+      console.log(`Terminal (new session): ${command} ${args.join(' ')}`)
+
+      createSession(command, args, (exitCode) => {
+        if (exitCode === 0) {
+          clearSambaCache()
+        }
+        console.log(`Terminal exit: ${exitCode}`)
+      })
+
+      // 将会话创建者关联的 WS 附加为 viewer
+      attachViewer(ws)
+    } else {
+      // 模式 B：无命令 → 附加到现有会话作为 viewer（SMB 等持久化会话）
+      if (!attachViewer(ws)) {
+        ws.send(JSON.stringify({ type: 'error', message: '没有运行中的终端会话' }))
+        ws.close()
+      }
+    }
+  })
+}
+
 function createServer(port?: number): Promise<number> {
   const targetPort = port ?? PORT
   return new Promise((resolve) => {
     const tryListen = (p: number) => {
-      const server = app.listen(p, HOST, () => {
+      const httpServer = http.createServer(app)
+      httpServer.listen(p, HOST, () => {
         console.log(`🚀 服务器运行在 http://localhost:${p}`)
+
+        // WebSocket 终端服务
+        setupWebSocket(httpServer)
+
         if (isDefaultToken()) {
           console.warn(
             '\n⚠️  安全提示：您正在使用默认认证令牌 "admin123"，建议立即在 config.yml 中修改。\n'
@@ -89,10 +142,10 @@ function createServer(port?: number): Promise<number> {
         }
         resolve(p)
       })
-      server.on('error', (err: NodeJS.ErrnoException) => {
+      httpServer.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
           console.log(`端口 ${p} 已被占用`)
-          server.close()
+          httpServer.close()
           tryListen(p + 1)
         } else {
           throw err

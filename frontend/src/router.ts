@@ -35,6 +35,12 @@ const router = createRouter({
       component: () => import('@/views/LogsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/smb',
+      name: 'smb',
+      component: () => import('@/views/SmbView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

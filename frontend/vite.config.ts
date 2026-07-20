@@ -43,6 +43,12 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'http://localhost:3000',
           changeOrigin: true,
+          ws: true,
+        },
+        '/ws': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          ws: true,
         },
       },
     },

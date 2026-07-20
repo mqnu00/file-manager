@@ -622,6 +622,150 @@
 
 ---
 
+## SMB 共享接口
+
+所有 SMB 接口均需认证。
+
+### 1. 获取 SMB 服务状态
+
+- **接口**: `GET /api/smb/status`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "state": "running",
+    "port": 1445,
+    "workgroup": "WORKGROUP",
+    "serverString": "File Manager",
+    "shares": [
+      {
+        "name": "Shared",
+        "path": "/documents",
+        "readOnly": false,
+        "guestOk": true
+      }
+    ],
+    "startedAt": 1689600000000
+  }
+  ```
+
+- **字段说明**:
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `state` | string | 服务状态：`running` / `stopped` / `not_installed` / `error` |
+  | `error` | string | 错误信息（`error` 或 `not_installed` 状态时） |
+
+### 2. 启动 SMB 服务
+
+- **接口**: `POST /api/smb/start`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "status": { ... }
+  }
+  ```
+
+### 3. 停止 SMB 服务
+
+- **接口**: `POST /api/smb/stop`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "status": { ... }
+  }
+  ```
+
+### 4. 更新 SMB 全局设置
+
+- **接口**: `PUT /api/smb/settings`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**（所有字段可选）:
+  ```json
+  {
+    "port": 1445,
+    "workgroup": "WORKGROUP",
+    "serverString": "File Manager",
+    "enabled": true
+  }
+  ```
+- **响应**:
+  ```json
+  { "success": true }
+  ```
+
+### 5. 获取共享列表
+
+- **接口**: `GET /api/smb/shares`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  [
+    {
+      "name": "Shared",
+      "path": "/documents",
+      "readOnly": false,
+      "guestOk": true
+    }
+  ]
+  ```
+
+### 6. 新增共享
+
+- **接口**: `POST /api/smb/shares`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**:
+  ```json
+  {
+    "name": "MyShare",
+    "path": "/data",
+    "readOnly": false,
+    "guestOk": true
+  }
+  ```
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "share": { "name": "MyShare", "path": "/data", "readOnly": false, "guestOk": true }
+  }
+  ```
+
+### 7. 修改共享
+
+- **接口**: `PUT /api/smb/shares/:name`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**（所有字段可选）:
+  ```json
+  {
+    "path": "/new-path",
+    "readOnly": true,
+    "guestOk": false,
+    "newName": "NewName"
+  }
+  ```
+- **响应示例**:
+  ```json
+  {
+    "success": true,
+    "share": { "name": "NewName", "path": "/new-path", "readOnly": true, "guestOk": false }
+  }
+  ```
+
+### 8. 删除共享
+
+- **接口**: `DELETE /api/smb/shares/:name`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  { "success": true }
+  ```
+
+---
+
 ## 错误响应
 
 所有接口在发生错误时返回统一格式：
