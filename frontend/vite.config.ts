@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => {
           globals: {
             three: 'THREE',
           },
+          manualChunks: {
+            vue: ['vue'],
+            'element-plus': ['element-plus'],
+          },
         },
         treeshake: true,
       },
