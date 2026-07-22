@@ -10,6 +10,7 @@ declare global {
   interface Window {
     THREE: typeof THREE
     Vue: typeof import('vue')
-    ElementPlus: any
+    ElementPlus: typeof import('element-plus')
+    __runScript: () => void
   }
 }

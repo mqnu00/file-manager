@@ -37,7 +37,7 @@ const helmetConfig: Record<string, unknown> = {
     : {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", 'https://unpkg.com'],
+          scriptSrc: ["'self'", 'https://unpkg.com', 'blob:'],
           upgradeInsecureRequests: null,
         },
       },

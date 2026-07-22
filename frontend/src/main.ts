@@ -5,6 +5,8 @@ import ElementPlus from 'element-plus'
 import * as ElementPlusAll from 'element-plus'
 import App from './App.vue'
 import router from './router'
+import { ctx } from './context'
+import { initScriptRunner } from './scriptRunner'
 import 'element-plus/dist/index.css'
 
 function exposeToGlobal() {
@@ -49,3 +51,6 @@ app.mount('#app')
 
 // 暴露到全局
 exposeToGlobal()
+
+// 初始化脚本运行器（控制台 __runScript()）
+initScriptRunner(ctx)
