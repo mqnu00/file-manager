@@ -44,7 +44,6 @@
           <el-table-column label="操作" width="240" align="center">
             <template #default="{ row }">
               <template v-if="row.enabled">
-                <el-button size="small" @click="testPlugin(row)">测试接口</el-button>
                 <el-button size="small" @click="reloadPlugin(row)">重载</el-button>
                 <el-button size="small" type="danger" @click="confirmUnload(row)">卸载</el-button>
               </template>
@@ -151,19 +150,6 @@ async function reloadPlugin(plugin: PluginInfo) {
 
 function openPluginPage(plugin: PluginInfo) {
   router.push(`/plugin/${plugin.name}`)
-}
-
-async function testPlugin(plugin: PluginInfo) {
-  try {
-    const res = await fetch(`/api/plugin/${plugin.name}`)
-    const data = await res.json()
-    ElMessage.success({
-      message: `${plugin.name}: ${JSON.stringify(data)}`,
-      duration: 5000,
-    })
-  } catch {
-    ElMessage.warning(`${plugin.name} 没有测试接口或接口不可用`)
-  }
 }
 </script>
 
