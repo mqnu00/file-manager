@@ -19,7 +19,7 @@ import { getConfig, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
 import { log } from '../utils/logger'
-import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin, PluginInfo } from './types'
+import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin, PluginInfo, PluginManifestConfig } from './types'
 
 // ==================== 内部类型 ====================
 
@@ -31,12 +31,20 @@ interface PluginInstance {
   local: boolean
   /** install() 后在 pluginApp.stack 中新增的 Layer 对象 */
   layers: unknown[]
+  /** 本插件注册的服务名列表，卸载时用于清理 */
+  registeredServices: string[]
   /** fs.watch 监视器 */
   watcher?: fs.FSWatcher
   /** 防抖重载定时器 */
   reloadTimer?: ReturnType<typeof setTimeout>
   /** 是否正在重载中（防止并发重载导致重复条目） */
   reloading?: boolean
+}
+
+interface PluginManifest {
+  name: string
+  rootDir: string
+  dependsOn: string[]
 }
 
 // ==================== 状态 ====================
@@ -96,6 +104,48 @@ function clearModuleCache(rootDir: string): void {
   })
 }
 
+// ==================== 共享插件上下文 ====================
+
+/**
+ * 所有插件共享同一个 ctx 对象（单例），因此插件 A 在 ctx 上挂载的自定义属性
+ * 可被插件 B 直接访问，实现插件间服务共享。
+ *
+ * 同时注入 registerService / getService 两个方法，提供带冲突检测和
+ * 卸载清理的服务注册机制。
+ */
+
+/** 记录每个服务由哪个插件注册，serviceName → pluginName */
+const serviceRegistry = new Map<string, string>()
+
+let _sharedPluginCtx: BackendPluginContext | null = null
+
+function getSharedPluginCtx(): BackendPluginContext {
+  if (!_sharedPluginCtx) {
+    const base = createScriptContext()
+    _sharedPluginCtx = {
+      ...base,
+      app: pluginApp,
+      registerService(name: string, impl: any) {
+        if (serviceRegistry.has(name)) {
+          throw new Error(
+            `Service "${name}" is already registered by plugin "${serviceRegistry.get(name)}"`
+          )
+        }
+        // 暂存占位符，待 install 返回后由 loadSinglePlugin 更新为实际插件名
+        serviceRegistry.set(name, '___loading___')
+        ;(_sharedPluginCtx as any)[name] = impl
+      },
+      getService(name: string) {
+        if (!serviceRegistry.has(name)) {
+          throw new Error(`Service "${name}" is not registered by any plugin`)
+        }
+        return (_sharedPluginCtx as any)[name]
+      },
+    }
+  }
+  return _sharedPluginCtx!
+}
+
 // ==================== 单插件装载/卸载 ====================
 
 /**
@@ -141,9 +191,19 @@ async function loadSinglePlugin(
 
     // 记录安装前的 stack 长度，捕获新增的 Layer 对象
     const stackBefore = (pluginApp as unknown as { stack: unknown[] }).stack.length
-    const baseCtx = createScriptContext()
-    const pluginCtx: BackendPluginContext = { ...baseCtx, app: pluginApp }
+    const pluginCtx = getSharedPluginCtx()
+
     await install(pluginCtx)
+
+    // 将 install 期间注册的服务（标记为 ___loading___）归属到当前插件
+    const registeredServices: string[] = []
+    for (const [svcName, owner] of serviceRegistry) {
+      if (owner === '___loading___') {
+        serviceRegistry.set(svcName, name)
+        registeredServices.push(svcName)
+      }
+    }
+
     const layers = (pluginApp as unknown as { stack: unknown[] }).stack.slice(stackBefore)
 
     // 解析 frontend 子路径导出
@@ -158,18 +218,26 @@ async function loadSinglePlugin(
       frontendPath,
       local: isLocalPlugin(rootDir),
       layers,
+      registeredServices,
     }
 
     log('INFO', 'Plugin', `Plugin "${name}" loaded from ${rootDir}`)
     return instance
   } catch (err: unknown) {
+    // install 抛异常时，清理未完成的占位符
+    for (const [svcName, owner] of serviceRegistry) {
+      if (owner === '___loading___') {
+        delete (_sharedPluginCtx as any)?.[svcName]
+        serviceRegistry.delete(svcName)
+      }
+    }
     const message = err instanceof Error ? err.message : String(err)
     log('ERROR', 'Plugin', `Plugin "${name}" failed: ${message}`)
     return null
   }
 }
 
-/** 卸载单个插件：移除路由层 + 清除模块缓存 + 停止文件监视 */
+/** 卸载单个插件：移除路由层 + 清除模块缓存 + 停止文件监视 + 清理服务 */
 function unloadPlugin(instance: PluginInstance): void {
   // 停止文件监视（防止旧 watcher 在重载后继续触发）
   stopWatching(instance)
@@ -186,6 +254,12 @@ function unloadPlugin(instance: PluginInstance): void {
 
   // 清除 Node.js 模块缓存（CJS）
   clearModuleCache(instance.rootDir)
+
+  // 清理 ctx 上的自定义服务和注册表记录
+  for (const svcName of instance.registeredServices) {
+    delete (_sharedPluginCtx as any)?.[svcName]
+    serviceRegistry.delete(svcName)
+  }
 
   log('INFO', 'Plugin', `Plugin "${instance.name}" unloaded`)
 }
@@ -286,14 +360,19 @@ function stopWatching(instance: PluginInstance): void {
   }
 }
 
-// ==================== 全量加载 ====================
+// ==================== 依赖拓扑排序 ====================
 
-export async function loadPlugins(): Promise<void> {
+/**
+ * 从 config.yml 收集所有已启用插件的清单（含依赖声明）。
+ * 返回的 manifests 顺序不确定，需交由 toposort 排序。
+ */
+function collectManifests(): PluginManifest[] {
   const config = getConfig()
   const pluginsCfg: Record<string, unknown> = config.plugins || {}
 
+  const manifests: PluginManifest[] = []
+
   for (const [name, cfg] of Object.entries(pluginsCfg)) {
-    // 跳过非对象配置（如字符串值）或明确禁用的插件
     if (typeof cfg !== 'object' || cfg === null) continue
     if ((cfg as Record<string, unknown>).enabled === false) continue
 
@@ -303,9 +382,109 @@ export async function loadPlugins(): Promise<void> {
       continue
     }
 
-    const instance = await loadSinglePlugin(name, rootDir)
-    if (instance) {
-      loadedPlugins.push(instance)
+    let dependsOn: string[] = []
+    try {
+      const pkg = require(path.join(rootDir, 'package.json')) as {
+        fileManagerPlugin?: PluginManifestConfig
+      }
+      dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
+    } catch { /* package.json 读取失败则视为无依赖 */ }
+
+    manifests.push({ name, rootDir, dependsOn })
+  }
+
+  return manifests
+}
+
+/**
+ * Kahn 算法 BFS 分层拓扑排序。
+ *
+ * @returns order - 按批次排列的加载顺序，同一批次内插件互不依赖，可并行加载
+ *          errors - 缺失依赖、循环依赖等错误信息
+ */
+function toposort(manifests: PluginManifest[]): {
+  order: PluginManifest[][]
+  errors: string[]
+} {
+  const errors: string[] = []
+  const nameSet = new Set(manifests.map((m) => m.name))
+
+  // 检查缺失依赖
+  for (const m of manifests) {
+    for (const dep of m.dependsOn) {
+      if (!nameSet.has(dep)) {
+        errors.push(
+          `Plugin "${m.name}" depends on "${dep}", which is not enabled or not found`
+        )
+      }
+    }
+  }
+
+  // 计算入度（仅统计已启用的依赖）
+  const inDegree = new Map<string, number>()
+  const dependents = new Map<string, string[]>() // dep → 谁依赖它
+
+  for (const m of manifests) {
+    const validDeps = m.dependsOn.filter((d) => nameSet.has(d))
+    inDegree.set(m.name, validDeps.length)
+    for (const dep of validDeps) {
+      if (!dependents.has(dep)) dependents.set(dep, [])
+      dependents.get(dep)!.push(m.name)
+    }
+  }
+
+  // BFS 分层
+  const order: PluginManifest[][] = []
+  const nameToManifest = new Map(manifests.map((m) => [m.name, m]))
+  const queue = manifests.filter((m) => inDegree.get(m.name) === 0)
+
+  while (queue.length > 0) {
+    order.push([...queue])
+    const next: PluginManifest[] = []
+    for (const m of queue) {
+      for (const depOf of dependents.get(m.name) ?? []) {
+        const newDeg = (inDegree.get(depOf) ?? 1) - 1
+        inDegree.set(depOf, newDeg)
+        if (newDeg === 0) {
+          next.push(nameToManifest.get(depOf)!)
+        }
+      }
+    }
+    queue.length = 0
+    queue.push(...next)
+  }
+
+  // 检测循环依赖
+  if (order.flat().length < manifests.length) {
+    const stuck = manifests.filter((m) => inDegree.get(m.name)! > 0)
+    errors.push(
+      `Circular dependency detected among: ${stuck.map((m) => m.name).join(', ')}`
+    )
+  }
+
+  return { order, errors }
+}
+
+// ==================== 全量加载 ====================
+
+export async function loadPlugins(): Promise<void> {
+  const manifests = collectManifests()
+  if (manifests.length === 0) return
+
+  const { order, errors } = toposort(manifests)
+  for (const err of errors) {
+    log('ERROR', 'Plugin', err)
+  }
+
+  for (const batch of order) {
+    // 同一批次内插件互不依赖，可并行加载
+    const results = await Promise.all(
+      batch.map((m) => loadSinglePlugin(m.name, m.rootDir))
+    )
+    for (const instance of results) {
+      if (instance) {
+        loadedPlugins.push(instance)
+      }
     }
   }
 }
@@ -325,6 +504,26 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
   if (!rootDir) {
     log('WARNING', 'Plugin', `Plugin "${name}" not found in node_modules or plugins/`)
     return null
+  }
+
+  // 检查依赖是否已加载
+  let dependsOn: string[] = []
+  try {
+    const pkg = require(path.join(rootDir, 'package.json')) as {
+      fileManagerPlugin?: PluginManifestConfig
+    }
+    dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
+  } catch { /* ignore */ }
+
+  for (const dep of dependsOn) {
+    if (!loadedPlugins.find((p) => p.name === dep)) {
+      log(
+        'ERROR',
+        'Plugin',
+        `Cannot load "${name}": dependency "${dep}" is not loaded`
+      )
+      return null
+    }
   }
 
   const instance = await loadSinglePlugin(name, rootDir)

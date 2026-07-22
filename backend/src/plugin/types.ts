@@ -26,6 +26,14 @@ export interface PluginInfo {
   frontendPath: string | null
 }
 
+// ==================== 插件清单 ====================
+
+/** 插件在 package.json 中 fileManagerPlugin 字段的声明 */
+export interface PluginManifestConfig {
+  /** 依赖的其他插件名（对应 config.yml 的插件键），可选 */
+  dependsOn?: string[]
+}
+
 // ==================== 插件上下文 ====================
 
 /**
@@ -36,6 +44,12 @@ export interface PluginInfo {
  */
 export interface BackendPluginContext extends Omit<ScriptContext, 'app'> {
   app: Router
+  /** 注册插件间共享服务。若服务名已被注册则抛出错误 */
+  registerService(name: string, impl: any): void
+  /** 获取其他插件注册的服务。若未注册则抛出错误 */
+  getService(name: string): any
+  /** 插件间共享服务的扩展字段 */
+  [key: string]: any
 }
 
 // ==================== 安装函数签名 ====================
