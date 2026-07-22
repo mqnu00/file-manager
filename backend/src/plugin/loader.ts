@@ -178,8 +178,8 @@ async function loadSinglePlugin(
       fs.unlinkSync(tmpFile)
       fs.rmdirSync(tmpDir)
     } else {
-      // 首次加载：走目录导入
-      mod = await import(rootDir)
+      // 首次加载：走入口文件导入（tsx 下目录导入不会读 package.json main 字段）
+      mod = await import(entryAbs)
     }
 
     const install = getInstallFn(mod)

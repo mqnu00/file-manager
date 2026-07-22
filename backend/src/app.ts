@@ -66,7 +66,10 @@ export const pluginApp = Router()
 app.use(pluginApp)
 
 // ===== 插件静态资源 =====
-app.use('/plugins-assets', express.static(path.join(path.resolve(__dirname, '..', '..'), 'plugins')))
+app.use(
+  '/plugins-assets',
+  express.static(path.join(path.resolve(__dirname, '..', '..'), 'plugins'))
+)
 
 // ===== 静态文件 =====
 
