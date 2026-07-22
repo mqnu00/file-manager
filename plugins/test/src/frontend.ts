@@ -40,7 +40,9 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
         h('div', { style: { padding: '40px 20px', maxWidth: '860px', margin: '0 auto' } }, [
           // 返回按钮
           h(ElButton, { text: true, onClick: () => window.history.back() }, () => [
-            h(ElIcon, { style: { marginRight: '4px' } }, () => h('i', { class: 'el-icon-arrow-left' })),
+            h(ElIcon, { style: { marginRight: '4px' } }, () =>
+              h('i', { class: 'el-icon-arrow-left' })
+            ),
             '返回插件管理',
           ]),
 
@@ -57,44 +59,42 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
                   h(ElTag, { type: 'success', size: 'small' }, () => '运行中'),
                 ]),
               default: () => [
-                h(
-                  ElDescriptions,
-                  { column: 2, border: true },
-                  () => [
-                    h(ElDescriptionsItem, { label: '插件名称' }, () => 'file-manager-plugin-test'),
-                    h(ElDescriptionsItem, { label: '版本' }, () => '0.1.0'),
-                    h(ElDescriptionsItem, { label: '页面路由' }, () => '/plugin/test'),
-                    h(ElDescriptionsItem, { label: '加载时间' }, () => loadTime.value),
-                  ]
-                ),
+                h(ElDescriptions, { column: 2, border: true }, () => [
+                  h(ElDescriptionsItem, { label: '插件名称' }, () => 'file-manager-plugin-test'),
+                  h(ElDescriptionsItem, { label: '版本' }, () => '0.1.0'),
+                  h(ElDescriptionsItem, { label: '页面路由' }, () => '/plugin/test'),
+                  h(ElDescriptionsItem, { label: '加载时间' }, () => loadTime.value),
+                ]),
 
                 h('div', { style: { height: '16px' } }),
 
-                h(
-                  ElSpace,
-                  { wrap: true },
-                  () => [
-                    h(ElButton, { onClick: refreshTime }, () => '刷新时间'),
-                    h(ElButton, { type: 'primary', onClick: () => { counter.value++ } }, () => `计数: ${counter.value}`),
-                  ]
-                ),
+                h(ElSpace, { wrap: true }, () => [
+                  h(ElButton, { onClick: refreshTime }, () => '刷新时间'),
+                  h(
+                    ElButton,
+                    {
+                      type: 'primary',
+                      onClick: () => {
+                        counter.value++
+                      },
+                    },
+                    () => `计数: ${counter.value}`
+                  ),
+                ]),
 
                 h('div', { style: { height: '16px' } }),
 
                 h(ElDivider),
 
-                h(
-                  ElAlert,
-                  {
-                    type: 'info',
-                    showIcon: false,
-                    title: '插件说明',
-                    description:
-                      '这是一个示例插件页面，展示了如何通过 ctx.Vue.defineComponent + h() 定义组件，'
-                      + '并通过 ctx.router.addRoute() 注册路由。所有 UI 组件来自 ctx.ElementPlus，无需直接依赖。',
-                    closable: false,
-                  }
-                ),
+                h(ElAlert, {
+                  type: 'info',
+                  showIcon: false,
+                  title: '插件说明',
+                  description:
+                    '这是一个示例插件页面，展示了如何通过 ctx.Vue.defineComponent + h() 定义组件，' +
+                    '并通过 ctx.router.addRoute() 注册路由。所有 UI 组件来自 ctx.ElementPlus，无需直接依赖。',
+                  closable: false,
+                }),
               ],
             }
           ),

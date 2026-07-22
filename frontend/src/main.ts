@@ -45,18 +45,19 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
-app.use(router)
 app.use(ElementPlus)
 
-app.mount('#app')
-
-// 暴露到全局
-exposeToGlobal()
-
-// 初始化脚本运行器（控制台 __runScript()）
-initScriptRunner(ctx)
-
-// 初始化插件系统
+// 初始化插件系统（必须在 router/mount 前完成，确保插件路由先注册再解析 URL）
 initPlugins().then(() => {
   console.log('[Plugin] All plugins initialized')
+
+  // router 必须在插件注册完路由之后才安装，否则初始导航找不到插件路由
+  app.use(router)
+  app.mount('#app')
+
+  // 暴露到全局
+  exposeToGlobal()
+
+  // 初始化脚本运行器（控制台 __runScript()）
+  initScriptRunner(ctx)
 })
