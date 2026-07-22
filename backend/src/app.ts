@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { Router } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import http from 'http'
@@ -20,6 +20,8 @@ import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 import { createSession, attachViewer } from './services/terminalManager'
 import { clearSambaCache } from './utils/sambaDetect'
+import { loadPlugins } from './plugin/loader'
+import pluginRoutes from './routes/plugins'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -55,6 +57,16 @@ app.use('/api/system', authMiddleware, systemRoutes)
 app.use('/api/logs', authMiddleware, logRoutes)
 app.use('/api/tasks', authMiddleware, taskRoutes)
 app.use('/api/smb', authMiddleware, smbRoutes)
+
+// 插件信息（无需认证，前端运行时需要获取插件列表）
+app.use('/api/plugins', pluginRoutes)
+
+// 插件路由挂载点（预注册，确保优先于静态文件 catch-all）
+export const pluginApp = Router()
+app.use(pluginApp)
+
+// ===== 插件静态资源 =====
+app.use('/plugins-assets', express.static(path.join(path.resolve(__dirname, '..', '..'), 'plugins')))
 
 // ===== 静态文件 =====
 
@@ -158,7 +170,12 @@ function createServer(port?: number): Promise<number> {
 
 // 直接运行时自动启动（非 import/require 场景）
 if (require.main === module) {
-  createServer()
+  loadPlugins()
+    .then(() => createServer())
+    .catch((err) => {
+      console.error('Plugin loading failed:', err)
+      createServer()
+    })
 }
 
 export { app, createServer }

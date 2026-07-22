@@ -39,6 +39,7 @@ export interface AppConfig {
   storageRoot: string
   log: LogConfig
   smb?: SmbConfig
+  plugins?: Record<string, any>
 }
 
 const CONFIG_PATH = process.env.CONFIG_PATH

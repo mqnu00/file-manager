@@ -7,6 +7,7 @@ import App from './App.vue'
 import router from './router'
 import { ctx } from './context'
 import { initScriptRunner } from './scriptRunner'
+import { initPlugins } from './pluginLoader'
 import 'element-plus/dist/index.css'
 
 function exposeToGlobal() {
@@ -54,3 +55,8 @@ exposeToGlobal()
 
 // 初始化脚本运行器（控制台 __runScript()）
 initScriptRunner(ctx)
+
+// 初始化插件系统
+initPlugins().then(() => {
+  console.log('[Plugin] All plugins initialized')
+})

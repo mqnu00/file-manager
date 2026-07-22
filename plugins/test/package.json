@@ -1,0 +1,17 @@
+{
+  "name": "file-manager-plugin-test",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/backend.js",
+  "exports": {
+    ".": "./dist/backend.js",
+    "./frontend": "./dist/frontend.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

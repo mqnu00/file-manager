@@ -35,6 +35,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
         },
+        '/plugins-assets': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
       },
     },
     build: {
