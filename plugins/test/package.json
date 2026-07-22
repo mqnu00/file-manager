@@ -11,7 +11,11 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
+  "peerDependencies": {
+    "@mqn00/file-manager": ">=2.8.0"
+  },
   "devDependencies": {
+    "@mqn00/file-manager": "file:../../backend",
     "typescript": "^5.4.0"
   }
 }

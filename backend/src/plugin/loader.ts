@@ -13,16 +13,7 @@ import { getConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
 import { log } from '../utils/logger'
-
-// ==================== 类型 ====================
-
-export interface LoadedPlugin {
-  name: string
-  /** package.json 所在目录 */
-  rootDir: string
-  /** exports["./frontend"] 值，相对于 rootDir */
-  frontendPath: string | null
-}
+import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin } from './types'
 
 // ==================== 状态 ====================
 
@@ -57,11 +48,11 @@ function resolvePluginRoot(name: string): string | null {
 // ==================== 辅助 ====================
 
 /** 从模块导出中提取 install 函数，支持多种导出模式 */
-function getInstallFn(mod: any): Function | null {
-  if (typeof mod.install === 'function') return mod.install
-  if (typeof mod.default === 'function') return mod.default
-  if (mod.default && typeof mod.default.install === 'function') {
-    return mod.default.install
+function getInstallFn(mod: Record<string, unknown>): PluginInstallFunction | null {
+  if (typeof mod.install === 'function') return mod.install as PluginInstallFunction
+  if (typeof mod.default === 'function') return mod.default as PluginInstallFunction
+  if (mod.default && typeof (mod.default as Record<string, unknown>).install === 'function') {
+    return (mod.default as Record<string, unknown>).install as PluginInstallFunction
   }
   return null
 }
@@ -70,12 +61,12 @@ function getInstallFn(mod: any): Function | null {
 
 export async function loadPlugins(): Promise<void> {
   const config = getConfig()
-  const pluginsCfg = (config as any).plugins || {}
+  const pluginsCfg: Record<string, unknown> = config.plugins || {}
 
   for (const [name, cfg] of Object.entries(pluginsCfg)) {
     // 跳过非对象配置（如字符串值）或明确禁用的插件
     if (typeof cfg !== 'object' || cfg === null) continue
-    if ((cfg as any).enabled === false) continue
+    if ((cfg as Record<string, unknown>).enabled === false) continue
 
     const rootDir = resolvePluginRoot(name)
     if (!rootDir) {
@@ -95,13 +86,13 @@ export async function loadPlugins(): Promise<void> {
 
       // 执行插件安装（使用 pluginApp 路由器，确保路由优先于静态文件 catch-all）
       const baseCtx = createScriptContext()
-      const pluginCtx = { ...baseCtx, app: pluginApp }
+      const pluginCtx: BackendPluginContext = { ...baseCtx, app: pluginApp }
       await install(pluginCtx)
 
       // 解析 frontend 子路径导出
       let frontendPath: string | null = null
       try {
-        const pkg = require(path.join(rootDir, 'package.json'))
+        const pkg: { exports?: Record<string, string> } = require(path.join(rootDir, 'package.json'))
         if (pkg.exports?.['./frontend']) {
           frontendPath = pkg.exports['./frontend']
         }
@@ -109,8 +100,9 @@ export async function loadPlugins(): Promise<void> {
 
       loadedPlugins.push({ name, rootDir, frontendPath })
       log('INFO', 'Plugin', `Plugin "${name}" loaded from ${rootDir}`)
-    } catch (err: any) {
-      log('ERROR', 'Plugin', `Plugin "${name}" failed: ${err.message}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      log('ERROR', 'Plugin', `Plugin "${name}" failed: ${message}`)
     }
   }
 }

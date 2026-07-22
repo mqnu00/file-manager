@@ -2,13 +2,16 @@
  * Test Plugin — 后端入口
  *
  * 运行时通过 import() 动态加载，接收 ctx 访问所有后端公共资源。
- * 使用 any 类型因为插件独立编译，不直接依赖主项目的类型定义。
+ * 类型由 @mqn00/file-manager/plugin 提供（通过 peerDependencies 声明依赖）。
  */
 
-export function install(ctx: any): void {
+import type { BackendPluginContext, PluginInstallFunction } from '@mqn00/file-manager/plugin'
+import type { Request, Response } from 'express'
+
+export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   const router = ctx.express.Router()
 
-  router.get('/', (_req: any, res: any) => {
+  router.get('/', (_req: Request, res: Response) => {
     res.json({
       plugin: 'test',
       message: 'Hello from test plugin!',

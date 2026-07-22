@@ -2,6 +2,20 @@
   "name": "@mqn00/file-manager",
   "version": "2.8.0",
   "main": "dist/app.js",
+  "exports": {
+    ".": {
+      "types": "./dist/app.d.ts",
+      "default": "./dist/app.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin/types.d.ts",
+      "default": "./dist/plugin/types.js"
+    },
+    "./plugin/frontend": {
+      "types": "./dist/plugin/frontend-types.d.ts",
+      "default": "./dist/plugin/frontend-types.js"
+    }
+  },
   "bin": {
     "file-manager": "dist/cli.js"
   },
@@ -66,8 +80,13 @@
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.1",
+    "axios": "^1.6.8",
+    "element-plus": "^2.6.3",
     "eslint-config-prettier": "^9.1.2",
+    "pinia": "^2.1.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
   }
 }
