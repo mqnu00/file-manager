@@ -13,13 +13,11 @@ import configRoutes from './routes/config'
 import systemRoutes from './routes/system'
 import logRoutes from './routes/logs'
 import taskRoutes from './routes/tasks'
-import smbRoutes from './routes/smb'
 import { errorHandler } from './middleware/errorHandler'
 import { authMiddleware, validateSession } from './middleware/auth'
 import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 import { createSession, attachViewer } from './services/terminalManager'
-import { clearSambaCache } from './utils/sambaDetect'
 import { loadPlugins, startPluginWatchers } from './plugin/loader'
 import pluginRoutes from './routes/plugins'
 
@@ -56,7 +54,6 @@ app.use('/api/folders', authMiddleware, folderRoutes)
 app.use('/api/system', authMiddleware, systemRoutes)
 app.use('/api/logs', authMiddleware, logRoutes)
 app.use('/api/tasks', authMiddleware, taskRoutes)
-app.use('/api/smb', authMiddleware, smbRoutes)
 
 // 插件信息（无需认证，前端运行时需要获取插件列表）
 app.use('/api/plugins', pluginRoutes)
@@ -121,9 +118,6 @@ function setupWebSocket(httpServer: http.Server): void {
       console.log(`Terminal (new session): ${command} ${args.join(' ')}`)
 
       createSession(command, args, (exitCode) => {
-        if (exitCode === 0) {
-          clearSambaCache()
-        }
         console.log(`Terminal exit: ${exitCode}`)
       })
 

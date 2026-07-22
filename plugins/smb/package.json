@@ -1,0 +1,27 @@
+{
+  "name": "file-manager-plugin-smb",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/backend.js",
+  "exports": {
+    ".": "./dist/backend.js",
+    "./frontend": "./dist/frontend.js"
+  },
+  "scripts": {
+    "build": "tsc && node build.mjs",
+    "dev": "tsc --watch",
+    "build:frontend": "node build.mjs"
+  },
+  "peerDependencies": {
+    "@mqn00/file-manager": ">=2.8.0"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "devDependencies": {
+    "@mqn00/file-manager": "file:../../backend",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.4.0"
+  }
+}

@@ -28,11 +28,6 @@ import { asyncHandler } from './middleware/asyncHandler'
 
 import * as fileService from './services/fileService'
 import {
-  getStatus as getSmbStatus,
-  start as startSmb,
-  stop as stopSmb,
-} from './services/smbManager'
-import {
   createMoveTask,
   createCompressTask,
   getTask,
@@ -61,7 +56,6 @@ import {
   endSSE,
 } from './utils/sse'
 import { detectPackageManager } from './utils/packageManager'
-import { detectSamba, clearSambaCache } from './utils/sambaDetect'
 
 // ==================== 接口 ====================
 
@@ -100,11 +94,6 @@ export interface ScriptContext {
   /** 服务层 */
   services: {
     file: typeof fileService
-    smb: {
-      getStatus: typeof getSmbStatus
-      start: typeof startSmb
-      stop: typeof stopSmb
-    }
     task: {
       createMove: typeof createMoveTask
       createCompress: typeof createCompressTask
@@ -150,10 +139,6 @@ export interface ScriptContext {
     packageManager: {
       detect: typeof detectPackageManager
     }
-    samba: {
-      detect: typeof detectSamba
-      clearCache: typeof clearSambaCache
-    }
   }
 }
 
@@ -190,11 +175,6 @@ export function createScriptContext(): ScriptContext {
 
     services: {
       file: fileService,
-      smb: {
-        getStatus: getSmbStatus,
-        start: startSmb,
-        stop: stopSmb,
-      },
       task: {
         createMove: createMoveTask,
         createCompress: createCompressTask,
@@ -238,10 +218,6 @@ export function createScriptContext(): ScriptContext {
       },
       packageManager: {
         detect: detectPackageManager,
-      },
-      samba: {
-        detect: detectSamba,
-        clearCache: clearSambaCache,
       },
     },
   }

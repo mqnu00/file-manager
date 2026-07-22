@@ -145,13 +145,6 @@ export interface ConfigApi {
   update(updates: Record<string, unknown>): Promise<void>
 }
 
-/** SMB API */
-export interface SmbApi {
-  getStatus(): Promise<{ running: boolean; port?: number }>
-  start(): Promise<void>
-  stop(): Promise<void>
-}
-
 /** 任务 API */
 export interface TaskApi {
   getTasks(): Promise<{ tasks: TaskInfo[] }>
@@ -180,7 +173,6 @@ export interface FrontendApi {
   auth: AuthApi
   file: FileApi
   config: ConfigApi
-  smb: SmbApi
   task: TaskApi
   system: SystemApi
 }

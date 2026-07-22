@@ -13,32 +13,10 @@ export interface LogConfig {
   retentionDays: number
 }
 
-export interface SmbShare {
-  name: string
-  path: string
-  readOnly: boolean
-  guestOk: boolean
-}
-
-export interface SmbUser {
-  username: string
-  password: string
-}
-
-export interface SmbConfig {
-  enabled: boolean
-  port: number
-  workgroup: string
-  serverString: string
-  shares: SmbShare[]
-  users: SmbUser[]
-}
-
 export interface AppConfig {
   auth: AuthConfig
   storageRoot: string
   log: LogConfig
-  smb?: SmbConfig
   plugins?: Record<string, any>
 }
 
@@ -86,13 +64,7 @@ function startWatch(): void {
 
 function readRaw(): AppConfig {
   const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
-  const config = yaml.load(raw) as AppConfig
-  // 兼容旧配置文件：确保 smb.users 和 smb.shares 存在
-  if (config.smb) {
-    if (!config.smb.shares) config.smb.shares = []
-    if (!config.smb.users) config.smb.users = []
-  }
-  return config
+  return yaml.load(raw) as AppConfig
 }
 
 export function getConfig(): AppConfig {
@@ -121,15 +93,7 @@ export function updateConfig(updates: Partial<AppConfig>): AppConfig {
     log: {
       ...current.log,
       ...(updates.log || {})
-    },
-    smb: updates.smb !== undefined
-      ? {
-          ...(current.smb || {}),
-          ...updates.smb,
-          shares: updates.smb.shares || (current.smb || {}).shares || [],
-          users: updates.smb.users || (current.smb || {}).users || []
-        }
-      : current.smb
+    }
   }
   const yamlStr = yaml.dump(merged, { lineWidth: -1, noRefs: true })
   fs.writeFileSync(CONFIG_PATH, yamlStr, 'utf-8')

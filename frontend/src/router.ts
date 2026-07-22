@@ -36,12 +36,6 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/smb',
-      name: 'smb',
-      component: () => import('@/views/SmbView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/plugins',
       name: 'plugins',
       component: () => import('@/views/PluginView.vue'),

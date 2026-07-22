@@ -50,9 +50,6 @@
         <el-button size="small" @click="router.push('/config')">
           <el-icon><Setting /></el-icon>
         </el-button>
-        <el-button size="small" @click="router.push('/smb')">
-          <el-icon><Connection /></el-icon>
-        </el-button>
         <el-button size="small" @click="router.push('/plugins')">
           <el-icon><Operation /></el-icon>
         </el-button>
@@ -131,7 +128,6 @@ import {
   Monitor,
   Edit,
   Document,
-  Connection,
   Operation,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'

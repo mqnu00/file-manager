@@ -40,25 +40,7 @@ export function detectPackageManager(): InstallInfo {
   let manager = ''
   let rawCommand = ''
 
-  if (hasCmd('apt-get')) {
-    manager = 'apt'
-    rawCommand = 'sudo apt-get install -y samba'
-  } else if (hasCmd('dnf')) {
-    manager = 'dnf'
-    rawCommand = 'sudo dnf install -y samba'
-  } else if (hasCmd('yum')) {
-    manager = 'yum'
-    rawCommand = 'sudo yum install -y samba'
-  } else if (hasCmd('pacman')) {
-    manager = 'pacman'
-    rawCommand = 'sudo pacman -S --noconfirm samba'
-  } else if (hasCmd('apk')) {
-    manager = 'apk'
-    rawCommand = 'sudo apk add samba'
-  } else if (hasCmd('zypper')) {
-    manager = 'zypper'
-    rawCommand = 'sudo zypper install -y samba'
-  }
+  // Samba install commands removed — handled by file-manager-plugin-smb
 
   // 统一使用 sudo，终端中由用户自行输入密码
   const command = rawCommand

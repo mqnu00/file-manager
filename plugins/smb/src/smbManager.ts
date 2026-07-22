@@ -2,10 +2,10 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { execSync } from 'child_process'
-import { getConfig, SmbConfig } from '../config'
-import { detectSamba, clearSambaCache } from '../utils/sambaDetect'
-import { safePath } from '../utils/safePath'
-import { isRunning as terminalRunning, killSession, createSession } from './terminalManager'
+import { detectSamba, clearSambaCache } from './sambaDetect'
+import type { BackendPluginContext } from '@mqn00/file-manager/plugin'
+
+// ==================== 类型 ====================
 
 export type SmbState = 'stopped' | 'running' | 'not_installed' | 'error'
 
@@ -20,6 +20,58 @@ export interface SmbStatus {
   authMode: 'password' | 'guest'
 }
 
+export interface SmbShare {
+  name: string
+  path: string
+  readOnly: boolean
+  guestOk: boolean
+}
+
+export interface SmbUser {
+  username: string
+  password: string
+}
+
+export interface SmbConfig {
+  enabled: boolean
+  port: number
+  workgroup: string
+  serverString: string
+  shares: SmbShare[]
+  users: SmbUser[]
+}
+
+// ==================== 插件上下文 ====================
+
+let _ctx: BackendPluginContext | null = null
+
+export function initSmbManager(ctx: BackendPluginContext): void {
+  _ctx = ctx
+}
+
+function getCtx(): BackendPluginContext {
+  if (!_ctx) throw new Error('SMB manager not initialized')
+  return _ctx
+}
+
+// ==================== 配置辅助 ====================
+
+const DEFAULT_SMB_CONFIG: SmbConfig = {
+  enabled: false,
+  port: 1445,
+  workgroup: 'WORKGROUP',
+  serverString: 'File Manager',
+  shares: [],
+  users: [],
+}
+
+function getSmbConfig(): SmbConfig {
+  const cfg = getCtx().config.get()
+  return (cfg.plugins?.smb as SmbConfig) || DEFAULT_SMB_CONFIG
+}
+
+// ==================== 状态 ====================
+
 let currentPort: number = 1445
 let startedAt: number | null = null
 
@@ -30,6 +82,8 @@ function getSmbConfPath(): string {
 function getSmbStateDir(): string {
   return path.join(os.tmpdir(), `file-manager-smb-state-${process.pid}`)
 }
+
+// ==================== smb.conf 生成 ====================
 
 function generateSmbConf(config: SmbConfig): string {
   const stateDir = getSmbStateDir()
@@ -63,8 +117,10 @@ function generateSmbConf(config: SmbConfig): string {
     ''
   )
 
+  const ctx = getCtx()
+
   for (const share of config.shares) {
-    const absPath = safePath(share.path)
+    const absPath = ctx.utils.path.safe(share.path)
     lines.push(`[${share.name}]`)
     lines.push(`   path = ${absPath}`)
     lines.push(`   read only = ${share.readOnly ? 'yes' : 'no'}`)
@@ -80,6 +136,8 @@ function generateSmbConf(config: SmbConfig): string {
   return lines.join('\n')
 }
 
+// ==================== setup 脚本 ====================
+
 function getSetupScriptPath(): string {
   return path.join(os.tmpdir(), `file-manager-smb-setup-${process.pid}.sh`)
 }
@@ -93,7 +151,6 @@ function generateSetupScript(config: SmbConfig, confPath: string): string {
   if (hasUsers) {
     script += '# 创建/更新 Samba 用户\n'
     for (const user of config.users) {
-      // 转义特殊字符：单引号 -> '\''
       const escapedUser = user.username.replace(/'/g, "'\\''")
       const escapedPass = user.password.replace(/'/g, "'\\''")
       script += `smbpasswd -x '${escapedUser}' 2>/dev/null || true\n`
@@ -106,6 +163,8 @@ function generateSetupScript(config: SmbConfig, confPath: string): string {
 
   return script
 }
+
+// ==================== 公开 API ====================
 
 export function getStatus(): SmbStatus {
   const sambaInfo = detectSamba()
@@ -121,17 +180,9 @@ export function getStatus(): SmbStatus {
     }
   }
 
-  const cfg = getConfig()
-  const smbCfg = cfg.smb || {
-    enabled: false,
-    port: 1445,
-    workgroup: 'WORKGROUP',
-    serverString: 'File Manager',
-    shares: [],
-    users: []
-  }
-
-  const state: SmbState = terminalRunning() ? 'running' : 'stopped'
+  const ctx = getCtx()
+  const smbCfg = getSmbConfig()
+  const state: SmbState = ctx.services.terminal.isRunning() ? 'running' : 'stopped'
 
   return {
     state,
@@ -155,37 +206,31 @@ export function start(): { port: number } {
     throw new Error('Samba (smbd) 未安装')
   }
 
-  if (terminalRunning()) {
+  const ctx = getCtx()
+
+  if (ctx.services.terminal.isRunning()) {
     throw new Error('SMB 服务已在运行中')
   }
 
-  const cfg = getConfig().smb || {
-    enabled: false,
-    port: 1445,
-    workgroup: 'WORKGROUP',
-    serverString: 'File Manager',
-    shares: [],
-    users: []
-  }
+  const smbCfg = getSmbConfig()
 
-  if (cfg.shares.length === 0) {
+  if (smbCfg.shares.length === 0) {
     throw new Error('请至少添加一个共享文件夹')
   }
 
   const confPath = getSmbConfPath()
-  fs.writeFileSync(confPath, generateSmbConf(cfg), 'utf-8')
+  fs.writeFileSync(confPath, generateSmbConf(smbCfg), 'utf-8')
 
   const stateDir = getSmbStateDir()
   try { fs.mkdirSync(stateDir, { recursive: true }) } catch { /* ignore */ }
 
   const setupScriptPath = getSetupScriptPath()
-  fs.writeFileSync(setupScriptPath, generateSetupScript(cfg, confPath), { mode: 0o755, encoding: 'utf-8' })
+  fs.writeFileSync(setupScriptPath, generateSetupScript(smbCfg, confPath), { mode: 0o755, encoding: 'utf-8' })
 
-  currentPort = cfg.port
+  currentPort = smbCfg.port
   startedAt = Date.now()
 
-  // 创建持久化 PTY 会话（不和 WebSocket 绑定，刷新页面后仍运行）
-  createSession('sudo', [setupScriptPath], (exitCode) => {
+  ctx.services.terminal.createSession('sudo', [setupScriptPath], (exitCode) => {
     if (exitCode === 0) {
       clearSambaCache()
     }
@@ -193,15 +238,16 @@ export function start(): { port: number } {
     console.log(`SMB 进程退出，退出码: ${exitCode}`)
   })
 
-  console.log(`SMB 已启动，端口: ${cfg.port}`)
-  return { port: cfg.port }
+  console.log(`SMB 已启动，端口: ${smbCfg.port}`)
+  return { port: smbCfg.port }
 }
 
 export function stop(): void {
-  killSession()
+  const ctx = getCtx()
+  ctx.services.terminal.killSession()
   startedAt = null
 
-  // 兜底：直接 pkill 可能残留的 smbd 进程（忽略 sudo 密码/权限错误）
+  // 兜底：直接 pkill 可能残留的 smbd 进程
   try {
     execSync('sudo pkill -f "smbd.*file-manager-smb"', { timeout: 3000 })
   } catch { /* 非关键，忽略所有错误 */ }

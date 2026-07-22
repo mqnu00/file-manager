@@ -15,7 +15,6 @@ import api from '@/api'
 import * as authApi from '@/api/auth'
 import * as fileApi from '@/api/file'
 import * as configApi from '@/api/config'
-import * as smbApi from '@/api/smb'
 import * as taskApi from '@/api/task'
 import * as systemApi from '@/api/system'
 
@@ -63,7 +62,6 @@ export interface ScriptContext {
     auth: typeof authApi
     file: typeof fileApi
     config: typeof configApi
-    smb: typeof smbApi
     task: typeof taskApi
     system: typeof systemApi
   }
@@ -126,7 +124,6 @@ export function createScriptContext(): ScriptContext {
       auth: authApi,
       file: fileApi,
       config: configApi,
-      smb: smbApi,
       task: taskApi,
       system: systemApi,
     },
