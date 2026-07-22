@@ -19,6 +19,13 @@ export interface LoadedPlugin {
   frontendPath: string | null
 }
 
+/** 前端插件列表项（含启用状态） */
+export interface PluginInfo {
+  name: string
+  enabled: boolean
+  frontendPath: string | null
+}
+
 // ==================== 插件上下文 ====================
 
 /**

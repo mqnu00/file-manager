@@ -137,6 +137,17 @@ export function updateConfig(updates: Partial<AppConfig>): AppConfig {
   return merged
 }
 
+export function updatePluginConfig(name: string, cfg: Record<string, unknown>): AppConfig {
+  const current = readRaw()
+  const plugins: Record<string, unknown> = { ...(current.plugins || {}) }
+  plugins[name] = { ...((plugins[name] as Record<string, unknown>) || {}), ...cfg }
+  const merged: AppConfig = { ...current, plugins }
+  const yamlStr = yaml.dump(merged, { lineWidth: -1, noRefs: true })
+  fs.writeFileSync(CONFIG_PATH, yamlStr, 'utf-8')
+  cachedConfig = merged
+  return merged
+}
+
 export function getSanitizedConfig() {
   const cfg = getConfig()
   const masked = cfg.auth.token

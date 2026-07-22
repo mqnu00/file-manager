@@ -15,11 +15,11 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { getConfig } from '../config'
+import { getConfig, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
 import { log } from '../utils/logger'
-import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin } from './types'
+import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin, PluginInfo } from './types'
 
 // ==================== 内部类型 ====================
 
@@ -310,6 +310,69 @@ export async function loadPlugins(): Promise<void> {
   }
 }
 
+// ==================== 运行时加载/卸载 ====================
+
+/** 运行时加载单个插件（通过 API 触发），自动持久化到 config.yml */
+export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
+  // 检查是否已加载
+  const existing = loadedPlugins.find((p) => p.name === name)
+  if (existing) {
+    log('WARNING', 'Plugin', `Plugin "${name}" is already loaded`)
+    return null
+  }
+
+  const rootDir = resolvePluginRoot(name)
+  if (!rootDir) {
+    log('WARNING', 'Plugin', `Plugin "${name}" not found in node_modules or plugins/`)
+    return null
+  }
+
+  const instance = await loadSinglePlugin(name, rootDir)
+  if (!instance) return null
+
+  loadedPlugins.push(instance)
+
+  // 本地插件启动文件监视
+  if (instance.local) {
+    startWatching(instance)
+  }
+
+  // 持久化：在 config.yml 中启用该插件
+  try {
+    updatePluginConfig(name, { enabled: true })
+  } catch (err) {
+    log('ERROR', 'Plugin', `Failed to update config for "${name}": ${err}`)
+  }
+
+  return {
+    name: instance.name,
+    rootDir: instance.rootDir,
+    frontendPath: instance.frontendPath,
+  }
+}
+
+/** 运行时卸载单个插件（通过 API 触发），自动持久化到 config.yml */
+export function unloadPluginByName(name: string): boolean {
+  const idx = loadedPlugins.findIndex((p) => p.name === name)
+  if (idx === -1) {
+    log('WARNING', 'Plugin', `Plugin "${name}" is not loaded`)
+    return false
+  }
+
+  const instance = loadedPlugins[idx]
+  unloadPlugin(instance)
+  loadedPlugins.splice(idx, 1)
+
+  // 持久化：在 config.yml 中禁用该插件
+  try {
+    updatePluginConfig(name, { enabled: false })
+  } catch (err) {
+    log('ERROR', 'Plugin', `Failed to update config for "${name}": ${err}`)
+  }
+
+  return true
+}
+
 // ==================== 监视入口 ====================
 
 /**
@@ -343,4 +406,23 @@ export function getLoadedPlugins(): LoadedPlugin[] {
     rootDir,
     frontendPath,
   }))
+}
+
+/** 获取 config.yml 中所有插件及其启用状态（含未加载的） */
+export function getAllPluginInfos(): PluginInfo[] {
+  const config = getConfig()
+  const pluginsCfg: Record<string, unknown> = config.plugins || {}
+
+  return Object.entries(pluginsCfg)
+    .filter(([, cfg]) => typeof cfg === 'object' && cfg !== null)
+    .map(([name, cfg]) => {
+      const cfgObj = cfg as Record<string, unknown>
+      const enabled = cfgObj.enabled !== false
+      const instance = loadedPlugins.find((p) => p.name === name)
+      return {
+        name,
+        enabled,
+        frontendPath: instance?.frontendPath ?? null,
+      }
+    })
 }

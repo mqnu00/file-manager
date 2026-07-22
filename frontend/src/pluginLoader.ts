@@ -12,6 +12,29 @@ interface PluginInfo {
   frontendPath: string | null
 }
 
+export async function loadPluginFrontend(plugin: PluginInfo): Promise<void> {
+  if (!plugin.frontendPath) return
+
+  try {
+    // @vite-ignore: 运行时动态 import，URL 指向后端静态资源
+    const mod = await import(/* @vite-ignore */ plugin.frontendPath)
+
+    const install =
+      mod.install ||
+      (typeof mod.default === 'function' ? mod.default : null) ||
+      mod.default?.install
+
+    if (typeof install === 'function') {
+      await install(ctx)
+      console.log(`[Plugin] ${plugin.name} frontend loaded`)
+    } else {
+      console.warn(`[Plugin] ${plugin.name} has no install function`)
+    }
+  } catch (err) {
+    console.error(`[Plugin] ${plugin.name} frontend failed:`, err)
+  }
+}
+
 export async function initPlugins(): Promise<void> {
   try {
     const res = await fetch('/api/plugins')
