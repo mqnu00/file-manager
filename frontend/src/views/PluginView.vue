@@ -27,9 +27,17 @@
               <el-tag v-else size="small" type="info">已禁用</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="前端入口" min-width="180">
+          <el-table-column label="前端入口" min-width="160">
             <template #default="{ row }">
-              <span v-if="row.frontendPath" class="frontend-path">{{ row.frontendPath }}</span>
+              <el-button
+                v-if="row.frontendPath"
+                size="small"
+                text
+                type="primary"
+                @click="openPluginPage(row)"
+              >
+                打开页面
+              </el-button>
               <el-tag v-else size="small" type="warning">无前端</el-tag>
             </template>
           </el-table-column>
@@ -141,6 +149,10 @@ async function reloadPlugin(plugin: PluginInfo) {
   }
 }
 
+function openPluginPage(plugin: PluginInfo) {
+  router.push(`/plugin/${plugin.name}`)
+}
+
 async function testPlugin(plugin: PluginInfo) {
   try {
     const res = await fetch(`/api/plugin/${plugin.name}`)
@@ -190,13 +202,6 @@ async function testPlugin(plugin: PluginInfo) {
 .back-btn {
   color: var(--app-text-dim);
   padding: 4px 8px;
-}
-
-.frontend-path {
-  font-family: monospace;
-  font-size: 12px;
-  color: var(--app-text-dim);
-  word-break: break-all;
 }
 
 .plugins-footer {

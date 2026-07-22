@@ -20,6 +20,7 @@ import * as taskApi from '@/api/task'
 import * as systemApi from '@/api/system'
 
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+import router from '@/router'
 
 import { useAuthStore } from '@/stores/auth'
 import { useFileStore } from '@/stores/file'
@@ -93,11 +94,13 @@ export interface ScriptContext {
     API_BASE_URL: string
   }
 
-  /** Vue Router 工厂函数 */
+  /** Vue Router 工厂函数 + 实例方法 */
   router: {
     createRouter: typeof createRouter
     createWebHistory: typeof createWebHistory
     createWebHashHistory: typeof createWebHashHistory
+    addRoute: typeof router.addRoute
+    currentRoute: typeof router.currentRoute
   }
 
 }
@@ -155,6 +158,8 @@ export function createScriptContext(): ScriptContext {
       createRouter,
       createWebHistory,
       createWebHashHistory,
+      addRoute: router.addRoute.bind(router),
+      currentRoute: router.currentRoute,
     },
   }
 }

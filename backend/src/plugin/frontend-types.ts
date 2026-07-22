@@ -266,11 +266,12 @@ export interface FrontendPluginContext {
     API_BASE_URL: string
   }
 
-  /** Vue Router 工厂函数 */
+  /** Vue Router 工厂函数 + 实例方法 */
   router: {
     createRouter(options: RouterOptions): Router
     createWebHistory(base?: string): RouterHistory
     createWebHashHistory(base?: string): RouterHistory
+    addRoute: Router['addRoute']
   }
 }
 
