@@ -11,7 +11,7 @@ import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/f
 export const install: FrontendPluginInstallFunction = (ctx) => {
   const { ElMessage } = ctx.ElementPlus
 
-  ElMessage.success('Test plugin loaded successfully!')
+  ElMessage.success('123Test plugin loaded successfully!')
 
   console.log('[Test Plugin] Frontend loaded')
   console.log('[Test Plugin] Available ctx keys:', Object.keys(ctx))

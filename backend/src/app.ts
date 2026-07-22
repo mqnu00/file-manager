@@ -20,7 +20,7 @@ import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 import { createSession, attachViewer } from './services/terminalManager'
 import { clearSambaCache } from './utils/sambaDetect'
-import { loadPlugins } from './plugin/loader'
+import { loadPlugins, startPluginWatchers } from './plugin/loader'
 import pluginRoutes from './routes/plugins'
 
 const app = express()
@@ -172,6 +172,7 @@ function createServer(port?: number): Promise<number> {
 if (require.main === module) {
   loadPlugins()
     .then(() => createServer())
+    .then(() => startPluginWatchers())
     .catch((err) => {
       console.error('Plugin loading failed:', err)
       createServer()
