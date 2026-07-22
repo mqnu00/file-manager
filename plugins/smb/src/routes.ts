@@ -1,15 +1,10 @@
-import { Router, Request, Response } from 'express'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import { getStatus, start, stop } from './smbManager'
-import type { BackendPluginContext } from '@mqn00/file-manager/plugin'
+import type { BackendPluginContext, Request, Response, Router } from '@mqn00/file-manager/plugin'
 import type { SmbShare, SmbUser, SmbConfig } from './smbManager'
 
 let _ctx: BackendPluginContext | null = null
-
-export function initRoutes(ctx: BackendPluginContext): void {
-  _ctx = ctx
-}
 
 function getCtx(): BackendPluginContext {
   if (!_ctx) throw new Error('SMB routes not initialized')
@@ -101,7 +96,9 @@ function detectPackageManagerForSamba(): InstallInfo {
 
 // ==================== 路由 ====================
 
-const router: Router = Router()
+export function createRouter(ctx: BackendPluginContext): Router {
+  _ctx = ctx
+  const router: Router = ctx.express.Router()
 
 /**
  * GET /api/smb/status
@@ -330,4 +327,5 @@ router.delete('/users/:username', (req: Request, res: Response) => {
   res.json({ success: true })
 })
 
-export default router
+  return router
+}

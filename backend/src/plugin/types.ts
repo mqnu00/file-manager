@@ -5,8 +5,13 @@
  * 编译时从 node_modules 解析这些类型。
  */
 
-import type { Router } from 'express'
+import { Router } from 'express'
+import type { Request, Response, NextFunction, RequestHandler } from 'express'
 import type { ScriptContext } from '../context'
+
+// Re-export express 核心类型与 Router 构造函数，插件无需直接依赖 express
+export { Router }
+export type { Request, Response, NextFunction, RequestHandler }
 
 // ==================== 插件信息 ====================
 

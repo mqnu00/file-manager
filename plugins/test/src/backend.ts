@@ -1,5 +1,4 @@
-import type { BackendPluginContext, PluginInstallFunction } from '@mqn00/file-manager/plugin'
-import type { Request, Response } from 'express'
+import type { BackendPluginContext, PluginInstallFunction, Request, Response } from '@mqn00/file-manager/plugin'
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   const router = ctx.express.Router()
