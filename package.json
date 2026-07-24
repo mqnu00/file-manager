@@ -1,6 +1,6 @@
 {
   "name": "file-manager",
-  "version": "2.8.0",
+  "version": "3.0.0-beta1",
   "description": "全栈文件管理系统 - Vue3 + Node.js",
   "private": true,
   "type": "module",
