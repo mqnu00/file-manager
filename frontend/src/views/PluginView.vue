@@ -27,6 +27,12 @@
               <el-tag v-else size="small" type="info">已禁用</el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="来源" width="100">
+            <template #default="{ row }">
+              <el-tag v-if="row.local" size="small">本地开发</el-tag>
+              <el-tag v-else size="small" type="info">npm 包</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="前端入口" min-width="160">
             <template #default="{ row }">
               <el-button
@@ -164,7 +170,7 @@ function openPluginPage(plugin: PluginInfo) {
 }
 
 .plugins-card {
-  width: 800px;
+  width: 1000px;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;

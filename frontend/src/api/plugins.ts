@@ -7,6 +7,8 @@ import api from './index'
 export interface PluginInfo {
   name: string
   enabled: boolean
+  /** 是否来自 plugins/ 本地目录（否则来自 node_modules） */
+  local: boolean
   frontendPath: string | null
 }
 

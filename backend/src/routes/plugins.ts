@@ -13,6 +13,7 @@ router.get('/', (_req: Request, res: Response) => {
   const plugins = getAllPluginInfos().map((p) => ({
     name: p.name,
     enabled: p.enabled,
+    local: p.local,
     frontendPath: p.frontendPath
       ? `/plugins-assets/${p.name}/${p.frontendPath.replace(/^\.\//, '')}`
       : null,
@@ -37,6 +38,7 @@ router.post('/load', authMiddleware, async (req: Request, res: Response) => {
   res.json({
     name: plugin.name,
     enabled: true,
+    local: plugin.local,
     frontendPath: plugin.frontendPath
       ? `/plugins-assets/${plugin.name}/${plugin.frontendPath.replace(/^\.\//, '')}`
       : null,

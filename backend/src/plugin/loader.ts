@@ -2,8 +2,10 @@
  * 插件加载器 — 运行时发现并加载插件
  *
  * 从 config.yml 的 plugins 段读取启用列表，按优先级查找插件包：
- *   1. node_modules/{name}
- *   2. plugins/{name}
+ *   1. node_modules/{name}（精确匹配，含 scoped 如 @scope/pkg）
+ *   2. node_modules/file-manager-plugin-{name}
+ *   3. node_modules/@scope/file-manager-plugin-{name}（扫描所有 scope）
+ *   4. plugins/{name}（本地开发目录）
  *
  * 通过 package.json 的 main/exports 解析入口文件，动态 import 并调用 install(ctx)。
  *
@@ -19,7 +21,13 @@ import { getConfig, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
 import { log } from '../utils/logger'
-import type { BackendPluginContext, PluginInstallFunction, LoadedPlugin, PluginInfo, PluginManifestConfig } from './types'
+import type {
+  BackendPluginContext,
+  PluginInstallFunction,
+  LoadedPlugin,
+  PluginInfo,
+  PluginManifestConfig,
+} from './types'
 
 // ==================== 内部类型 ====================
 
@@ -53,26 +61,58 @@ const loadedPlugins: PluginInstance[] = []
 
 // ==================== 解析 ====================
 
+/** 通过 require.resolve 定位包入口，再向上查找 package.json 得到根目录。
+ *  直接 require.resolve(name + '/package.json') 会被 exports 字段封锁，
+ *  因此改为先解析入口再向上查找。 */
+function resolvePackageRoot(spec: string, resolveOpts: { paths: string[] }): string | null {
+  try {
+    let dir = path.dirname(require.resolve(spec, resolveOpts))
+    while (dir !== path.dirname(dir)) {
+      if (fs.existsSync(path.join(dir, 'package.json'))) {
+        return dir
+      }
+      dir = path.dirname(dir)
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /** 查找插件包的根目录（package.json 所在目录） */
 function resolvePluginRoot(name: string): string | null {
   const projectRoot = path.resolve(__dirname, '..', '..', '..')
+  const resolveOpts = { paths: [projectRoot] }
 
-  // 1. 优先 node_modules
+  // 1. 精确匹配（支持 scoped 包名如 @scope/pkg）
+  const exact = resolvePackageRoot(name, resolveOpts)
+  if (exact) return exact
+
+  // 2. 加 file-manager-plugin- 前缀查找
+  const prefixed = 'file-manager-plugin-' + name
+  const pkg = resolvePackageRoot(prefixed, resolveOpts)
+  if (pkg) return pkg
+
+  // 3. 在 node_modules 的 scope（@*）下查找 file-manager-plugin-{name}
+  try {
+    const nodeModules = path.join(projectRoot, 'node_modules')
+    const scopes = fs.readdirSync(nodeModules).filter((d) => d.startsWith('@'))
+    for (const scope of scopes) {
+      const scoped = resolvePackageRoot(scope + '/' + prefixed, resolveOpts)
+      if (scoped) return scoped
+    }
+  } catch {
+    /* node_modules 不可读 */
+  }
+
+  // 4. 回退 plugins/ 开发目录（本地目录直接用 /package.json 即可，无 exports 限制）
   try {
     return path.dirname(
-      require.resolve(name + '/package.json', { paths: [projectRoot] })
+      require.resolve(path.join(projectRoot, 'plugins', name, 'package.json'), resolveOpts)
     )
-  } catch { /* 不在 node_modules */ }
-
-  // 2. 回退 plugins/ 开发目录
-  try {
-    return path.dirname(
-      require.resolve(
-        path.join(projectRoot, 'plugins', name, 'package.json'),
-        { paths: [projectRoot] }
-      )
-    )
-  } catch { /* 不在 plugins */ }
+  } catch {
+    /* 不在 plugins */
+  }
 
   return null
 }
@@ -161,8 +201,9 @@ async function loadSinglePlugin(
 ): Promise<PluginInstance | null> {
   try {
     // 读取 package.json 获取入口文件路径
-    const pkg: { main?: string; exports?: Record<string, string> } =
-      require(path.join(rootDir, 'package.json'))
+    const pkg: { main?: string; exports?: Record<string, string> } = require(
+      path.join(rootDir, 'package.json')
+    )
     const entryRel = pkg.main || 'dist/backend.js'
     const entryAbs = path.resolve(rootDir, entryRel)
 
@@ -388,7 +429,9 @@ function collectManifests(): PluginManifest[] {
         fileManagerPlugin?: PluginManifestConfig
       }
       dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
-    } catch { /* package.json 读取失败则视为无依赖 */ }
+    } catch {
+      /* package.json 读取失败则视为无依赖 */
+    }
 
     manifests.push({ name, rootDir, dependsOn })
   }
@@ -413,9 +456,7 @@ function toposort(manifests: PluginManifest[]): {
   for (const m of manifests) {
     for (const dep of m.dependsOn) {
       if (!nameSet.has(dep)) {
-        errors.push(
-          `Plugin "${m.name}" depends on "${dep}", which is not enabled or not found`
-        )
+        errors.push(`Plugin "${m.name}" depends on "${dep}", which is not enabled or not found`)
       }
     }
   }
@@ -457,9 +498,7 @@ function toposort(manifests: PluginManifest[]): {
   // 检测循环依赖
   if (order.flat().length < manifests.length) {
     const stuck = manifests.filter((m) => inDegree.get(m.name)! > 0)
-    errors.push(
-      `Circular dependency detected among: ${stuck.map((m) => m.name).join(', ')}`
-    )
+    errors.push(`Circular dependency detected among: ${stuck.map((m) => m.name).join(', ')}`)
   }
 
   return { order, errors }
@@ -478,9 +517,7 @@ export async function loadPlugins(): Promise<void> {
 
   for (const batch of order) {
     // 同一批次内插件互不依赖，可并行加载
-    const results = await Promise.all(
-      batch.map((m) => loadSinglePlugin(m.name, m.rootDir))
-    )
+    const results = await Promise.all(batch.map((m) => loadSinglePlugin(m.name, m.rootDir)))
     for (const instance of results) {
       if (instance) {
         loadedPlugins.push(instance)
@@ -513,15 +550,13 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
       fileManagerPlugin?: PluginManifestConfig
     }
     dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   for (const dep of dependsOn) {
     if (!loadedPlugins.find((p) => p.name === dep)) {
-      log(
-        'ERROR',
-        'Plugin',
-        `Cannot load "${name}": dependency "${dep}" is not loaded`
-      )
+      log('ERROR', 'Plugin', `Cannot load "${name}": dependency "${dep}" is not loaded`)
       return null
     }
   }
@@ -546,6 +581,7 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
   return {
     name: instance.name,
     rootDir: instance.rootDir,
+    local: instance.local,
     frontendPath: instance.frontendPath,
   }
 }
@@ -600,9 +636,10 @@ export function stopAllWatchers(): void {
 
 /** 获取已加载的插件列表（供路由使用） */
 export function getLoadedPlugins(): LoadedPlugin[] {
-  return loadedPlugins.map(({ name, rootDir, frontendPath }) => ({
+  return loadedPlugins.map(({ name, rootDir, local, frontendPath }) => ({
     name,
     rootDir,
+    local,
     frontendPath,
   }))
 }
@@ -618,9 +655,17 @@ export function getAllPluginInfos(): PluginInfo[] {
       const cfgObj = cfg as Record<string, unknown>
       const enabled = cfgObj.enabled !== false
       const instance = loadedPlugins.find((p) => p.name === name)
+      // 已加载的直接取 local，未加载的用 resolvePluginRoot + isLocalPlugin 判断
+      const local = instance
+        ? instance.local
+        : (() => {
+            const r = resolvePluginRoot(name)
+            return r ? isLocalPlugin(r) : false
+          })()
       return {
         name,
         enabled,
+        local,
         frontendPath: instance?.frontendPath ?? null,
       }
     })

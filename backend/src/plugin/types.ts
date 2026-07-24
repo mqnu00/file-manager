@@ -20,6 +20,8 @@ export interface LoadedPlugin {
   name: string
   /** package.json 所在目录 */
   rootDir: string
+  /** 是否从 plugins/ 本地目录加载（否则来自 node_modules） */
+  local: boolean
   /** exports["./frontend"] 值，相对于 rootDir */
   frontendPath: string | null
 }
@@ -28,6 +30,8 @@ export interface LoadedPlugin {
 export interface PluginInfo {
   name: string
   enabled: boolean
+  /** 是否从 plugins/ 本地目录加载（否则来自 node_modules） */
+  local: boolean
   frontendPath: string | null
 }
 
