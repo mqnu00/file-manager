@@ -622,147 +622,89 @@
 
 ---
 
-## SMB 共享接口
+## 插件管理接口
 
-所有 SMB 接口均需认证。
+插件管理接口用于查询已配置插件和执行运行时加载/卸载。
 
-### 1. 获取 SMB 服务状态
+### 1. 获取插件列表
 
-- **接口**: `GET /api/smb/status`
-- **请求头**: `Authorization: Bearer <sessionToken>`
+返回 `config.yml` 中 `plugins` 段配置的所有插件及其状态。
+
+- **接口**: `GET /api/plugins`
+- **无需认证**
 - **响应示例**:
-  ```json
-  {
-    "state": "running",
-    "port": 1445,
-    "workgroup": "WORKGROUP",
-    "serverString": "File Manager",
-    "shares": [
-      {
-        "name": "Shared",
-        "path": "/documents",
-        "readOnly": false,
-        "guestOk": true
-      }
-    ],
-    "startedAt": 1689600000000
-  }
-  ```
 
-- **字段说明**:
-  | 字段 | 类型 | 说明 |
-  |------|------|------|
-  | `state` | string | 服务状态：`running` / `stopped` / `not_installed` / `error` |
-  | `error` | string | 错误信息（`error` 或 `not_installed` 状态时） |
-
-### 2. 启动 SMB 服务
-
-- **接口**: `POST /api/smb/start`
-- **请求头**: `Authorization: Bearer <sessionToken>`
-- **响应示例**:
-  ```json
-  {
-    "success": true,
-    "status": { ... }
-  }
-  ```
-
-### 3. 停止 SMB 服务
-
-- **接口**: `POST /api/smb/stop`
-- **请求头**: `Authorization: Bearer <sessionToken>`
-- **响应示例**:
-  ```json
-  {
-    "success": true,
-    "status": { ... }
-  }
-  ```
-
-### 4. 更新 SMB 全局设置
-
-- **接口**: `PUT /api/smb/settings`
-- **请求头**: `Authorization: Bearer <sessionToken>`
-- **请求体**（所有字段可选）:
-  ```json
-  {
-    "port": 1445,
-    "workgroup": "WORKGROUP",
-    "serverString": "File Manager",
-    "enabled": true
-  }
-  ```
-- **响应**:
-  ```json
-  { "success": true }
-  ```
-
-### 5. 获取共享列表
-
-- **接口**: `GET /api/smb/shares`
-- **请求头**: `Authorization: Bearer <sessionToken>`
-- **响应示例**:
   ```json
   [
     {
-      "name": "Shared",
-      "path": "/documents",
-      "readOnly": false,
-      "guestOk": true
+      "name": "smb",
+      "enabled": true,
+      "local": true,
+      "frontendPath": "/plugins-assets/smb/dist/frontend.js"
+    },
+    {
+      "name": "my-plugin",
+      "enabled": false,
+      "local": false,
+      "frontendPath": null
     }
   ]
   ```
 
-### 6. 新增共享
+- **字段说明**:
 
-- **接口**: `POST /api/smb/shares`
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `name` | string | 插件名称（对应 config.yml 中的 key） |
+  | `enabled` | boolean | 是否启用（`config.yml` 中 `enabled !== false`） |
+  | `local` | boolean | 是否来自 `plugins/` 本地开发目录（否则来自 `node_modules`） |
+  | `frontendPath` | string/null | 前端入口 URL，无前端时为 `null` |
+
+### 2. 运行时加载插件
+
+动态加载一个已配置但尚未运行的插件。
+
+- **接口**: `POST /api/plugins/load`
 - **请求头**: `Authorization: Bearer <sessionToken>`
 - **请求体**:
+
   ```json
   {
-    "name": "MyShare",
-    "path": "/data",
-    "readOnly": false,
-    "guestOk": true
+    "name": "smb"
   }
   ```
+
 - **响应示例**:
+
   ```json
   {
-    "success": true,
-    "share": { "name": "MyShare", "path": "/data", "readOnly": false, "guestOk": true }
+    "name": "smb",
+    "enabled": true,
+    "local": true,
+    "frontendPath": "/plugins-assets/smb/dist/frontend.js"
   }
   ```
 
-### 7. 修改共享
+- **错误响应**:
+  - `400` — 未提供插件名称
+  - `404` — 插件未找到或已加载
 
-- **接口**: `PUT /api/smb/shares/:name`
+### 3. 运行时卸载插件
+
+卸载一个已加载的插件（停止其 watcher、移除路由）。
+
+- **接口**: `POST /api/plugins/:name/unload`
 - **请求头**: `Authorization: Bearer <sessionToken>`
-- **请求体**（所有字段可选）:
-  ```json
-  {
-    "path": "/new-path",
-    "readOnly": true,
-    "guestOk": false,
-    "newName": "NewName"
-  }
-  ```
-- **响应示例**:
-  ```json
-  {
-    "success": true,
-    "share": { "name": "NewName", "path": "/new-path", "readOnly": true, "guestOk": false }
-  }
-  ```
+- **URL 参数**: `:name` — 插件名称
 
-### 8. 删除共享
-
-- **接口**: `DELETE /api/smb/shares/:name`
-- **请求头**: `Authorization: Bearer <sessionToken>`
 - **响应示例**:
+
   ```json
   { "success": true }
   ```
+
+- **错误响应**:
+  - `404` — 插件未加载
 
 ---
 

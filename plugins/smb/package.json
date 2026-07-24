@@ -1,12 +1,16 @@
 {
   "name": "file-manager-plugin-smb",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.1",
+  "description": "File Manager 插件：Samba 局域网文件共享（启停管理、共享目录/用户 CRUD、终端安装）",
   "main": "dist/backend.js",
   "exports": {
     ".": "./dist/backend.js",
     "./frontend": "./dist/frontend.js"
   },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc && node build.mjs",
     "dev": "tsc --watch",
@@ -23,5 +27,22 @@
     "@mqn00/file-manager": "file:../../backend",
     "esbuild": "^0.28.1",
     "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mqnu00/file-manager.git"
+  },
+  "keywords": [
+    "file-manager",
+    "file-manager-plugin",
+    "smb",
+    "samba",
+    "file-sharing",
+    "lan"
+  ],
+  "author": "mqn00",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,3 +1,28 @@
+## v3.0.0-beta1 (2026-07-24)
+
+### 🏗️ 架构变更
+
+#### 插件系统
+
+- SMB 功能从主项目提取为独立插件 `file-manager-plugin-smb`
+- 插件加载器支持 4 级查找策略：精确匹配 → `file-manager-plugin-` 前缀 → scoped 包内查找 → `plugins/` 本地目录
+- 新增 `resolvePackageRoot` 辅助函数绕过 `exports` 字段限制
+- 插件后端上下文统一从 `@mqn00/file-manager/plugin` 导入 express 类型，消除插件构建报错
+- 插件示例目录 `plugins/test` 提供开发参考
+
+#### 插件管理界面
+
+- 前端新增插件管理页面（`/plugins`），展示已配置插件列表
+- 支持运行时加载/卸载/重载插件
+- 标记插件来源：npm 包 或 本地开发（`local` 字段穿透到前端展示）
+- 已加载插件的前端页面通过动态 import 渲染
+
+### 🔧 开发工具链
+
+- 后端开发模式从 `ts-node` 切换为 `tsx watch`，支持热加载
+
+---
+
 ## v2.9.0 (2026-07-17)
 
 ### ✨ 新增功能
