@@ -103,10 +103,9 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const resp = await fetch(
-      `https://registry.npmjs.org/-/v1/search?text=${query}&size=20`,
-      { signal: controller.signal }
-    )
+    const resp = await fetch(`https://registry.npmjs.org/-/v1/search?text=${query}&size=20`, {
+      signal: controller.signal,
+    })
     clearTimeout(timeout)
 
     if (!resp.ok) {
@@ -152,7 +151,11 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
 
 // ==================== npm 安装插件 ====================
 
-function runNpm(args: string[], cwd: string, timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
+function runNpm(
+  args: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn('npm', args, { cwd, timeout: timeoutMs })
     let stdout = ''
@@ -220,7 +223,9 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
       const newRootDir = resolvePluginRoot(shortName)
       if (newRootDir) {
         const defaults = getPluginDefaultConfig(newRootDir)
-        const currentCfg = (getConfig().plugins || {})[shortName] as Record<string, unknown> | undefined
+        const currentCfg = (getConfig().plugins || {})[shortName] as
+          | Record<string, unknown>
+          | undefined
         updatePluginConfig(shortName, { ...defaults, ...(currentCfg || {}) })
       }
 
@@ -248,7 +253,9 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
     // 2. 解析插件根目录
     const rootDir = resolvePluginRoot(shortName)
     if (!rootDir) {
-      res.status(500).json({ error: `Plugin "${shortName}" installed but not found in ${getPluginInstallPrefix()}/node_modules` })
+      res.status(500).json({
+        error: `Plugin "${shortName}" installed but not found in ${getPluginInstallPrefix()}/node_modules`,
+      })
       return
     }
 
@@ -303,7 +310,9 @@ router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
   const projectRoot = path.resolve(__dirname, '..', '..', '..')
   const pluginsDir = path.join(projectRoot, 'plugins')
   if (rootDir.startsWith(pluginsDir)) {
-    res.status(403).json({ error: `Cannot delete local development plugin "${name}". Remove it from plugins/ directory manually.` })
+    res.status(403).json({
+      error: `Cannot delete local development plugin "${name}". Remove it from plugins/ directory manually.`,
+    })
     return
   }
 

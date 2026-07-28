@@ -133,15 +133,21 @@ export function resolvePluginRoot(name: string): string | null {
     return tryResolve(path.dirname(installDir))
   }
 
-  // 本地/未知来源：从 projectRoot 解析，并回退 plugins/ 开发目录
+  // 本地/未知来源：从 projectRoot 解析，回退 pluginInstallDir，再回退 plugins/ 开发目录
   const projectRoot = path.resolve(__dirname, '..', '..', '..')
-  const result = tryResolve(projectRoot)
+  let result = tryResolve(projectRoot)
+  if (!result) {
+    // npm 安装后 config 可能尚未写入 source: 'npm'，仍需在统一安装目录查找
+    result = tryResolve(path.dirname(getPluginInstallDir()))
+  }
   if (result) return result
 
   // 4. 回退 plugins/ 开发目录
   try {
     return path.dirname(
-      require.resolve(path.join(projectRoot, 'plugins', name, 'package.json'), { paths: [projectRoot] })
+      require.resolve(path.join(projectRoot, 'plugins', name, 'package.json'), {
+        paths: [projectRoot],
+      })
     )
   } catch {
     /* 不在 plugins */
@@ -158,11 +164,15 @@ function isLocalPlugin(rootDir: string): boolean {
 // ==================== 辅助 ====================
 
 /** 从模块导出中提取 install 函数，支持多种导出模式 */
-function getInstallFn(mod: Record<string, unknown>): PluginInstallFunction | null {
-  if (typeof mod.install === 'function') return mod.install as PluginInstallFunction
-  if (typeof mod.default === 'function') return mod.default as PluginInstallFunction
-  if (mod.default && typeof (mod.default as Record<string, unknown>).install === 'function') {
-    return (mod.default as Record<string, unknown>).install as PluginInstallFunction
+function getInstallFn(mod: unknown): PluginInstallFunction | null {
+  if (typeof mod === 'function') return mod as PluginInstallFunction
+  if (mod && typeof mod === 'object') {
+    const obj = mod as Record<string, unknown>
+    if (typeof obj.install === 'function') return obj.install as PluginInstallFunction
+    if (typeof obj.default === 'function') return obj.default as PluginInstallFunction
+    if (obj.default && typeof (obj.default as Record<string, unknown>).install === 'function') {
+      return (obj.default as Record<string, unknown>).install as PluginInstallFunction
+    }
   }
   return null
 }
@@ -234,14 +244,14 @@ async function loadSinglePlugin(
 ): Promise<PluginInstance | null> {
   try {
     // 读取 package.json 获取入口文件路径
-    const pkg: { main?: string; exports?: Record<string, string> } = require(
+    const pkg: { main?: string; exports?: Record<string, string>; type?: string } = require(
       path.join(rootDir, 'package.json')
     )
     const entryRel = pkg.main || 'dist/backend.js'
     const entryAbs = path.resolve(rootDir, entryRel)
 
     // 导入模块
-    let mod: Record<string, unknown>
+    let mod: unknown
     if (cacheBust) {
       // 热重载：将入口文件复制到临时目录并用 require 加载
       // 由于临时路径唯一，绕过所有 Node.js / ts-node 模块缓存
@@ -252,8 +262,19 @@ async function loadSinglePlugin(
       fs.unlinkSync(tmpFile)
       fs.rmdirSync(tmpDir)
     } else {
-      // 首次加载：走入口文件导入（tsx 下目录导入不会读 package.json main 字段）
-      mod = await import(entryAbs)
+      // 首次加载：根据插件 package.json 的 type 字段选择加载方式
+      //   - type: "module" → ESM，用原生 import()（new Function 防 tsc 转译）
+      //   - 无 type 或 "commonjs" → CJS，用 require()
+      const isESM = pkg.type === 'module'
+      if (isESM) {
+        // 必须绕过 tsc 的 import() → require() 转译，否则无法加载 ES module
+        const nativeImport = new Function('specifier', 'return import(specifier)') as (
+          specifier: string
+        ) => Promise<unknown>
+        mod = await nativeImport(entryAbs)
+      } else {
+        mod = require(entryAbs)
+      }
     }
 
     const install = getInstallFn(mod)
