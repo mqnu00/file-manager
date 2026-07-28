@@ -1,8 +1,8 @@
 import { execSync } from 'child_process'
 import fs from 'fs'
-import { getStatus, start, stop } from './smbManager'
+import { getStatus, start, stop } from './smbManager.js'
 import type { BackendPluginContext, Request, Response, Router } from '@mqn00/file-manager/plugin'
-import type { SmbShare, SmbUser, SmbConfig } from './smbManager'
+import type { SmbShare, SmbUser, SmbConfig } from './smbManager.js'
 
 let _ctx: BackendPluginContext | null = null
 
@@ -22,7 +22,8 @@ const DEFAULT_SMB_CONFIG: SmbConfig = {
 
 function getSmbConfig(): SmbConfig {
   const cfg = getCtx().config.get()
-  return (cfg.plugins?.smb as SmbConfig) || DEFAULT_SMB_CONFIG
+  const saved = (cfg.plugins?.smb || {}) as Partial<SmbConfig>
+  return { ...DEFAULT_SMB_CONFIG, ...saved }
 }
 
 function saveSmbConfig(smbCfg: SmbConfig): void {

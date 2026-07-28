@@ -1,5 +1,5 @@
 import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/frontend'
-import { createTerminal } from './terminal'
+import { createTerminal } from './terminal.js'
 
 // ==================== 内联 API ====================
 

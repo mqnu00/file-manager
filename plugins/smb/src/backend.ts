@@ -1,6 +1,6 @@
 import type { BackendPluginContext, PluginInstallFunction } from '@mqn00/file-manager/plugin'
-import { initSmbManager, getStatus, start, stop } from './smbManager'
-import { createRouter } from './routes'
+import { initSmbManager, getStatus, start, stop } from './smbManager.js'
+import { createRouter } from './routes.js'
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   // 初始化 smbManager，使其能访问 ctx

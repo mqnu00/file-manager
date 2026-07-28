@@ -1,6 +1,7 @@
 {
   "name": "file-manager-plugin-smb",
-  "version": "0.1.1",
+  "version": "0.1.2",
+  "type": "module",
   "description": "File Manager 插件：Samba 局域网文件共享（启停管理、共享目录/用户 CRUD、终端安装）",
   "main": "dist/backend.js",
   "exports": {

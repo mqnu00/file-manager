@@ -2,7 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { execSync } from 'child_process'
-import { detectSamba, clearSambaCache } from './sambaDetect'
+import { detectSamba, clearSambaCache } from './sambaDetect.js'
 import type { BackendPluginContext } from '@mqn00/file-manager/plugin'
 
 // ==================== 类型 ====================
@@ -67,7 +67,8 @@ const DEFAULT_SMB_CONFIG: SmbConfig = {
 
 function getSmbConfig(): SmbConfig {
   const cfg = getCtx().config.get()
-  return (cfg.plugins?.smb as SmbConfig) || DEFAULT_SMB_CONFIG
+  const saved = (cfg.plugins?.smb || {}) as Partial<SmbConfig>
+  return { ...DEFAULT_SMB_CONFIG, ...saved }
 }
 
 // ==================== 状态 ====================
@@ -147,6 +148,8 @@ function generateSetupScript(config: SmbConfig, confPath: string): string {
   const escapedConfPath = confPath.replace(/'/g, "'\\''")
 
   let script = '#!/bin/bash\nset -e\n\n'
+
+  script += '# 确保 smbd 所需的运行时目录存在\nmkdir -p /run/samba\n\n'
 
   if (hasUsers) {
     script += '# 创建/更新 Samba 用户\n'
