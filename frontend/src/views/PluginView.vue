@@ -298,8 +298,8 @@ async function confirmDelete(plugin: PluginInfo) {
   }
   try {
     await deletePlugin(plugin.name)
-    ElMessage.success(`插件 "${plugin.name}" 已删除`)
-    await refreshList()
+    ElMessage.success(`插件 "${plugin.name}" 已删除，即将刷新页面...`)
+    setTimeout(() => { window.location.reload() }, 800)
   } catch (err: unknown) {
     ElMessage.error(`删除失败: ${extractError(err)}`)
   }
@@ -387,9 +387,8 @@ async function handleInstall(item: NpmSearchResult) {
   installing.value = item.name
   try {
     await installPlugin(item.name, ver, forceInstall.value)
-    ElMessage.success(`插件 "${item.name}" 安装成功`)
-    await refreshList()
-    activeTab.value = 'installed'
+    ElMessage.success(`插件 "${item.name}" 安装成功，即将刷新页面...`)
+    setTimeout(() => { window.location.reload() }, 800)
   } catch (err: unknown) {
     const msg = extractError(err)
     ElMessage.error(`安装失败: ${msg}`)

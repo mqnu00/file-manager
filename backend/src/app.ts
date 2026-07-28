@@ -18,7 +18,7 @@ import { authMiddleware, validateSession } from './middleware/auth'
 import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 import { createSession, attachViewer } from './services/terminalManager'
-import { loadPlugins, startPluginWatchers } from './plugin/loader'
+import { loadPlugins, startPluginWatchers, resolvePluginRoot } from './plugin/loader'
 import pluginRoutes from './routes/plugins'
 
 const app = express()
@@ -62,11 +62,31 @@ app.use('/api/plugins', pluginRoutes)
 export const pluginApp = Router()
 app.use(pluginApp)
 
-// ===== 插件静态资源 =====
-app.use(
-  '/plugins-assets',
-  express.static(path.join(path.resolve(__dirname, '..', '..'), 'plugins'))
-)
+// ===== 插件静态资源（根据 source 字段动态解析插件目录） =====
+app.use('/plugins-assets', (req, res, next) => {
+  const parts = req.path.replace(/^\//, '').split('/')
+  const pluginName = parts[0]
+  const filePath = parts.slice(1).join('/')
+
+  if (!pluginName || !filePath) {
+    return next()
+  }
+
+  const rootDir = resolvePluginRoot(pluginName)
+  if (!rootDir) {
+    return next()
+  }
+
+  // 安全检查：防止路径穿越
+  const absPath = path.resolve(rootDir, filePath)
+  if (!absPath.startsWith(rootDir)) {
+    return next()
+  }
+
+  res.sendFile(absPath, (err) => {
+    if (err) next()
+  })
+})
 
 // ===== 静态文件 =====
 

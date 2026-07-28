@@ -12,12 +12,16 @@ interface PluginInfo {
   frontendPath: string | null
 }
 
-export async function loadPluginFrontend(plugin: PluginInfo): Promise<void> {
+export async function loadPluginFrontend(plugin: PluginInfo, cacheBust = true): Promise<void> {
   if (!plugin.frontendPath) return
 
   try {
+    // 缓存破坏：安装/切换版本后 URL 不变但内容已变，追加时间戳强制重新请求
+    const url = cacheBust
+      ? plugin.frontendPath + (plugin.frontendPath.includes('?') ? '&' : '?') + '_t=' + Date.now()
+      : plugin.frontendPath
     // @vite-ignore: 运行时动态 import，URL 指向后端静态资源
-    const mod = await import(/* @vite-ignore */ plugin.frontendPath)
+    const mod = await import(/* @vite-ignore */ url)
 
     const install =
       mod.install ||
