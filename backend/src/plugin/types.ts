@@ -22,6 +22,8 @@ export interface LoadedPlugin {
   rootDir: string
   /** 是否从 plugins/ 本地目录加载（否则来自 node_modules） */
   local: boolean
+  /** 插件来源，持久化到 config.yml */
+  source: 'local' | 'npm'
   /** exports["./frontend"] 值，相对于 rootDir */
   frontendPath: string | null
 }
@@ -32,15 +34,39 @@ export interface PluginInfo {
   enabled: boolean
   /** 是否从 plugins/ 本地目录加载（否则来自 node_modules） */
   local: boolean
+  /** 插件来源：local=本地开发目录，npm=node_modules */
+  source: 'local' | 'npm'
   frontendPath: string | null
 }
 
 // ==================== 插件清单 ====================
 
+/** 插件配置字段描述（由插件在 package.json 的 fileManagerPlugin.config 中声明） */
+export interface PluginConfigField {
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object'
+  default: unknown
+  description?: string
+  required?: boolean
+}
+
 /** 插件在 package.json 中 fileManagerPlugin 字段的声明 */
 export interface PluginManifestConfig {
   /** 依赖的其他插件名（对应 config.yml 的插件键），可选 */
   dependsOn?: string[]
+  /** 插件自定义配置 schema，安装时默认值自动写入 config.yml */
+  config?: Record<string, PluginConfigField>
+}
+
+// ==================== npm 搜索 ====================
+
+/** npm registry 搜索返回的包信息 */
+export interface NpmSearchResult {
+  name: string
+  version: string
+  description: string
+  publisher: string
+  date: string
+  links: { npm: string; repository?: string; homepage?: string }
 }
 
 // ==================== 插件上下文 ====================

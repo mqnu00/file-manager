@@ -4,7 +4,7 @@
  * 从 config.yml 的 plugins 段读取启用列表，按优先级查找插件包：
  *   1. node_modules/{name}（精确匹配，含 scoped 如 @scope/pkg）
  *   2. node_modules/file-manager-plugin-{name}
- *   3. node_modules/@scope/file-manager-plugin-{name}（扫描所有 scope）
+ *   3. node_modules/@scope/{name}、node_modules/@scope/file-manager-plugin-{name}（扫描所有 scope）
  *   4. plugins/{name}（本地开发目录）
  *
  * 通过 package.json 的 main/exports 解析入口文件，动态 import 并调用 install(ctx)。
@@ -17,7 +17,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { getConfig, updatePluginConfig } from '../config'
+import { getConfig, getPluginInstallDir, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
 import { log } from '../utils/logger'
@@ -37,6 +37,8 @@ interface PluginInstance {
   frontendPath: string | null
   /** 是否来自 plugins/ 目录（本地开发），支持热重载 */
   local: boolean
+  /** 插件来源，持久化到 config.yml */
+  source: 'local' | 'npm'
   /** install() 后在 pluginApp.stack 中新增的 Layer 对象 */
   layers: unknown[]
   /** 本插件注册的服务名列表，卸载时用于清理 */
@@ -80,35 +82,66 @@ function resolvePackageRoot(spec: string, resolveOpts: { paths: string[] }): str
 }
 
 /** 查找插件包的根目录（package.json 所在目录） */
-function resolvePluginRoot(name: string): string | null {
-  const projectRoot = path.resolve(__dirname, '..', '..', '..')
-  const resolveOpts = { paths: [projectRoot] }
+export function resolvePluginRoot(name: string): string | null {
+  const config = getConfig()
+  const pluginCfg = (config.plugins || {})[name] as Record<string, unknown> | undefined
+  const source = pluginCfg?.source
 
-  // 1. 精确匹配（支持 scoped 包名如 @scope/pkg）
-  const exact = resolvePackageRoot(name, resolveOpts)
-  if (exact) return exact
-
-  // 2. 加 file-manager-plugin- 前缀查找
-  const prefixed = 'file-manager-plugin-' + name
-  const pkg = resolvePackageRoot(prefixed, resolveOpts)
-  if (pkg) return pkg
-
-  // 3. 在 node_modules 的 scope（@*）下查找 file-manager-plugin-{name}
-  try {
-    const nodeModules = path.join(projectRoot, 'node_modules')
-    const scopes = fs.readdirSync(nodeModules).filter((d) => d.startsWith('@'))
-    for (const scope of scopes) {
-      const scoped = resolvePackageRoot(scope + '/' + prefixed, resolveOpts)
-      if (scoped) return scoped
+  // 从 node_modules 下收集 @scope 目录列表
+  function collectScopes(nodeModulesDir: string): string[] {
+    try {
+      return fs.readdirSync(nodeModulesDir).filter((d) => d.startsWith('@'))
+    } catch {
+      return []
     }
-  } catch {
-    /* node_modules 不可读 */
   }
 
-  // 4. 回退 plugins/ 开发目录（本地目录直接用 /package.json 即可，无 exports 限制）
+  function tryResolve(baseDir: string): string | null {
+    const resolveOpts = { paths: [baseDir] }
+    const nodeModulesDirs = [path.join(baseDir, 'node_modules')]
+    if (baseDir.includes('node_modules')) {
+      nodeModulesDirs.push(path.dirname(baseDir))
+    }
+
+    const prefixed = 'file-manager-plugin-' + name
+
+    // 1. 精确匹配（支持 scoped 包名如 @scope/pkg）
+    const exact = resolvePackageRoot(name, resolveOpts)
+    if (exact) return exact
+
+    // 2. 加 file-manager-plugin- 前缀查找
+    const pkg = resolvePackageRoot(prefixed, resolveOpts)
+    if (pkg) return pkg
+
+    // 3. 在 @scope 子目录下查找
+    for (const nmDir of nodeModulesDirs) {
+      for (const scope of collectScopes(nmDir)) {
+        const exactScoped = resolvePackageRoot(scope + '/' + name, resolveOpts)
+        if (exactScoped) return exactScoped
+        const prefixedScoped = resolvePackageRoot(scope + '/' + prefixed, resolveOpts)
+        if (prefixedScoped) return prefixedScoped
+      }
+    }
+
+    return null
+  }
+
+  // npm 插件：从统一的 pluginInstallDir 解析
+  // tryResolve 的 baseDir 参数应为 node_modules 的父目录（require.resolve 的 paths 选项会自动追加 /node_modules）
+  if (source === 'npm') {
+    const installDir = getPluginInstallDir()
+    return tryResolve(path.dirname(installDir))
+  }
+
+  // 本地/未知来源：从 projectRoot 解析，并回退 plugins/ 开发目录
+  const projectRoot = path.resolve(__dirname, '..', '..', '..')
+  const result = tryResolve(projectRoot)
+  if (result) return result
+
+  // 4. 回退 plugins/ 开发目录
   try {
     return path.dirname(
-      require.resolve(path.join(projectRoot, 'plugins', name, 'package.json'), resolveOpts)
+      require.resolve(path.join(projectRoot, 'plugins', name, 'package.json'), { paths: [projectRoot] })
     )
   } catch {
     /* 不在 plugins */
@@ -258,6 +291,7 @@ async function loadSinglePlugin(
       rootDir,
       frontendPath,
       local: isLocalPlugin(rootDir),
+      source: isLocalPlugin(rootDir) ? 'local' : 'npm',
       layers,
       registeredServices,
     }
@@ -571,9 +605,9 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
     startWatching(instance)
   }
 
-  // 持久化：在 config.yml 中启用该插件
+  // 持久化：在 config.yml 中启用该插件并写入 source
   try {
-    updatePluginConfig(name, { enabled: true })
+    updatePluginConfig(name, { enabled: true, source: instance.source })
   } catch (err) {
     log('ERROR', 'Plugin', `Failed to update config for "${name}": ${err}`)
   }
@@ -582,6 +616,7 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
     name: instance.name,
     rootDir: instance.rootDir,
     local: instance.local,
+    source: instance.source,
     frontendPath: instance.frontendPath,
   }
 }
@@ -632,14 +667,29 @@ export function stopAllWatchers(): void {
   }
 }
 
+/**
+ * 读取插件的 fileManagerPlugin 清单配置。
+ * 用于安装时获取 config schema 和依赖声明。
+ */
+export function getPluginManifestConfig(rootDir: string): PluginManifestConfig {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.join(rootDir, 'package.json'))
+    return pkg.fileManagerPlugin ?? {}
+  } catch {
+    return {}
+  }
+}
+
 // ==================== 查询 ====================
 
 /** 获取已加载的插件列表（供路由使用） */
 export function getLoadedPlugins(): LoadedPlugin[] {
-  return loadedPlugins.map(({ name, rootDir, local, frontendPath }) => ({
+  return loadedPlugins.map(({ name, rootDir, local, source, frontendPath }) => ({
     name,
     rootDir,
     local,
+    source,
     frontendPath,
   }))
 }
@@ -655,17 +705,25 @@ export function getAllPluginInfos(): PluginInfo[] {
       const cfgObj = cfg as Record<string, unknown>
       const enabled = cfgObj.enabled !== false
       const instance = loadedPlugins.find((p) => p.name === name)
-      // 已加载的直接取 local，未加载的用 resolvePluginRoot + isLocalPlugin 判断
+      // 已加载的直接取 local/source，未加载的从 config 读取或推断
       const local = instance
         ? instance.local
         : (() => {
             const r = resolvePluginRoot(name)
             return r ? isLocalPlugin(r) : false
           })()
+      // source: 优先读 config 中的持久化值，其次从 local 推断
+      const source: 'local' | 'npm' =
+        cfgObj.source === 'local' || cfgObj.source === 'npm'
+          ? cfgObj.source
+          : local
+            ? 'local'
+            : 'npm'
       return {
         name,
         enabled,
         local,
+        source,
         frontendPath: instance?.frontendPath ?? null,
       }
     })

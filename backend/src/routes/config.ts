@@ -11,7 +11,7 @@ router.get('/', (_req: Request, res: Response) => {
 })
 
 router.put('/', (req: Request, res: Response) => {
-  const { auth, storageRoot, log } = req.body
+  const { auth, storageRoot, log, pluginInstallDir } = req.body
   const updates: any = {}
 
   if (auth) {
@@ -37,6 +37,10 @@ router.put('/', (req: Request, res: Response) => {
     if (log.retentionDays !== undefined) {
       updates.log.retentionDays = log.retentionDays
     }
+  }
+
+  if (pluginInstallDir !== undefined) {
+    updates.pluginInstallDir = pluginInstallDir
   }
 
   const updated = updateConfig(updates)

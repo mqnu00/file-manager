@@ -14,6 +14,7 @@ export interface AppConfig {
   auth: AuthConfig
   storageRoot: string
   log: LogConfig
+  pluginInstallDir?: string
 }
 
 export function getConfig(): Promise<AppConfig> {
@@ -24,6 +25,7 @@ export function updateConfig(data: {
   auth?: { token?: string; tokenExpiryHours?: number }
   storageRoot?: string
   log?: { cleanupOnStartup?: boolean; retentionDays?: number }
+  pluginInstallDir?: string
 }): Promise<{ success: boolean; config: AppConfig; sessionsCleared: boolean }> {
   return api.put('/config', data).then((res) => res.data)
 }

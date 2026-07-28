@@ -126,7 +126,7 @@ plugins:
 
 1. `node_modules/{name}`（精确匹配，支持 `@scope/pkg`）
 2. `node_modules/file-manager-plugin-{name}`
-3. `node_modules/@scope/file-manager-plugin-{name}`
+3. `node_modules/@scope/{name}` / `node_modules/@scope/file-manager-plugin-{name}`（扫描所有 scope）
 4. `plugins/{name}`（本地开发目录）
 
 ### 插件开发

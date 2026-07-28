@@ -36,6 +36,15 @@
           </el-form-item>
 
           <el-divider content-position="left">
+            <span class="divider-label">插件设置</span>
+          </el-divider>
+
+          <el-form-item label="npm 安装目录">
+            <el-input v-model="form.pluginInstallDir" placeholder="~/.file-manager/node_modules" />
+            <div class="form-item-tip">npm 插件的统一安装路径，支持 ~ 表示用户目录。修改后新安装的插件将写入新目录。</div>
+          </el-form-item>
+
+          <el-divider content-position="left">
             <span class="divider-label">日志清理</span>
           </el-divider>
 
@@ -92,6 +101,7 @@ const form = reactive({
   token: '',
   tokenExpiryHours: 24,
   storageRoot: '',
+  pluginInstallDir: '',
   cleanupOnStartup: true,
   retentionDays: 30,
 })
@@ -102,6 +112,7 @@ onMounted(async () => {
     Object.assign(config, cfg)
     form.tokenExpiryHours = cfg.auth.tokenExpiryHours
     form.storageRoot = cfg.storageRoot || ''
+    form.pluginInstallDir = cfg.pluginInstallDir || ''
     form.cleanupOnStartup = cfg.log?.cleanupOnStartup ?? true
     form.retentionDays = cfg.log?.retentionDays ?? 30
   } catch {
@@ -113,6 +124,7 @@ function handleReset() {
   form.token = ''
   form.tokenExpiryHours = config.auth?.tokenExpiryHours || 24
   form.storageRoot = config.storageRoot || ''
+  form.pluginInstallDir = config.pluginInstallDir || ''
   form.cleanupOnStartup = config.log?.cleanupOnStartup ?? true
   form.retentionDays = config.log?.retentionDays ?? 30
 }
@@ -154,6 +166,10 @@ async function handleSave() {
     }
     if (form.retentionDays !== (config.log?.retentionDays ?? 30)) {
       payload.log = { ...payload.log, retentionDays: form.retentionDays }
+      hasChange = true
+    }
+    if (form.pluginInstallDir !== (config.pluginInstallDir || '')) {
+      payload.pluginInstallDir = form.pluginInstallDir
       hasChange = true
     }
 
