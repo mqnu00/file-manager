@@ -1,3 +1,40 @@
+## v3.0.0-beta2 (2026-07-28)
+
+### ✨ 新增功能
+
+#### npm 插件市场
+
+- 新增 npm 插件搜索/安装/卸载/删除完整生命周期管理
+- 搜索：通过 `keywords:file-manager-plugin` 在 npm registry 查询可用插件
+- 安装：支持指定版本安装、强制模式（`--legacy-peer-deps` 绕过 peer dependency 冲突）
+- 卸载：npm uninstall + config.yml 配置自动清理
+- 删除：禁止删除本地开发插件（`plugins/` 目录），仅允许删除 npm 插件
+
+#### 插件 source 字段
+
+- 新增 `source` 字段（`local` / `npm`）区分插件来源，持久化到 config.yml
+- 同名本地插件和 npm 插件可共存，通过 source 切换启用哪个
+- 安装 npm 插件时不覆盖本地同名插件的配置值
+
+#### 统一插件安装目录
+
+- 新增 `pluginInstallDir` 配置项，npm 插件统一安装到此目录
+- 开发环境默认 `cwd/node_modules`，生产环境默认 `~/.file-manager/node_modules`
+- 系统配置页面（ConfigView）支持可视化修改 npm 安装目录
+
+### 🐛 Bug 修复
+
+- 修复 `/plugins-assets` 静态资源路由硬编码指向本地 `plugins/` 目录，导致 npm 插件前端资源无法正确加载
+- 修复前端安装/删除插件后需手动刷新才能看到变更的问题（自动刷新）
+- 修复 `loadPluginFrontend` 相同 URL 被浏览器 ES Module 缓存导致切换版本后仍加载旧模块的问题
+
+### 🔄 改进优化
+
+- 安装/删除插件后自动刷新页面，避免手动刷新
+- 删除接口 npm uninstall 统一使用 `pluginInstallPrefix`（与安装路径一致）
+
+---
+
 ## v3.0.0-beta1 (2026-07-24)
 
 ### 🏗️ 架构变更
