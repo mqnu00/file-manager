@@ -7,6 +7,7 @@ import { spawn } from 'child_process'
 import path from 'path'
 import {
   getAllPluginInfos,
+  getLoadedPlugins,
   loadPlugin,
   unloadPluginByName,
   resolvePluginRoot,
@@ -27,7 +28,22 @@ const router = Router()
 // ==================== 查询已配置插件 ====================
 
 // 查询所有已配置插件及启用状态（无需认证）
-router.get('/', (_req: Request, res: Response) => {
+// 自动加载 config.yml 中 enabled=true 但尚未加载的插件
+router.get('/', async (_req: Request, res: Response) => {
+  const config = getConfig()
+  const loadedNames = new Set(getLoadedPlugins().map((p) => p.name))
+
+  for (const [name, cfg] of Object.entries(config.plugins || {})) {
+    if (typeof cfg !== 'object' || cfg === null) continue
+    if ((cfg as Record<string, unknown>).enabled === false) continue
+    if (loadedNames.has(name)) continue
+    try {
+      await loadPlugin(name)
+    } catch {
+      // 单个插件加载失败不影响其他插件和列表返回
+    }
+  }
+
   const plugins = getAllPluginInfos().map((p) => ({
     name: p.name,
     enabled: p.enabled,
