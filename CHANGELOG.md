@@ -1,3 +1,38 @@
+## v3.0.0-beta3 (2026-08-05)
+
+### 🏗️ 架构变更
+
+#### 插件加载统一为 CJS
+
+- 后端插件统一使用 CJS `require` 加载，**v3 起不再支持 ESM 插件**（`type: module`），删除 `nativeImport`/`new Function` 分支
+- 已通过 npm 安装的 ESM 插件需升级为 CJS 版本后重新安装，否则无法加载
+- 插件前端资源不受影响：仍由 esbuild 打包为浏览器 ESM，经 `import()` 动态加载
+- smb 插件移除 `type: module`，tsconfig（NodeNext）下自动编译为 CJS；相对导入补 `.js` 扩展名
+
+### ✨ 新增功能
+
+#### 插件自动加载
+
+- `GET /api/plugins` 自动加载 `config.yml` 中 `enabled=true` 但尚未加载的插件，单个插件加载失败不影响其他插件和列表返回
+
+#### 插件加载兼容性
+
+- `getInstallFn` 兼容函数直出（`export default function`）模式
+
+### 🐛 Bug 修复
+
+- 修复并行加载时插件服务注册归属竞态：`registerService` 通过 `currentInstallingPlugin` 直接归属当前插件，避免 `___loading___` 占位符被先完成 install 的插件抢走（曾导致 smb 热重载报 `Service "smb" is already registered by plugin "test"`）；install 失败按归属清理
+- 修复 `resolvePluginRoot` 本地分支在 npm 安装后 config 尚未写入 `source` 时的解析回退（fallback 到 pluginInstallDir）
+- 修复 smb 配置合并：`getSmbConfig` 使用 spread 合并默认值，避免部分字段为 `undefined` 导致 `.some()`/`.map()` 崩溃
+- 修复 smbd 因缺失 ncalrpc 目录退出：`generateSetupScript` 添加 `mkdir -p /run/samba`
+
+### 🔄 改进优化
+
+- 插件热重载 `cacheBust` 从"复制单个入口文件"改为"复制整个 dist 目录"（`fs.cpSync`），支持多文件 CJS 插件（如 smb 的 `require('./smbManager.js')`）相对依赖解析
+- 热重载临时目录 30 秒延迟清理，兼容 install 异步引用相对依赖
+
+---
+
 ## v3.0.0-beta2 (2026-07-28)
 
 ### ✨ 新增功能
