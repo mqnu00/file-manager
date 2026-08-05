@@ -165,6 +165,78 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
+// ==================== npm 版本列表 ====================
+
+/** 简单 semver 比较：返回 -1/0/1，pre-release 版本小于正式版 */
+function compareVersions(a: string, b: string): number {
+  const parse = (v: string): (string | number)[] => {
+    const [core, pre] = v.split('-')
+    const nums = core.split('.').map((n) => parseInt(n, 10) || 0)
+    return pre === undefined ? [...nums, Infinity] : [...nums, pre]
+  }
+  const pa = parse(a)
+  const pb = parse(b)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? 0
+    const y = pb[i] ?? 0
+    if (typeof x === 'number' && typeof y === 'number') {
+      if (x !== y) return x < y ? -1 : 1
+    } else if (typeof x === 'number') {
+      // x 无 pre-release（正式版），y 为 pre-release → 正式版更大
+      return 1
+    } else if (typeof y === 'number') {
+      return -1
+    } else if (x !== y) {
+      return x < y ? -1 : 1
+    }
+  }
+  return 0
+}
+
+// 获取 npm 包已发布版本列表（semver 降序 + latest）
+router.get('/versions', authMiddleware, async (req: Request, res: Response) => {
+  const name = (req.query.name as string) || ''
+  if (!PKG_NAME_RE.test(name)) {
+    res.status(400).json({ error: 'Invalid package name' })
+    return
+  }
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+
+    const resp = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+
+    if (resp.status === 404) {
+      res.status(404).json({ error: `Package "${name}" not found` })
+      return
+    }
+    if (!resp.ok) {
+      res.status(502).json({ error: `npm registry returned ${resp.status}` })
+      return
+    }
+
+    const data = (await resp.json()) as {
+      versions?: Record<string, unknown>
+      'dist-tags'?: Record<string, string>
+    }
+    const all = Object.keys(data.versions ?? {})
+    const distTags = data['dist-tags'] ?? {}
+    const latest = distTags.latest ?? all[0] ?? ''
+    const versions = all.sort((a, b) => compareVersions(b, a))
+    res.json({ versions, latest })
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      res.status(504).json({ error: 'npm registry request timed out' })
+      return
+    }
+    res.status(502).json({ error: `Failed to fetch versions: ${err}` })
+  }
+})
+
 // ==================== npm 安装插件 ====================
 
 function runNpm(

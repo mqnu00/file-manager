@@ -39,6 +39,15 @@ export function searchPlugins(query: string): Promise<NpmSearchResult[]> {
   return api.get('/plugins/search', { params: { q: query } }).then((res) => res.data)
 }
 
+export interface PluginVersions {
+  versions: string[]
+  latest: string
+}
+
+export function getPluginVersions(packageName: string): Promise<PluginVersions> {
+  return api.get('/plugins/versions', { params: { name: packageName } }).then((res) => res.data)
+}
+
 export function installPlugin(packageName: string, version?: string, force?: boolean): Promise<PluginInfo> {
   return api.post('/plugins/install', { packageName, version, force }).then((res) => res.data)
 }

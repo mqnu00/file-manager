@@ -706,6 +706,29 @@
 - **错误响应**:
   - `404` — 插件未加载
 
+### 4. 获取 npm 包版本列表
+
+获取 npm 插件包已发布的全部版本（semver 降序）及 latest 版本，用于前端版本下拉选择。
+
+- **接口**: `GET /api/plugins/versions?name=<packageName>`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **URL 参数**: `name` — npm 包名（如 `file-manager-plugin-smb`）
+
+- **响应示例**:
+
+  ```json
+  {
+    "versions": ["0.1.2", "0.1.1", "0.1.0"],
+    "latest": "0.1.2"
+  }
+  ```
+
+- **错误响应**:
+  - `400` — 包名格式非法
+  - `404` — 包不存在
+  - `502` — npm registry 请求失败
+  - `504` — 请求超时
+
 ---
 
 ## 错误响应

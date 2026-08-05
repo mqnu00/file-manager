@@ -117,11 +117,9 @@
                 <div class="result-action">
                   <!-- 已安装的 npm 插件：切换版本 -->
                   <template v-if="isInstalled(item.name)">
-                    <el-input
+                    <PluginVersionSelect
                       v-model="installVersions[item.name]"
-                      size="small"
-                      class="version-input"
-                      placeholder="版本"
+                      :package-name="item.name"
                     />
                     <el-button
                       size="small"
@@ -132,11 +130,9 @@
                   </template>
                   <!-- 同名本地插件存在：允许安装但会覆盖 -->
                   <template v-else-if="hasLocalConflict(item.name)">
-                    <el-input
+                    <PluginVersionSelect
                       v-model="installVersions[item.name]"
-                      size="small"
-                      class="version-input"
-                      placeholder="版本"
+                      :package-name="item.name"
                     />
                     <el-button
                       size="small"
@@ -148,11 +144,9 @@
                   </template>
                   <!-- 未安装 -->
                   <template v-else>
-                    <el-input
+                    <PluginVersionSelect
                       v-model="installVersions[item.name]"
-                      size="small"
-                      class="version-input"
-                      placeholder="版本"
+                      :package-name="item.name"
                     />
                     <el-button
                       size="small"
@@ -201,6 +195,7 @@ import {
   type NpmSearchResult,
 } from '@/api/plugins'
 import { loadPluginFrontend } from '@/pluginLoader'
+import PluginVersionSelect from '@/components/PluginVersionSelect.vue'
 
 const router = useRouter()
 const plugins = ref<PluginInfo[]>([])
@@ -545,10 +540,6 @@ function formatDate(dateStr: string): string {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.version-input {
-  width: 90px;
 }
 
 .local-warn {
