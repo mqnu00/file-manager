@@ -200,6 +200,9 @@ function clearModuleCache(rootDir: string): void {
 /** 记录每个服务由哪个插件注册，serviceName → pluginName */
 const serviceRegistry = new Map<string, string>()
 
+/** 当前正在执行 install() 的插件名（并行加载时用于准确归属服务注册） */
+let currentInstallingPlugin: string | null = null
+
 let _sharedPluginCtx: BackendPluginContext | null = null
 
 function getSharedPluginCtx(): BackendPluginContext {
@@ -214,8 +217,9 @@ function getSharedPluginCtx(): BackendPluginContext {
             `Service "${name}" is already registered by plugin "${serviceRegistry.get(name)}"`
           )
         }
-        // 暂存占位符，待 install 返回后由 loadSinglePlugin 更新为实际插件名
-        serviceRegistry.set(name, '___loading___')
+        // 直接归属当前正在 install 的插件，避免并行加载时占位符被其他插件抢走；
+        // install 之外注册时回退占位符，由 loadSinglePlugin 在 install 后兜底归属
+        serviceRegistry.set(name, currentInstallingPlugin ?? '___loading___')
         ;(_sharedPluginCtx as any)[name] = impl
       },
       getService(name: string) {
@@ -250,31 +254,25 @@ async function loadSinglePlugin(
     const entryRel = pkg.main || 'dist/backend.js'
     const entryAbs = path.resolve(rootDir, entryRel)
 
-    // 导入模块
+    // 导入模块：统一使用 CJS require 加载（v3 起不再支持 ESM 插件）
+    // 热重载时调用方（reloadPlugin）已先 unloadPlugin 清除 require.cache，
+    // 但为绕过 ts-node/tsx 等中间层缓存，仍将整个 dist 目录复制到唯一临时路径加载；
+    // 整体复制而非仅入口文件，保证多文件插件（入口 require('./xxx')）的相对依赖可解析。
     let mod: unknown
     if (cacheBust) {
-      // 热重载：将入口文件复制到临时目录并用 require 加载
-      // 由于临时路径唯一，绕过所有 Node.js / ts-node 模块缓存
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-'))
-      const tmpFile = path.join(tmpDir, path.basename(entryAbs))
-      fs.copyFileSync(entryAbs, tmpFile)
-      mod = require(tmpFile)
-      fs.unlinkSync(tmpFile)
-      fs.rmdirSync(tmpDir)
+      fs.cpSync(path.dirname(entryAbs), tmpDir, { recursive: true })
+      mod = require(path.join(tmpDir, path.basename(entryAbs)))
+      // 延迟清理：install 可能异步引用相对依赖，30 秒后删除临时目录
+      setTimeout(() => {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true })
+        } catch {
+          /* 忽略清理失败 */
+        }
+      }, 30_000).unref?.()
     } else {
-      // 首次加载：根据插件 package.json 的 type 字段选择加载方式
-      //   - type: "module" → ESM，用原生 import()（new Function 防 tsc 转译）
-      //   - 无 type 或 "commonjs" → CJS，用 require()
-      const isESM = pkg.type === 'module'
-      if (isESM) {
-        // 必须绕过 tsc 的 import() → require() 转译，否则无法加载 ES module
-        const nativeImport = new Function('specifier', 'return import(specifier)') as (
-          specifier: string
-        ) => Promise<unknown>
-        mod = await nativeImport(entryAbs)
-      } else {
-        mod = require(entryAbs)
-      }
+      mod = require(entryAbs)
     }
 
     const install = getInstallFn(mod)
@@ -288,13 +286,22 @@ async function loadSinglePlugin(
     const stackBefore = (pluginApp as unknown as { stack: unknown[] }).stack.length
     const pluginCtx = getSharedPluginCtx()
 
-    await install(pluginCtx)
+    // 记录当前安装中的插件，使 registerService 能准确归属（并行加载时避免串抢）
+    currentInstallingPlugin = name
+    try {
+      await install(pluginCtx)
+    } finally {
+      currentInstallingPlugin = null
+    }
 
-    // 将 install 期间注册的服务（标记为 ___loading___）归属到当前插件
+    // 归属 install 期间注册的服务：registerService 已直接归属当前插件，
+    // 此处兜底处理极少数在 install 之外注册的占位符（___loading___）
     const registeredServices: string[] = []
     for (const [svcName, owner] of serviceRegistry) {
       if (owner === '___loading___') {
         serviceRegistry.set(svcName, name)
+        registeredServices.push(svcName)
+      } else if (owner === name) {
         registeredServices.push(svcName)
       }
     }
@@ -320,9 +327,9 @@ async function loadSinglePlugin(
     log('INFO', 'Plugin', `Plugin "${name}" loaded from ${rootDir}`)
     return instance
   } catch (err: unknown) {
-    // install 抛异常时，清理未完成的占位符
+    // install 抛异常时，清理当前插件注册的占位符/服务（含并行加载竞态兜底）
     for (const [svcName, owner] of serviceRegistry) {
-      if (owner === '___loading___') {
+      if (owner === '___loading___' || owner === name) {
         delete (_sharedPluginCtx as any)?.[svcName]
         serviceRegistry.delete(svcName)
       }
