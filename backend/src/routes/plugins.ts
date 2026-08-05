@@ -228,7 +228,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
     const prefix = getPluginInstallPrefix()
 
     // 构建 npm 参数
-    const npmArgs = ['install', installArg, '--prefix', prefix, '--no-save']
+    const npmArgs = ['install', installArg, '--prefix', prefix, '--save-exact']
     if (force) npmArgs.push('--legacy-peer-deps')
 
     // 已安装且为 npm 来源：版本切换

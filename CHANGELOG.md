@@ -1,3 +1,16 @@
+## v3.0.0-beta4 (2026-08-05)
+
+### 🐛 Bug 修复
+
+- 修复 npm 插件被当作 extraneous 自动清除的问题：插件安装命令由 `--no-save` 改为 `--save-exact`，插件写入安装目录 `package.json` 的 `dependencies`（精确版本），后续在同一目录安装其他插件时不再被 npm 清理
+- `--save-exact` 记录用户选择的精确版本，避免后续 `npm install` 意外升级
+- 卸载接口默认 `--save` 行为，自动从 `dependencies` 移除条目，无需额外改动
+- 版本切换（已安装 npm 插件重装新版本）自动更新 `dependencies` 中的版本
+
+> 注意：修复前通过 `--no-save` 安装的插件（extraneous 状态）需手动重新安装一次。
+
+---
+
 ## v3.0.0-beta3 (2026-08-05)
 
 ### 🏗️ 架构变更
