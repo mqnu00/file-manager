@@ -6,12 +6,14 @@
  * 类型由 @mqn00/file-manager/plugin/frontend 提供。
  *
  * 本插件注册一个独立页面 /plugin/test，展示插件运行状态。
+ * 版本号/加载时刻等状态由后端 GET /api/plugin/test 动态返回，
+ * 切换插件版本后页面显示随之变化，用于生产环境版本切换验证。
  */
 
 import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/frontend'
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
-  const { h, ref, defineComponent } = ctx.Vue
+  const { h, ref, onMounted, defineComponent } = ctx.Vue
   const {
     ElCard,
     ElTag,
@@ -25,15 +27,54 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     ElSpace,
   } = ctx.ElementPlus
 
+  interface TestPluginStatus {
+    plugin?: string
+    name?: string
+    version?: string
+    loadedAt?: string
+    message?: string
+    timestamp?: string
+  }
+
   const PageComponent = defineComponent({
     name: 'PluginTestPage',
     setup() {
       const loadTime = ref(new Date().toLocaleString())
       const counter = ref(0)
+      const version = ref('获取中…')
+      const pluginName = ref('')
+      const loadedAt = ref('')
+      const fetchFailed = ref(false)
+
+      const fetchStatus = async () => {
+        try {
+          const resp = await fetch('/api/plugin/test')
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const data = (await resp.json()) as TestPluginStatus
+          version.value = data.version ?? 'unknown'
+          pluginName.value = data.name ?? ''
+          loadedAt.value = data.loadedAt ?? ''
+          fetchFailed.value = false
+        } catch {
+          fetchFailed.value = true
+          version.value = '获取失败'
+        }
+      }
+
+      onMounted(fetchStatus)
 
       const refreshTime = () => {
         loadTime.value = new Date().toLocaleString()
         ElMessage.success('时间已刷新')
+      }
+
+      const refreshStatus = async () => {
+        await fetchStatus()
+        if (!fetchFailed.value) {
+          ElMessage.success('插件状态已刷新')
+        } else {
+          ElMessage.error('获取插件状态失败')
+        }
       }
 
       return () =>
@@ -56,14 +97,18 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
               header: () =>
                 h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
                   h('h2', { style: { margin: 0, fontSize: '20px' } }, 'Test Plugin'),
+                  h(ElTag, { type: 'primary', size: 'small' }, () => `v${version.value}`),
                   h(ElTag, { type: 'success', size: 'small' }, () => '运行中'),
                 ]),
               default: () => [
                 h(ElDescriptions, { column: 2, border: true }, () => [
-                  h(ElDescriptionsItem, { label: '插件名称' }, () => 'file-manager-plugin-test'),
-                  h(ElDescriptionsItem, { label: '版本' }, () => '0.1.0'),
+                  h(ElDescriptionsItem, { label: '插件名称' }, () =>
+                    pluginName.value || 'file-manager-plugin-test'
+                  ),
+                  h(ElDescriptionsItem, { label: '版本' }, () => version.value),
                   h(ElDescriptionsItem, { label: '页面路由' }, () => '/plugin/test'),
-                  h(ElDescriptionsItem, { label: '加载时间' }, () => loadTime.value),
+                  h(ElDescriptionsItem, { label: '后端加载时刻' }, () => loadedAt.value || '—'),
+                  h(ElDescriptionsItem, { label: '页面加载时间' }, () => loadTime.value),
                 ]),
 
                 h('div', { style: { height: '16px' } }),
@@ -80,21 +125,26 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
                     },
                     () => `计数: ${counter.value}`
                   ),
+                  h(ElButton, { onClick: refreshStatus }, () => '重新获取状态'),
                 ]),
 
                 h('div', { style: { height: '16px' } }),
 
                 h(ElDivider),
 
-                h(ElAlert, {
-                  type: 'info',
-                  showIcon: false,
-                  title: '插件说明',
-                  description:
-                    '这是一个示例插件页面，展示了如何通过 ctx.Vue.defineComponent + h() 定义组件，' +
-                    '并通过 ctx.router.addRoute() 注册路由。所有 UI 组件来自 ctx.ElementPlus，无需直接依赖。',
-                  closable: false,
-                }),
+                h(
+                  ElAlert,
+                  {
+                    type: fetchFailed.value ? 'error' : 'info',
+                    showIcon: false,
+                    title: '版本切换验证',
+                    description:
+                      '版本号与后端加载时刻来自 GET /api/plugin/test（读取当前安装的 package.json）。' +
+                      '在"插件管理 → 发现插件"中切换版本后刷新本页，' +
+                      '版本号应变为新版本、后端加载时刻应更新。',
+                    closable: false,
+                  }
+                ),
               ],
             }
           ),

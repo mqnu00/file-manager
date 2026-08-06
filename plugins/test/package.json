@@ -1,7 +1,7 @@
 {
   "name": "@mqn00/file-manager-plugin-test",
-  "version": "0.1.0",
-  "description": "file-manager 测试插件，演示插件开发的基本模式",
+  "version": "0.2.0",
+  "description": "file-manager 测试插件：用于验证插件的安装、加载与版本切换",
   "license": "MIT",
   "main": "dist/backend.js",
   "exports": {
@@ -9,10 +9,11 @@
     "./frontend": "./dist/frontend.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node build.mjs",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "publish:npm": "node scripts/publish.mjs"
@@ -28,10 +29,14 @@
     "test"
   ],
   "peerDependencies": {
-    "@mqn00/file-manager": "^3.0.0"
+    "@mqn00/file-manager": "^3.0.0-beta4"
   },
   "devDependencies": {
-    "@mqn00/file-manager": "^3.0.0",
+    "@mqn00/file-manager": "file:../../backend",
+    "esbuild": "^0.28.1",
     "typescript": "^5.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
