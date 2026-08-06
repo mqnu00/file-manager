@@ -84,9 +84,9 @@ router.post('/load', authMiddleware, async (req: Request, res: Response) => {
 })
 
 // 运行时卸载插件
-router.post('/:name/unload', authMiddleware, (req: Request, res: Response) => {
+router.post('/:name/unload', authMiddleware, async (req: Request, res: Response) => {
   const name = req.params.name as string
-  const ok = unloadPluginByName(name)
+  const ok = await unloadPluginByName(name)
   if (!ok) {
     res.status(404).json({ error: `Plugin "${name}" is not loaded` })
     return
@@ -305,7 +305,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
 
     // 已安装且为 npm 来源：版本切换
     if (existing && existing.source === 'npm') {
-      unloadPluginByName(shortName)
+      await unloadPluginByName(shortName)
       await runNpm(npmArgs, prefix, 120000)
 
       const newRootDir = resolvePluginRoot(shortName)
@@ -332,7 +332,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
 
     // 已安装且为本地来源：先卸载
     if (existing && existing.source === 'local') {
-      unloadPluginByName(shortName)
+      await unloadPluginByName(shortName)
     }
 
     // 1. npm install 到统一目录

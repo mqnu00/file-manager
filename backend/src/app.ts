@@ -18,7 +18,12 @@ import { authMiddleware, validateSession } from './middleware/auth'
 import { isDefaultToken, getConfig } from './config'
 import { cleanOldLogs } from './utils/logger'
 import { createSession, attachViewer } from './services/terminalManager'
-import { loadPlugins, startPluginWatchers, resolvePluginRoot } from './plugin/loader'
+import {
+  loadPlugins,
+  startPluginWatchers,
+  resolvePluginRoot,
+  startConfiguredServices,
+} from './plugin/loader'
 import pluginRoutes from './routes/plugins'
 
 const app = express()
@@ -190,6 +195,8 @@ if (require.main === module) {
   loadPlugins()
     .then(() => createServer())
     .then(() => startPluginWatchers())
+    // 插件加载完成后恢复上次启动的托管服务（不阻塞服务器监听，失败仅记日志）
+    .then(() => startConfiguredServices())
     .catch((err) => {
       console.error('Plugin loading failed:', err)
       createServer()

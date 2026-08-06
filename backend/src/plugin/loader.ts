@@ -27,6 +27,7 @@ import type {
   LoadedPlugin,
   PluginInfo,
   PluginManifestConfig,
+  ManagedServiceSpec,
 } from './types'
 
 // ==================== 内部类型 ====================
@@ -43,6 +44,8 @@ interface PluginInstance {
   layers: unknown[]
   /** 本插件注册的服务名列表，卸载时用于清理 */
   registeredServices: string[]
+  /** 本插件注册的托管服务名列表，卸载时停止并清理 */
+  managedServices: string[]
   /** fs.watch 监视器 */
   watcher?: fs.FSWatcher
   /** 防抖重载定时器 */
@@ -200,8 +203,36 @@ function clearModuleCache(rootDir: string): void {
 /** 记录每个服务由哪个插件注册，serviceName → pluginName */
 const serviceRegistry = new Map<string, string>()
 
+/** 托管服务注册表：serviceName → 所属插件 + 启停/状态 spec */
+const manageRegistry = new Map<string, { pluginName: string; spec: ManagedServiceSpec }>()
+
 /** 当前正在执行 install() 的插件名（并行加载时用于准确归属服务注册） */
 let currentInstallingPlugin: string | null = null
+
+// ==================== 托管服务 config 持久化 ====================
+
+/** 读取插件 config 中记录的已启动服务列表 */
+function getStartedServices(pluginName: string): string[] {
+  const cfg = (getConfig().plugins || {})[pluginName] as Record<string, unknown> | undefined
+  const list = cfg?.startedServices
+  return Array.isArray(list) ? (list as string[]) : []
+}
+
+/** 记录服务已启动：追加到 config 的 startedServices */
+function markStarted(pluginName: string, svcName: string): void {
+  const list = getStartedServices(pluginName)
+  if (!list.includes(svcName)) {
+    updatePluginConfig(pluginName, { startedServices: [...list, svcName] })
+  }
+}
+
+/** 记录服务已停止：从 config 的 startedServices 移除 */
+function markStopped(pluginName: string, svcName: string): void {
+  const list = getStartedServices(pluginName)
+  if (list.includes(svcName)) {
+    updatePluginConfig(pluginName, { startedServices: list.filter((s) => s !== svcName) })
+  }
+}
 
 let _sharedPluginCtx: BackendPluginContext | null = null
 
@@ -228,6 +259,63 @@ function getSharedPluginCtx(): BackendPluginContext {
         }
         return (_sharedPluginCtx as any)[name]
       },
+      manageService(name: string, spec: ManagedServiceSpec) {
+        if (manageRegistry.has(name)) {
+          throw new Error(
+            `Service "${name}" is already managed by plugin "${manageRegistry.get(name)!.pluginName}"`
+          )
+        }
+        manageRegistry.set(name, {
+          pluginName: currentInstallingPlugin ?? '___loading___',
+          spec,
+        })
+      },
+      startService(name: string) {
+        const entry = manageRegistry.get(name)
+        if (!entry) {
+          throw new Error(`Service "${name}" is not managed by any plugin`)
+        }
+        const result = entry.spec.start()
+        if (entry.pluginName !== '___loading___') {
+          markStarted(entry.pluginName, name)
+        }
+        return result
+      },
+      stopService(name: string) {
+        const entry = manageRegistry.get(name)
+        if (!entry) {
+          throw new Error(`Service "${name}" is not managed by any plugin`)
+        }
+        const result = entry.spec.stop()
+        if (entry.pluginName !== '___loading___') {
+          markStopped(entry.pluginName, name)
+        }
+        return result
+      },
+      async waitForService(name: string, opts?: { running?: boolean; timeout?: number }) {
+        const { running = true, timeout = 30000 } = opts ?? {}
+        const entry = manageRegistry.get(name)
+        if (!entry) {
+          throw new Error(`Service "${name}" is not managed by any plugin`)
+        }
+        const deadline = Date.now() + timeout
+        while (Date.now() < deadline) {
+          try {
+            if ((await entry.spec.isRunning()) === running) return
+          } catch {
+            /* isRunning 异常按未满足处理 */
+          }
+          await new Promise((r) => setTimeout(r, 500))
+        }
+        throw new Error(`Timeout waiting for service "${name}" to ${running ? 'start' : 'stop'}`)
+      },
+      async isServiceRunning(name: string) {
+        const entry = manageRegistry.get(name)
+        if (!entry) {
+          throw new Error(`Service "${name}" is not managed by any plugin`)
+        }
+        return entry.spec.isRunning()
+      },
     }
   }
   return _sharedPluginCtx!
@@ -248,6 +336,7 @@ async function loadSinglePlugin(
 ): Promise<PluginInstance | null> {
   try {
     // 读取 package.json 获取入口文件路径
+    /* eslint-disable @typescript-eslint/no-var-requires */
     const pkg: { main?: string; exports?: Record<string, string>; type?: string } = require(
       path.join(rootDir, 'package.json')
     )
@@ -306,6 +395,17 @@ async function loadSinglePlugin(
       }
     }
 
+    // 归属 install 期间注册的托管服务（同上处理占位符）
+    const managedServices: string[] = []
+    for (const [svcName, entry] of manageRegistry) {
+      if (entry.pluginName === '___loading___') {
+        manageRegistry.set(svcName, { pluginName: name, spec: entry.spec })
+        managedServices.push(svcName)
+      } else if (entry.pluginName === name) {
+        managedServices.push(svcName)
+      }
+    }
+
     const layers = (pluginApp as unknown as { stack: unknown[] }).stack.slice(stackBefore)
 
     // 解析 frontend 子路径导出
@@ -322,6 +422,7 @@ async function loadSinglePlugin(
       source: isLocalPlugin(rootDir) ? 'local' : 'npm',
       layers,
       registeredServices,
+      managedServices,
     }
 
     log('INFO', 'Plugin', `Plugin "${name}" loaded from ${rootDir}`)
@@ -334,14 +435,32 @@ async function loadSinglePlugin(
         serviceRegistry.delete(svcName)
       }
     }
+    for (const [svcName, entry] of manageRegistry) {
+      if (entry.pluginName === '___loading___' || entry.pluginName === name) {
+        manageRegistry.delete(svcName)
+      }
+    }
     const message = err instanceof Error ? err.message : String(err)
     log('ERROR', 'Plugin', `Plugin "${name}" failed: ${message}`)
     return null
   }
 }
 
-/** 卸载单个插件：移除路由层 + 清除模块缓存 + 停止文件监视 + 清理服务 */
-function unloadPlugin(instance: PluginInstance): void {
+/** 卸载单个插件：停止托管服务 + 移除路由层 + 清除模块缓存 + 停止文件监视 + 清理服务 */
+async function unloadPlugin(instance: PluginInstance): Promise<void> {
+  // 停止本插件的托管服务，并清理 config 中 startedServices 记录
+  for (const svcName of instance.managedServices) {
+    const entry = manageRegistry.get(svcName)
+    try {
+      await entry?.spec.stop()
+    } catch (err) {
+      log('ERROR', 'Plugin', `Failed to stop service "${svcName}" of plugin "${instance.name}": ${err}`)
+    }
+    // 注：不清理 config startedServices —— 热重载时需保留记录以便恢复，
+    // 由 unloadPluginByName（卸载/禁用）显式清理
+    manageRegistry.delete(svcName)
+  }
+
   // 停止文件监视（防止旧 watcher 在重载后继续触发）
   stopWatching(instance)
 
@@ -380,7 +499,7 @@ async function reloadPlugin(instance: PluginInstance): Promise<PluginInstance | 
     log('INFO', 'Plugin', `Reloading plugin "${instance.name}"...`)
 
     // 1. 卸载旧版本
-    unloadPlugin(instance)
+    await unloadPlugin(instance)
 
     // 2. 从 loadedPlugins 中移除旧实例
     const idx = loadedPlugins.indexOf(instance)
@@ -402,6 +521,11 @@ async function reloadPlugin(instance: PluginInstance): Promise<PluginInstance | 
       // 5. 重新启动文件监视
       if (newInstance.local) {
         startWatching(newInstance)
+      }
+
+      // 6. 热重载后恢复：若 config 声明了本插件的托管服务，按声明自动启动
+      for (const svcName of getStartedServices(instance.name)) {
+        await startOneService(svcName)
       }
 
       log('INFO', 'Plugin', `Plugin "${instance.name}" reloaded`)
@@ -588,6 +712,143 @@ export async function loadPlugins(): Promise<void> {
   }
 }
 
+// ==================== 托管服务自动启动 ====================
+
+/**
+ * 启动单个托管服务：预检 → 依赖等待 → 启动 → 延迟检查一次。
+ * 任一环节失败仅记日志，不抛错（不阻塞其他服务/主进程）。
+ */
+async function startOneService(svcName: string): Promise<void> {
+  const entry = manageRegistry.get(svcName)
+  if (!entry) {
+    log('WARNING', 'Plugin', `Service "${svcName}" in startedServices is not managed, skipping`)
+    return
+  }
+
+  // 自动启动预检（如 sudo 无密码探测），失败则跳过避免假启动
+  try {
+    if (entry.spec.canAutoStart && !(await entry.spec.canAutoStart())) {
+      log(
+        'WARNING',
+        'Plugin',
+        `Service "${svcName}" skipped auto-start (pre-check failed, may need manual start)`
+      )
+      return
+    }
+  } catch (err) {
+    log('WARNING', 'Plugin', `Service "${svcName}" auto-start pre-check error: ${err}`)
+    return
+  }
+
+  // 服务级依赖：等待依赖服务运行
+  for (const dep of entry.spec.dependsOn ?? []) {
+    try {
+      await getSharedPluginCtx().waitForService(dep, { running: true, timeout: 30000 })
+    } catch (err) {
+      log(
+        'ERROR',
+        'Plugin',
+        `Service "${svcName}" depends on "${dep}" which is not ready, skipping: ${err}`
+      )
+      return
+    }
+  }
+
+  // 启动 + 延迟检查一次（给服务留出启动时间，如 sudo/网络）
+  try {
+    await getSharedPluginCtx().startService(svcName)
+  } catch (err) {
+    log('ERROR', 'Plugin', `Service "${svcName}" auto-start failed: ${err}`)
+    return
+  }
+  setTimeout(async () => {
+    try {
+      const running = await entry.spec.isRunning()
+      if (!running) {
+        log(
+          'WARNING',
+          'Plugin',
+          `Service "${svcName}" not detected running after start (may be waiting for sudo password or failed)`
+        )
+      }
+    } catch {
+      /* 忽略检查异常 */
+    }
+  }, 5000).unref?.()
+}
+
+/**
+ * 启动 config.yml 中所有启用插件声明的托管服务。
+ * 重启文件管理器后调用，用于恢复上次运行的服务。
+ *
+ * 按服务级依赖（dependsOn）做分层拓扑排序：被依赖服务先启动，
+ * 同层（无依赖关系）并行启动；跨层/未声明的依赖由 startOneService 内的
+ * waitForService 兜底等待。
+ */
+export async function startConfiguredServices(): Promise<void> {
+  const config = getConfig()
+  const tasks: { pluginName: string; svcName: string }[] = []
+  for (const [name, cfg] of Object.entries(config.plugins || {})) {
+    if (typeof cfg !== 'object' || cfg === null) continue
+    if ((cfg as Record<string, unknown>).enabled === false) continue
+    for (const svcName of getStartedServices(name)) {
+      tasks.push({ pluginName: name, svcName })
+    }
+  }
+  if (tasks.length === 0) return
+
+  // Kahn 分层：入度 = 本批次任务内 dependsOn 的数量
+  const svcSet = new Set(tasks.map((t) => t.svcName))
+  const inDegree = new Map<string, number>()
+  const dependents = new Map<string, string[]>()
+  for (const t of tasks) {
+    const entry = manageRegistry.get(t.svcName)
+    const deps = (entry?.spec.dependsOn ?? []).filter((d) => svcSet.has(d))
+    inDegree.set(t.svcName, deps.length)
+    for (const dep of deps) {
+      const list = dependents.get(dep)
+      if (list) list.push(t.svcName)
+      else dependents.set(dep, [t.svcName])
+    }
+  }
+
+  const queue = tasks.filter((t) => inDegree.get(t.svcName) === 0)
+  const started = new Set<string>()
+  while (queue.length > 0) {
+    const batch = queue.splice(0)
+    await Promise.all(
+      batch.map(async (t) => {
+        if (started.has(t.svcName)) return
+        started.add(t.svcName)
+        await startOneService(t.svcName)
+      })
+    )
+    const next: typeof tasks = []
+    for (const t of batch) {
+      for (const dep of dependents.get(t.svcName) ?? []) {
+        const deg = (inDegree.get(dep) ?? 1) - 1
+        inDegree.set(dep, deg)
+        if (deg === 0) {
+          const task = tasks.find((x) => x.svcName === dep)
+          if (task) next.push(task)
+        }
+      }
+    }
+    queue.push(...next)
+  }
+
+  // 循环依赖导致未启动的服务
+  for (const t of tasks) {
+    if (!started.has(t.svcName)) {
+      log(
+        'ERROR',
+        'Plugin',
+        `Service "${t.svcName}" skipped (dependency cycle or unresolved dependency)`
+      )
+    }
+  }
+}
+
 // ==================== 运行时加载/卸载 ====================
 
 /** 运行时加载单个插件（通过 API 触发），自动持久化到 config.yml */
@@ -650,7 +911,7 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
 }
 
 /** 运行时卸载单个插件（通过 API 触发），自动持久化到 config.yml */
-export function unloadPluginByName(name: string): boolean {
+export async function unloadPluginByName(name: string): Promise<boolean> {
   const idx = loadedPlugins.findIndex((p) => p.name === name)
   if (idx === -1) {
     log('WARNING', 'Plugin', `Plugin "${name}" is not loaded`)
@@ -658,12 +919,15 @@ export function unloadPluginByName(name: string): boolean {
   }
 
   const instance = loadedPlugins[idx]
-  unloadPlugin(instance)
+  await unloadPlugin(instance)
   loadedPlugins.splice(idx, 1)
 
-  // 持久化：在 config.yml 中禁用该插件
+  // 持久化：在 config.yml 中禁用该插件，并清理其托管服务的 startedServices 记录
   try {
     updatePluginConfig(name, { enabled: false })
+    for (const svcName of instance.managedServices) {
+      markStopped(name, svcName)
+    }
   } catch (err) {
     log('ERROR', 'Plugin', `Failed to update config for "${name}": ${err}`)
   }

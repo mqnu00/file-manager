@@ -1,6 +1,6 @@
 import { execSync } from 'child_process'
 import fs from 'fs'
-import { getStatus, start, stop } from './smbManager.js'
+import { getStatus } from './smbManager.js'
 import type { BackendPluginContext, Request, Response, Router } from '@mqn00/file-manager/plugin'
 import type { SmbShare, SmbUser, SmbConfig } from './smbManager.js'
 
@@ -28,7 +28,9 @@ function getSmbConfig(): SmbConfig {
 
 function saveSmbConfig(smbCfg: SmbConfig): void {
   const cfg = getCtx().config.get()
-  const plugins = { ...(cfg.plugins || {}), smb: smbCfg }
+  // 保留 existing 中的系统字段（enabled/source/startedServices 等），避免整段覆盖丢失
+  const existing = (cfg.plugins?.smb || {}) as Record<string, unknown>
+  const plugins = { ...(cfg.plugins || {}), smb: { ...existing, ...smbCfg } }
   getCtx().config.update({ plugins })
 }
 
@@ -111,11 +113,12 @@ router.get('/status', (_req: Request, res: Response) => {
 
 /**
  * POST /api/smb/start
+ * 通过托管服务包装启动：持久化 config 中 startedServices，重启后自动恢复
  */
-router.post('/start', (_req: Request, res: Response) => {
+router.post('/start', async (_req: Request, res: Response) => {
   try {
-    const result = start()
-    res.json({ success: true, ...result })
+    const result = (await getCtx().startService('smb')) as { port: number } | undefined
+    res.json({ success: true, ...(result ?? {}) })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : '启动 SMB 服务失败'
     res.status(400).json({ success: false, error: message })
@@ -124,10 +127,11 @@ router.post('/start', (_req: Request, res: Response) => {
 
 /**
  * POST /api/smb/stop
+ * 通过托管服务包装停止：清理 config 中 startedServices，重启后不再自动启动
  */
-router.post('/stop', (_req: Request, res: Response) => {
+router.post('/stop', async (_req: Request, res: Response) => {
   try {
-    stop()
+    await getCtx().stopService('smb')
     res.json({ success: true })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : '停止 SMB 服务失败'

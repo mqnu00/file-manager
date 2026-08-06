@@ -57,6 +57,26 @@ export interface PluginManifestConfig {
   config?: Record<string, PluginConfigField>
 }
 
+// ==================== 托管服务 ====================
+
+/**
+ * 可托管服务：启停可管理、状态可查询。
+ * 插件通过 ctx.manageService 注册，主进程按 config 中 startedServices
+ * 自动启动，并支持服务级依赖等待（dependsOn）。
+ */
+export interface ManagedServiceSpec {
+  /** 启动服务（返回值透传给调用方，如 smb 返回 { port }） */
+  start(): unknown
+  /** 停止服务 */
+  stop(): void | Promise<void>
+  /** 服务当前是否运行 */
+  isRunning(): boolean | Promise<boolean>
+  /** 自动启动前预检；返回 false 则跳过自动启动（如 sudo -n 探测） */
+  canAutoStart?(): boolean | Promise<boolean>
+  /** 启动前需已运行的服务名（服务级依赖） */
+  dependsOn?: string[]
+}
+
 // ==================== npm 搜索 ====================
 
 /** npm registry 搜索返回的包信息 */
@@ -83,6 +103,19 @@ export interface BackendPluginContext extends Omit<ScriptContext, 'app'> {
   registerService(name: string, impl: any): void
   /** 获取其他插件注册的服务。若未注册则抛出错误 */
   getService(name: string): any
+  /** 注册托管服务（启停可管理、状态可查询，支持自动启动与依赖等待） */
+  manageService(name: string, spec: ManagedServiceSpec): void
+  /** 启动托管服务：调用 spec.start() 并持久化 config 中 startedServices */
+  startService(name: string): unknown
+  /** 停止托管服务：调用 spec.stop() 并从 config 中 startedServices 移除 */
+  stopService(name: string): void | Promise<void>
+  /** 等待服务满足状态（默认运行中），超时抛错。服务未注册立即抛错 */
+  waitForService(
+    name: string,
+    opts?: { running?: boolean; timeout?: number }
+  ): Promise<void>
+  /** 查询托管服务是否运行 */
+  isServiceRunning(name: string): boolean | Promise<boolean>
   /** 插件间共享服务的扩展字段 */
   [key: string]: any
 }
