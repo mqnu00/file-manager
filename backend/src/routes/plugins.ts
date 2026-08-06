@@ -387,49 +387,56 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
 router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
   const name = req.params.name as string
 
-  // 查找插件
+  // 查找插件包；包可能已不在磁盘上（如手动清理 node_modules），
+  // 只要 config.yml 中仍有该插件配置，就允许删除（仅清理配置）
   const rootDir = resolvePluginRoot(name)
-  if (!rootDir) {
+  const hasConfig = Boolean((getConfig().plugins || {})[name])
+
+  if (!rootDir && !hasConfig) {
     res.status(404).json({ error: `Plugin "${name}" not found` })
     return
   }
 
-  // 禁止删除本地开发插件
-  const projectRoot = path.resolve(__dirname, '..', '..', '..')
-  const pluginsDir = path.join(projectRoot, 'plugins')
-  if (rootDir.startsWith(pluginsDir)) {
-    res.status(403).json({
-      error: `Cannot delete local development plugin "${name}". Remove it from plugins/ directory manually.`,
-    })
-    return
+  // 禁止删除本地开发插件（仅当能解析到 plugins/ 目录时判定）
+  if (rootDir) {
+    const projectRoot = path.resolve(__dirname, '..', '..', '..')
+    const pluginsDir = path.join(projectRoot, 'plugins')
+    if (rootDir.startsWith(pluginsDir)) {
+      res.status(403).json({
+        error: `Cannot delete local development plugin "${name}". Remove it from plugins/ directory manually.`,
+      })
+      return
+    }
   }
 
-  // 获取 npm 包名
-  let pkgName: string | null = null
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    pkgName = require(path.join(rootDir, 'package.json')).name
-  } catch {
-    res.status(500).json({ error: `Cannot read package.json for plugin "${name}"` })
-    return
-  }
+  // 1. 如已加载，先卸载（包不存在时插件必然未加载，忽略返回值）
+  await unloadPluginByName(name)
 
-  if (!pkgName || !PKG_NAME_RE.test(pkgName)) {
-    res.status(400).json({ error: `Invalid package name in plugin "${name}"` })
-    return
-  }
+  // 2. 包存在时执行 npm uninstall（与安装路径一致）
+  if (rootDir) {
+    // 获取 npm 包名
+    let pkgName: string | null = null
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      pkgName = require(path.join(rootDir, 'package.json')).name
+    } catch {
+      res.status(500).json({ error: `Cannot read package.json for plugin "${name}"` })
+      return
+    }
 
-  // 1. 如已加载，先卸载
-  unloadPluginByName(name)
+    if (!pkgName || !PKG_NAME_RE.test(pkgName)) {
+      res.status(400).json({ error: `Invalid package name in plugin "${name}"` })
+      return
+    }
 
-  // 2. npm uninstall（从 plugin install prefix 卸载，与安装路径一致）
-  const prefix = getPluginInstallPrefix()
-  try {
-    await runNpm(['uninstall', pkgName, '--prefix', prefix], prefix, 60000)
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    res.status(500).json({ error: `npm uninstall failed: ${msg}` })
-    return
+    const prefix = getPluginInstallPrefix()
+    try {
+      await runNpm(['uninstall', pkgName, '--prefix', prefix], prefix, 60000)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      res.status(500).json({ error: `npm uninstall failed: ${msg}` })
+      return
+    }
   }
 
   // 3. 清除 config.yml 中的配置
