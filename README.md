@@ -5,6 +5,7 @@
 ## 技术栈
 
 **前端**
+
 - Vue 3 (Composition API + `<script setup>`)
 - TypeScript
 - Vite
@@ -14,6 +15,7 @@
 - Axios / Fetch
 
 **后端**
+
 - Node.js >= 22
 - TypeScript
 - Express.js
@@ -23,6 +25,7 @@
 - node-pty（终端）
 
 **桌面应用**
+
 - Electron
 
 ## 核心功能
@@ -66,17 +69,17 @@ npm run dev
 
 ```yaml
 auth:
-  token: admin123          # 登录令牌
-  tokenExpiryHours: 24     # 登录有效期（小时）
+  token: admin123 # 登录令牌
+  tokenExpiryHours: 24 # 登录有效期（小时）
 
-storageRoot: /             # 文件管理根目录
+storageRoot: / # 文件管理根目录
 
 log:
   cleanupOnStartup: false
   retentionDays: 30
 
 plugins:
-  smb:                     # SMB 插件配置
+  smb: # SMB 插件配置
     enabled: true
     port: 1445
     workgroup: WORKGROUP
@@ -87,18 +90,18 @@ plugins:
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `PORT` | 服务端口 | `3000` |
-| `HOST` | 监听地址 | `0.0.0.0` |
-| `FILE_MANAGER_BASE_DIR` | 文件根目录（优先级低于 config.yml） | `/` |
+| 变量                    | 说明                                | 默认值    |
+| ----------------------- | ----------------------------------- | --------- |
+| `PORT`                  | 服务端口                            | `3000`    |
+| `HOST`                  | 监听地址                            | `0.0.0.0` |
+| `FILE_MANAGER_BASE_DIR` | 文件根目录（优先级低于 config.yml） | `/`       |
 
 ## 插件系统
 
 > **当前版本 v3.0.0-beta1，插件系统处于测试阶段。** 以下插件已可用：
 
-| 插件 | 说明 |
-|------|------|
+| 插件                                                                             | 说明                 |
+| -------------------------------------------------------------------------------- | -------------------- |
 | [file-manager-plugin-smb](https://www.npmjs.com/package/file-manager-plugin-smb) | Samba 局域网文件共享 |
 
 ### 使用插件
@@ -134,6 +137,7 @@ plugins:
 参考 [plugins/smb](./plugins/smb) 目录的示例。
 
 一个插件包含：
+
 - `src/backend.ts` — 后端入口，export `install(ctx)` 函数
 - `src/frontend.ts` — 前端入口，export `install(ctx)` 函数
 - `package.json` 的 `exports` 字段分别指向两者
@@ -156,6 +160,22 @@ file-manager/
 ├── scripts/               # 构建/发布脚本
 └── .github/workflows/     # CI/CD
 ```
+
+## 测试
+
+三层测试体系（Vitest + Playwright）：
+
+```bash
+npm run test:backend    # 后端单元/集成测试（Vitest + supertest）
+npm run test:frontend   # 前端组件测试（Vitest + @vue/test-utils）
+npm run test:e2e        # 端到端测试（Playwright，自动构建并启动后端）
+npm test                # 依次运行以上三层
+```
+
+- 后端测试隔离在临时目录（`CONFIG_PATH` / `LOG_DIR` / storageRoot 均指向临时目录），不触碰真实数据
+- 前端组件测试基于 jsdom + Element Plus，聚焦渲染与事件
+- E2E 使用独立测试配置（`e2e/fixtures/config.yml`，token `e2e-token-123`），登录会话通过 storageState 复用，避免触发登录限流
+- CI 已接入：`.github/workflows/test.yml` 在 push / PR 时运行全部测试
 
 ## CLI 选项
 

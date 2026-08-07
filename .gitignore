@@ -21,6 +21,12 @@ logs/
 npm-debug.log*
 frontend/stats.html
 
+# E2E 测试产物
+e2e/.auth/
+e2e/fixtures/
+e2e/test-results/
+e2e/playwright-report/
+
 # 编辑器
 .vscode/
 .idea/

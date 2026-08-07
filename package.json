@@ -14,6 +14,10 @@
     "preview:demo": "mkdir -p /tmp/gh-pages-serve && ln -sfn \"$(pwd)/gh-pages-dist\" /tmp/gh-pages-serve/file-manager && npx serve /tmp/gh-pages-serve",
     "preview": "node ./backend/dist/app.js",
     "start": "node backend/src/app.js",
+    "test": "npm run test:backend && npm run test:frontend && npm run test:e2e",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "release": "node scripts/release.js",
     "package": "npm run build && tar -czf file-manager.tar.gz --exclude='backend/node_modules' --exclude='src' --exclude='uploads' --exclude='tsconfig.json' --exclude='REFACTOR.md' --exclude='.eslintignore' --exclude='.eslintrc.json' backend/",
     "install:all": "npm install --registry https://registry.npmmirror.com/ && cd frontend && npm install --registry https://registry.npmmirror.com/ && cd ../backend && npm install --registry https://registry.npmmirror.com/",
@@ -40,6 +44,7 @@
   "author": "mqn00 <mqn00@users.noreply.github.com>",
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.20.1",
     "concurrently": "^8.2.2",
     "electron": "^35.7.5",

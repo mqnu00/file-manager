@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "vue-tsc && vite build",
     "build:demo": "vite build --mode demo",
     "preview": "vite preview",
@@ -32,9 +34,11 @@
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.64.0",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/test-utils": "^2.4.11",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-vue": "^9.33.0",
+    "jsdom": "^30.0.1",
     "postcss-html": "^1.8.1",
     "postcss-scss": "^4.0.9",
     "rollup-plugin-visualizer": "^7.0.1",
@@ -44,6 +48,7 @@
     "stylelint-config-standard-scss": "^17.0.0",
     "typescript": "^5.4.3",
     "vite": "^5.2.8",
+    "vitest": "^4.1.10",
     "vue-tsc": "^3.3.2"
   }
 }
