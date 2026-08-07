@@ -136,8 +136,13 @@ export function resolvePluginRoot(name: string): string | null {
     return tryResolve(path.dirname(installDir))
   }
 
-  // 本地/未知来源：从 projectRoot 解析，回退 pluginInstallDir，再回退 plugins/ 开发目录
+  // 本地/未知来源：优先解析 plugins/ 本地开发目录
+  // （避免 node_modules 中同名包被 scope 扫描误匹配，如 @playwright/test 命中插件 "test"）
   const projectRoot = path.resolve(__dirname, '..', '..', '..')
+  const localPluginDir = path.join(projectRoot, 'plugins', name)
+  if (fs.existsSync(path.join(localPluginDir, 'package.json'))) {
+    return localPluginDir
+  }
   let result = tryResolve(projectRoot)
   if (!result) {
     // npm 安装后 config 可能尚未写入 source: 'npm'，仍需在统一安装目录查找
