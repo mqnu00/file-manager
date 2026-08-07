@@ -9,13 +9,15 @@ File Manager 测试插件，用于验证插件的**安装、加载与版本切�
 - 演示插件前后端入口的基本模式（`src/backend.ts` + `src/frontend.ts`）
 - 验证主应用「插件管理」页面的安装 / 加载 / 卸载 / 版本切换功能
 - 生产环境版本切换的验证载体：页面与接口均动态显示当前安装版本
+- 演示托管服务（`ctx.manageService`）：启动一个 HTTP 服务，验证重启文件管理器后服务自动恢复
 
 ## 目录结构
 
 ```
 plugins/test/
 ├── src/
-│   ├── backend.ts          # 后端入口：注册 GET /api/plugin/test
+│   ├── backend.ts          # 后端入口：注册路由 + 托管服务 test-service
+│   ├── service.ts          # 托管服务实现：进程内 HTTP 测试服务
 │   └── frontend.ts         # 前端入口：注册页面 /plugin/test
 ├── scripts/
 │   └── publish.mjs         # 发布脚本（版本号管理 + 构建 + npm publish）
@@ -43,6 +45,38 @@ plugins/test/
 
 - `version`：读取当前安装包的 `package.json`，切换版本后随之变化
 - `loadedAt`：后端模块加载时刻，切换版本（重新加载）后必然更新
+
+### 托管服务（自动启动验证）
+
+插件注册了一个托管服务 `test-service`（进程内 HTTP 服务，默认端口 `18765`，可用 `config.yml plugins.test.servicePort` 覆盖，仅监听 `127.0.0.1`）：
+
+- `GET /api/plugin/test/service` — 服务状态：`{ running, port, startedAt, startCount }`
+- `POST /api/plugin/test/service/start` — 启动服务（`ctx.startService`，持久化 `startedServices`）
+- `POST /api/plugin/test/service/stop` — 停止服务（`ctx.stopService`，清理 `startedServices`）
+
+服务本身响应：
+
+```json
+{
+  "plugin": "test",
+  "service": "test-service",
+  "port": 18765,
+  "startedAt": 1786000000000,
+  "startCount": 1,
+  "message": "Hello from test service",
+  "timestamp": "2026-08-07T12:00:00.000Z"
+}
+```
+
+验证重启后自动启动：
+
+1. 打开 `/plugin/test` 页面（或 `POST /api/plugin/test/service/start`）启动服务
+2. 重启文件管理器 —— 启动链中的 `startConfiguredServices()` 会按 `startedServices` 自动恢复服务，页面「最近启动时间」应更新
+3. 停止服务后重启 —— 服务不应自动启动（`startedServices` 已清空）
+
+> 注：`startCount` 为模块级计数器，重启文件管理器后归零，不能跨进程累计；判断自动启动是否生效以「最近启动时间」（`startedAt`）是否更新为准。
+
+> 服务运行在文件管理器进程内，进程退出即关闭，端口不会残留占用，可反复测试。
 
 ## 本地开发
 

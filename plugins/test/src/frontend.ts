@@ -36,6 +36,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     timestamp?: string
   }
 
+  interface TestServiceStatus {
+    running: boolean
+    port: number
+    startedAt: number | null
+    startCount: number
+  }
+
   const PageComponent = defineComponent({
     name: 'PluginTestPage',
     setup() {
@@ -45,6 +52,14 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
       const pluginName = ref('')
       const loadedAt = ref('')
       const fetchFailed = ref(false)
+
+      // 托管服务状态
+      const serviceRunning = ref(false)
+      const servicePort = ref(18765)
+      const serviceStartedAt = ref<number | null>(null)
+      const serviceStartCount = ref(0)
+      const serviceResponse = ref('')
+      const serviceOperating = ref(false)
 
       const fetchStatus = async () => {
         try {
@@ -61,7 +76,10 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
         }
       }
 
-      onMounted(fetchStatus)
+      onMounted(() => {
+        fetchStatus()
+        fetchService()
+      })
 
       const refreshTime = () => {
         loadTime.value = new Date().toLocaleString()
@@ -74,6 +92,70 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
           ElMessage.success('插件状态已刷新')
         } else {
           ElMessage.error('获取插件状态失败')
+        }
+      }
+
+      // ==================== 托管服务 ====================
+
+      const fetchService = async () => {
+        try {
+          const resp = await fetch('/api/plugin/test/service')
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          const data = (await resp.json()) as TestServiceStatus
+          serviceRunning.value = data.running
+          servicePort.value = data.port
+          serviceStartedAt.value = data.startedAt
+          serviceStartCount.value = data.startCount
+        } catch {
+          ElMessage.error('获取服务状态失败')
+        }
+      }
+
+      const startService = async () => {
+        serviceOperating.value = true
+        try {
+          const resp = await fetch('/api/plugin/test/service/start', { method: 'POST' })
+          const data = (await resp.json()) as { success?: boolean; error?: string; port?: number }
+          if (!resp.ok || !data.success) {
+            throw new Error(data.error || `HTTP ${resp.status}`)
+          }
+          ElMessage.success(`测试服务已启动（端口 ${data.port}）`)
+          await fetchService()
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : '启动失败'
+          ElMessage.error(`启动测试服务失败: ${message}`)
+        } finally {
+          serviceOperating.value = false
+        }
+      }
+
+      const stopService = async () => {
+        serviceOperating.value = true
+        try {
+          const resp = await fetch('/api/plugin/test/service/stop', { method: 'POST' })
+          const data = (await resp.json()) as { success?: boolean; error?: string }
+          if (!resp.ok || !data.success) {
+            throw new Error(data.error || `HTTP ${resp.status}`)
+          }
+          ElMessage.success('测试服务已停止')
+          await fetchService()
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : '停止失败'
+          ElMessage.error(`停止测试服务失败: ${message}`)
+        } finally {
+          serviceOperating.value = false
+        }
+      }
+
+      const testRequest = async () => {
+        serviceResponse.value = ''
+        try {
+          const resp = await fetch(`http://127.0.0.1:${servicePort.value}`)
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+          serviceResponse.value = JSON.stringify(await resp.json(), null, 2)
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : '请求失败'
+          serviceResponse.value = `请求失败: ${message}`
         }
       }
 
@@ -142,6 +224,103 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
                       '版本号与后端加载时刻来自 GET /api/plugin/test（读取当前安装的 package.json）。' +
                       '在"插件管理 → 发现插件"中切换版本后刷新本页，' +
                       '版本号应变为新版本、后端加载时刻应更新。',
+                    closable: false,
+                  }
+                ),
+              ],
+            }
+          ),
+
+          h('div', { style: { height: '16px' } }),
+
+          // 托管服务卡片（自动启动验证）
+          h(
+            ElCard,
+            {},
+            {
+              header: () =>
+                h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
+                  h('h2', { style: { margin: 0, fontSize: '20px' } }, '托管服务测试'),
+                  h(
+                    ElTag,
+                    { type: serviceRunning.value ? 'success' : 'info', size: 'small' },
+                    () => (serviceRunning.value ? '运行中' : '已停止')
+                  ),
+                ]),
+              default: () => [
+                h(ElDescriptions, { column: 2, border: true }, () => [
+                  h(ElDescriptionsItem, { label: '服务名' }, () => 'test-service'),
+                  h(ElDescriptionsItem, { label: '监听地址' }, () =>
+                    serviceRunning.value ? `127.0.0.1:${servicePort.value}` : '—'
+                  ),
+                  h(ElDescriptionsItem, { label: '启动次数' }, () => serviceStartCount.value),
+                  h(ElDescriptionsItem, { label: '最近启动时间' }, () =>
+                    serviceStartedAt.value
+                      ? new Date(serviceStartedAt.value).toLocaleString()
+                      : '—'
+                  ),
+                ]),
+
+                h('div', { style: { height: '16px' } }),
+
+                h(ElSpace, { wrap: true }, () => [
+                  h(
+                    ElButton,
+                    {
+                      type: 'primary',
+                      disabled: serviceRunning.value || serviceOperating.value,
+                      loading: serviceOperating.value && !serviceRunning.value,
+                      onClick: startService,
+                    },
+                    () => '启动服务'
+                  ),
+                  h(
+                    ElButton,
+                    {
+                      type: 'danger',
+                      disabled: !serviceRunning.value || serviceOperating.value,
+                      onClick: stopService,
+                    },
+                    () => '停止服务'
+                  ),
+                  h(
+                    ElButton,
+                    { disabled: !serviceRunning.value, onClick: testRequest },
+                    () => '发送测试请求'
+                  ),
+                  h(ElButton, { onClick: fetchService }, () => '刷新状态'),
+                ]),
+
+                h('div', { style: { height: '16px' } }),
+
+                h(
+                  'pre',
+                  {
+                    style: {
+                      margin: 0,
+                      padding: '12px',
+                      background: '#f5f7fa',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      overflow: 'auto',
+                      minHeight: '40px',
+                    },
+                  },
+                  serviceResponse.value || '点击"发送测试请求"查看服务响应（服务需先启动）'
+                ),
+
+                h('div', { style: { height: '16px' } }),
+
+                h(
+                  ElAlert,
+                  {
+                    type: 'warning',
+                    showIcon: false,
+                    title: '自动启动验证',
+                    description:
+                      '1. 点击"启动服务"，服务状态写入 config.yml plugins.test.startedServices。' +
+                      '2. 重启文件管理器，服务应自动恢复为运行中（启动次数 +1）。' +
+                      '3. 点击"停止服务"后重启，服务不应自动启动。',
                     closable: false,
                   }
                 ),

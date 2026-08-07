@@ -1,4 +1,5 @@
 import type { BackendPluginContext, PluginInstallFunction, Request, Response } from '@mqn00/file-manager/plugin'
+import { initTestService, start, stop, isRunning, getStatus } from './service.js'
 
 /**
  * 读取插件自身 package.json（name/version）。
@@ -24,6 +25,8 @@ const pkg = readPackageInfo()
 const loadedAt = new Date().toISOString()
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
+  initTestService(ctx)
+
   const router = ctx.express.Router()
 
   router.get('/', (_req: Request, res: Response) => {
@@ -37,6 +40,48 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     })
   })
 
+  /**
+   * 托管服务状态查询
+   */
+  router.get('/service', (_req: Request, res: Response) => {
+    res.json(getStatus())
+  })
+
+  /**
+   * 启动托管服务：通过 ctx.startService 包装，持久化 config 中 startedServices，
+   * 重启文件管理器后由 startConfiguredServices 自动恢复
+   */
+  router.post('/service/start', async (_req: Request, res: Response) => {
+    try {
+      const result = (await ctx.startService('test-service')) as { port: number } | undefined
+      res.json({ success: true, ...(result ?? {}) })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '启动测试服务失败'
+      res.status(400).json({ success: false, error: message })
+    }
+  })
+
+  /**
+   * 停止托管服务：清理 config 中 startedServices，重启后不再自动启动
+   */
+  router.post('/service/stop', async (_req: Request, res: Response) => {
+    try {
+      await ctx.stopService('test-service')
+      res.json({ success: true })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '停止测试服务失败'
+      res.status(400).json({ success: false, error: message })
+    }
+  })
+
   ctx.app.use('/api/plugin/test', router)
-  ctx.utils.logger.log('INFO', 'Plugin', `Test plugin v${pkg.version}: registered GET /api/plugin/test`)
+
+  // 注册托管服务：支持重启文件管理器后自动恢复，以及被其他插件依赖等待
+  ctx.manageService('test-service', { start, stop, isRunning })
+
+  ctx.utils.logger.log(
+    'INFO',
+    'Plugin',
+    `Test plugin v${pkg.version}: registered GET /api/plugin/test, managed service "test-service"`
+  )
 }
