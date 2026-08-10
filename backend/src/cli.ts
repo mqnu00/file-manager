@@ -93,5 +93,6 @@ if (daemon) {
 
 // === 启动服务 ===
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { createServer } = require('./app')
 createServer()

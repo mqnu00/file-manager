@@ -37,8 +37,8 @@ export function detectPackageManager(): InstallInfo {
   if (cached) return cached
 
   const osName = detectOS()
-  let manager = ''
-  let rawCommand = ''
+  const manager = ''
+  const rawCommand = ''
 
   // Samba install commands removed — handled by file-manager-plugin-smb
 
