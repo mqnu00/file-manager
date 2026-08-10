@@ -18,5 +18,13 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./test/setup.ts'],
     include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['src/**/*.test.ts', 'src/env.d.ts', 'src/demo/**', 'src/main.ts'],
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      // 第一期只暴露真实覆盖情况，不设阈值，避免本地/CI 被阈值阻塞
+    },
   },
 })

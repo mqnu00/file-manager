@@ -9,6 +9,11 @@ dist-electron/
 gh-pages-dist/
 release/
 
+# 测试覆盖率报告
+coverage/
+backend/coverage/
+frontend/coverage/
+
 # 环境变量
 .env
 .env.local
