@@ -62,6 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # gh workflow run 触发 publish/deploy 需要 actions 写权限
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -121,3 +123,17 @@ jobs:
             release/*.AppImage
             release/*.deb
           generate_release_notes: false
+
+      # GITHUB_TOKEN 创建的 tag 不会触发其他 workflow 的 push:tags 事件，
+      # 因此显式触发 publish（npm）与 deploy（GitHub Pages）
+      - name: Trigger publish to npm
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish.yml --ref ${{ github.ref_name }}
+
+      - name: Trigger deploy to GitHub Pages
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-gh-pages.yml --ref ${{ github.ref_name }}
