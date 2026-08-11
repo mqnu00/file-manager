@@ -103,7 +103,7 @@ describe('日志 API（集成）', () => {
 
 describe('日志文件清理端点', () => {
   it('clean-logs 正常返回删除数', async () => {
-    fs.writeFileSync(path.join(process.env.LOG_DIR!, '2020-01-01.log'), '', 'utf-8')
+    fs.writeFileSync(path.join(process.env.LOG_DIR as string, '2020-01-01.log'), '', 'utf-8')
     const res = await request(app)
       .post('/api/config/clean-logs')
       .set('Authorization', authHeader)
