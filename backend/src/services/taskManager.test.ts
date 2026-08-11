@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
+import { STORAGE_ROOT } from '../../test/setup'
 
 /**
  * mock fileService：copyWithCancel/compressWithCancel 返回永不 resolve 的 Promise，
@@ -13,7 +14,12 @@ vi.mock('./fileService', () => ({
   compressWithCancel: vi.fn(() => new Promise(() => {})),
 }))
 
-import { createMoveTask, createCompressTask, getTask, getAllTasks, cancelTask } from './taskManager'
+import { createMoveTask, createCompressTask, getTask, getAllTasks, cancelTask, subscribe } from './taskManager'
+import { copyWithCancel, removeSources, compressWithCancel } from './fileService'
+
+const mockedCopyWithCancel = vi.mocked(copyWithCancel)
+const mockedRemoveSources = vi.mocked(removeSources)
+const mockedCompressWithCancel = vi.mocked(compressWithCancel)
 
 const TASKS_FILE = path.join(path.dirname(process.env.CONFIG_PATH!), 'tasks.json')
 
@@ -134,5 +140,132 @@ describe('任务持久化', () => {
     cancelTask(task.id)
     const item = readPersisted().find((t) => t.id === task.id)
     expect(item?.status).toBe('cancelling')
+  })
+})
+
+/** mock 的 express Response（subscribe/SSE 用） */
+function makeRes() {
+  const handlers: Record<string, () => void> = {}
+  return {
+    write: vi.fn(),
+    end: vi.fn(),
+    setHeader: vi.fn(),
+    on: vi.fn((event: string, cb: () => void) => {
+      handlers[event] = cb
+    }),
+    _emitClose: () => handlers['close']?.(),
+  }
+}
+
+describe('taskManager 订阅与执行分支', () => {
+  afterEach(() => {
+    // 恢复默认：复制/压缩永不完成（与文件顶部 mock 一致）
+    mockedCopyWithCancel.mockImplementation(() => new Promise(() => {}))
+    mockedRemoveSources.mockImplementation(() => {})
+    mockedCompressWithCancel.mockImplementation(() => new Promise(() => {}))
+  })
+
+  it('subscribe 立即发送 state 快照并注册 close 清理', async () => {
+    const task = createMoveTask(['sub-src.txt'], ['sub-src.txt'], 'sub-target')
+    await tick()
+    const res = makeRes()
+    subscribe(task.id, res)
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"state"'))
+    expect(res.on).toHaveBeenCalledWith('close', expect.any(Function))
+  })
+
+  it('subscribe 不存在的任务 → error 并结束响应', () => {
+    const res = makeRes()
+    subscribe('no-such-task', res)
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('任务不存在'))
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('断开连接的订阅者在广播时被剔除', async () => {
+    const resolvers: Array<(n: number) => void> = []
+    mockedCopyWithCancel.mockImplementation(() => new Promise((resolve) => { resolvers.push(resolve) }))
+    const task = createMoveTask(['dead-src-1.txt', 'dead-src-2.txt'], ['dead-src-1.txt', 'dead-src-2.txt'], 'dead-target')
+    await tick() // i=0 复制挂起（此时无订阅者）
+    const res = makeRes()
+    subscribe(task.id, res) // 快照 → 1 次写入
+    // 快照发送后 arm：模拟客户端断开（写入抛错）
+    res.write.mockImplementation(() => {
+      throw new Error('closed')
+    })
+    resolvers[0]!(1) // i=0 完成 → i=1 updateTask 广播抛错 → 订阅者被剔除
+    await tick()
+    expect(res.write.mock.calls.length).toBe(2) // 1 快照 + 1 次抛错广播
+    resolvers[1]!(1) // i=1 完成 → Phase2 complete 广播（订阅者已移除，不再写入）
+    await tick()
+    await tick()
+    expect(res.write.mock.calls.length).toBe(2)
+  })
+
+  it('复制完成后取消 → 清理已复制目标并置 cancelled', async () => {
+    let resolveCopy: ((n: number) => void) | undefined
+    mockedCopyWithCancel.mockImplementation(() => new Promise((resolve) => { resolveCopy = resolve }))
+    // 目标位置存在"已复制"的文件（用独有路径避免与其他用例冲突）
+    fs.mkdirSync(path.join(STORAGE_ROOT, 'cancel-cleanup-target'), { recursive: true })
+    fs.writeFileSync(path.join(STORAGE_ROOT, 'cancel-cleanup-target', 'cancel-cleanup-src.txt'), 'x', 'utf-8')
+
+    const task = createMoveTask(['cancel-cleanup-src.txt'], ['cancel-cleanup-src.txt'], 'cancel-cleanup-target')
+    await tick() // copyWithCancel 挂起
+    expect(cancelTask(task.id)).toBe(true)
+    resolveCopy!(1) // 复制完成，写入 completedCopies
+    await tick()
+    await tick()
+    expect(getTask(task.id)!.status).toBe('cancelled')
+    expect(getTask(task.id)!.progress).toBe(0)
+    // 已复制到目标的文件被清理
+    expect(fs.existsSync(path.join(STORAGE_ROOT, 'cancel-cleanup-target', 'cancel-cleanup-src.txt'))).toBe(false)
+  })
+
+  it('Phase 2 删除源失败 → 任务 failed 并广播 error', async () => {
+    let resolveCopy: ((n: number) => void) | undefined
+    mockedCopyWithCancel.mockImplementation(() => new Promise((resolve) => { resolveCopy = resolve }))
+    mockedRemoveSources.mockImplementation(() => {
+      throw new Error('EACCES')
+    })
+    const res = makeRes()
+    const task = createMoveTask(['del-fail-src.txt'], ['del-fail-src.txt'], 'del-fail-target')
+    await tick() // copyWithCancel 挂起
+    subscribe(task.id, res) // 快照
+    resolveCopy!(1) // 复制完成 → Phase 2 removeSources 抛错 → 广播 error
+    await tick()
+    await tick()
+    const info = getTask(task.id)!
+    expect(info.status).toBe('failed')
+    expect(info.error).toContain('删除源文件失败')
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"error"'))
+  })
+
+  it('单文件复制失败不中断整体任务', async () => {
+    mockedCopyWithCancel
+      .mockImplementationOnce(async () => {
+        throw new Error('boom')
+      })
+      .mockImplementation(async () => 1)
+    mockedRemoveSources.mockImplementation(() => {})
+    const task = createMoveTask(['fail1.txt', 'fail2.txt'], ['fail1.txt', 'fail2.txt'], 'resume-target')
+    await tick()
+    await tick()
+    await tick()
+    expect(getTask(task.id)!.status).toBe('completed')
+    expect(mockedRemoveSources).toHaveBeenCalledWith(['fail1.txt', 'fail2.txt'])
+  })
+
+  it('压缩任务取消 → cancelled 并广播', async () => {
+    mockedCompressWithCancel.mockImplementation((_s, _t, signal) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('CANCELLED')), { once: true })
+    }))
+    const res = makeRes()
+    const task = createCompressTask('zip-cancel-folder')
+    await tick()
+    subscribe(task.id, res)
+    expect(cancelTask(task.id)).toBe(true)
+    await tick()
+    await tick()
+    expect(getTask(task.id)!.status).toBe('cancelled')
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"cancelled"'))
   })
 })
