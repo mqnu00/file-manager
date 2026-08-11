@@ -120,6 +120,7 @@
                     <PluginVersionSelect
                       v-model="installVersions[item.name]"
                       :package-name="item.name"
+                      :installed-version="installedVersionOf(item.name)"
                     />
                     <el-button
                       size="small"
@@ -133,6 +134,7 @@
                     <PluginVersionSelect
                       v-model="installVersions[item.name]"
                       :package-name="item.name"
+                      :installed-version="installedVersionOf(item.name)"
                     />
                     <el-button
                       size="small"
@@ -147,6 +149,7 @@
                     <PluginVersionSelect
                       v-model="installVersions[item.name]"
                       :package-name="item.name"
+                      :installed-version="installedVersionOf(item.name)"
                     />
                     <el-button
                       size="small"
@@ -339,6 +342,12 @@ function isInstalled(packageName: string): boolean {
 function hasLocalConflict(packageName: string): boolean {
   const shortName = deriveShortName(packageName)
   return plugins.value.some((p) => p.name === shortName && p.source === 'local')
+}
+
+/** 同名插件（npm 或本地）当前安装的版本，未安装返回 null */
+function installedVersionOf(packageName: string): string | null {
+  const shortName = deriveShortName(packageName)
+  return plugins.value.find((p) => p.name === shortName)?.version ?? null
 }
 
 function deriveShortName(packageName: string): string {

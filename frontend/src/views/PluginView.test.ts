@@ -43,9 +43,9 @@ const mockedLoadFrontend = vi.mocked(loadPluginFrontend)
 const mockedConfirm = vi.mocked(ElMessageBox.confirm)
 
 const installedPlugins: PluginInfo[] = [
-  { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: null },
-  { name: 'test', enabled: false, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js' },
-  { name: 'abc', enabled: false, local: false, source: 'npm', frontendPath: null },
+  { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: null, version: '1.2.0' },
+  { name: 'test', enabled: false, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', version: '0.3.0' },
+  { name: 'abc', enabled: false, local: false, source: 'npm', frontendPath: null, version: '2.1.0' },
 ]
 
 beforeEach(() => {
@@ -58,7 +58,11 @@ async function mountView() {
   const wrapper = mount(PluginView, {
     global: {
       stubs: {
-        PluginVersionSelect: { template: '<div class="pvs-stub" />' },
+        PluginVersionSelect: {
+          template:
+            '<div class="pvs-stub" :data-pkg="packageName" :data-installed-version="installedVersion" />',
+          props: ['packageName', 'installedVersion'],
+        },
         teleport: { template: '<div><slot /></div>' },
       },
     },
@@ -89,7 +93,7 @@ describe('PluginView.vue', () => {
   })
 
   it('加载插件 → loadPlugin 调用 + 成功提示 + 有 frontendPath 时加载前端', async () => {
-    const loaded: PluginInfo = { name: 'test', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js' }
+    const loaded: PluginInfo = { name: 'test', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', version: '0.3.0' }
     mockedLoadPlugin.mockResolvedValue(loaded)
     const wrapper = await mountView()
     await rowButton(wrapper, 'test', '加载').trigger('click')
@@ -153,5 +157,28 @@ describe('PluginView.vue', () => {
     expect(mockedSearchPlugins).toHaveBeenCalledWith('smb')
     expect(wrapper.text()).toContain('@mqn00/file-manager-plugin-smb')
     expect(wrapper.text()).toContain('SMB 共享插件')
+  })
+
+  it('搜索：已安装插件的版本下拉框传入当前版本', async () => {
+    // @mqn00/file-manager-plugin-smb 的 shortName 为 smb，已安装插件 smb 版本 1.2.0
+    mockedSearchPlugins.mockResolvedValue([
+      {
+        name: '@mqn00/file-manager-plugin-smb',
+        version: '3.0.0',
+        description: 'SMB 共享插件',
+        publisher: 'mqn00',
+        date: '2026-01-01',
+        links: { npm: 'https://npmjs.com/x' },
+      },
+    ])
+    const wrapper = await mountView()
+    const searchInput = wrapper.get('input[placeholder="搜索 npm registry 中的插件…"]')
+    await searchInput.setValue('smb')
+    await searchInput.trigger('keyup.enter')
+    await flushPromises()
+
+    const select = wrapper.find('.pvs-stub')
+    expect(select.attributes('data-pkg')).toBe('@mqn00/file-manager-plugin-smb')
+    expect(select.attributes('data-installed-version')).toBe('1.2.0')
   })
 })

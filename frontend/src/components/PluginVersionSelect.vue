@@ -11,7 +11,7 @@
     <el-option
       v-for="v in versions"
       :key="v"
-      :label="v === latest ? `v${v}（最新）` : `v${v}`"
+      :label="optionLabel(v)"
       :value="v"
     />
   </el-select>
@@ -25,6 +25,8 @@ import { getPluginVersions } from '@/api/plugins'
 const props = defineProps<{
   packageName: string
   modelValue: string
+  /** 已安装插件的当前版本，用于在下拉框中标注"当前" */
+  installedVersion?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -39,6 +41,14 @@ const selected = computed({
 const versions = ref<string[]>([])
 const latest = ref('')
 const loading = ref(false)
+
+/** 选项标注：最新 / 当前（已安装版本） */
+function optionLabel(v: string): string {
+  const marks: string[] = []
+  if (v === latest.value) marks.push('最新')
+  if (props.installedVersion && v === props.installedVersion) marks.push('当前')
+  return marks.length ? `v${v}（${marks.join(' · ')}）` : `v${v}`
+}
 
 /** 页面级缓存：同一包只请求一次版本列表 */
 const versionsCache = new Map<string, string[]>()

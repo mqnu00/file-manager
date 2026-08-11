@@ -991,6 +991,18 @@ export function getLoadedPlugins(): LoadedPlugin[] {
   }))
 }
 
+/** 读取插件 package.json 的版本号（读取失败返回 null） */
+function readPluginVersion(rootDir: string | null): string | null {
+  if (!rootDir) return null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.join(rootDir, 'package.json')) as { version?: string }
+    return pkg.version ?? null
+  } catch {
+    return null
+  }
+}
+
 /** 获取 config.yml 中所有插件及其启用状态（含未加载的） */
 export function getAllPluginInfos(): PluginInfo[] {
   const config = getConfig()
@@ -1002,13 +1014,9 @@ export function getAllPluginInfos(): PluginInfo[] {
       const cfgObj = cfg as Record<string, unknown>
       const enabled = cfgObj.enabled !== false
       const instance = loadedPlugins.find((p) => p.name === name)
-      // 已加载的直接取 local/source，未加载的从 config 读取或推断
-      const local = instance
-        ? instance.local
-        : (() => {
-            const r = resolvePluginRoot(name)
-            return r ? isLocalPlugin(r) : false
-          })()
+      // 已加载的直接取 rootDir，未加载的从文件系统解析
+      const rootDir = instance ? instance.rootDir : resolvePluginRoot(name)
+      const local = rootDir ? isLocalPlugin(rootDir) : false
       // source: 优先读 config 中的持久化值，其次从 local 推断
       const source: 'local' | 'npm' =
         cfgObj.source === 'local' || cfgObj.source === 'npm'
@@ -1022,6 +1030,7 @@ export function getAllPluginInfos(): PluginInfo[] {
         local,
         source,
         frontendPath: instance?.frontendPath ?? null,
+        version: readPluginVersion(rootDir),
       }
     })
 }

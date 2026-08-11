@@ -52,6 +52,7 @@ router.get('/', async (_req: Request, res: Response) => {
     frontendPath: p.frontendPath
       ? `/plugins-assets/${p.name}/${p.frontendPath.replace(/^\.\//, '')}`
       : null,
+    version: p.version,
   }))
   res.json(plugins)
 })

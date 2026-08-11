@@ -12,6 +12,8 @@ export interface PluginInfo {
   /** 插件来源：local=本地开发目录，npm=node_modules */
   source: 'local' | 'npm'
   frontendPath: string | null
+  /** package.json 中的版本号（读取失败为 null） */
+  version: string | null
 }
 
 export interface NpmSearchResult {
