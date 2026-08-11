@@ -24,9 +24,23 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      # 生成 backend/dist（test 插件 tsc 需要解析 @mqn00/file-manager 的 types）
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      # 生成 plugins/test/dist（loader.watch 测试加载本地插件依赖，dist 被 .gitignore 忽略）
+      - name: Install test plugin dependencies
+        working-directory: plugins/test
+        run: npm ci
+
+      - name: Build test plugin
+        working-directory: plugins/test
+        run: npm run build
 
       - name: Backend unit/integration tests
         working-directory: backend
