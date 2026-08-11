@@ -37,14 +37,27 @@ if (arg) {
 }
 
 if (newVersion === pkg.version) {
-  console.error(`版本号未变化（当前已是 ${newVersion}），请显式传入新版本号`)
-  process.exit(1)
+  // 本地版本与 npm 已发布版本冲突检查：npm 上不存在该版本时允许直接发布（本地已 bump 但未发布的场景）
+  let published = false
+  try {
+    published =
+      execSync(`npm view ${pkgName}@${newVersion} version`, { cwd: root, stdio: 'pipe' })
+        .toString()
+        .trim() !== ''
+  } catch {
+    published = false
+  }
+  if (published) {
+    console.error(`版本号未变化（当前已是 ${newVersion}）且已在 npm 发布，请显式传入新版本号`)
+    process.exit(1)
+  }
+  console.log(`版本号: ${pkg.version}（npm 无此版本，直接发布）`)
+} else {
+  console.log(`版本号: ${pkg.version} → ${newVersion}`)
+  // ---- 写回 package.json ----
+  pkg.version = newVersion
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 }
-
-// ---- 写回 package.json ----
-pkg.version = newVersion
-writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
-console.log(`版本号: ${pkg.version} → ${newVersion}`)
 
 // ---- 构建 ----
 console.log('构建中…')

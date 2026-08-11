@@ -36,9 +36,9 @@ plugins/test/
 {
   "plugin": "test",
   "name": "@mqn00/file-manager-plugin-test",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "loadedAt": "2026-08-05T12:00:00.000Z",
-  "message": "Hello from test plugin v0.2.0",
+  "message": "Hello from test plugin v0.3.0",
   "timestamp": "2026-08-05T12:00:01.000Z"
 }
 ```
