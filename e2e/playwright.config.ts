@@ -16,7 +16,7 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
       name: 'authenticated',
-      testMatch: /files\.spec\.ts|tasks\.spec\.ts/,
+      testMatch: /(files|tasks|logs|config|plugins)\.spec\.ts/,
       use: { storageState: path.join(__dirname, '.auth', 'user.json') },
       dependencies: ['setup'],
     },
