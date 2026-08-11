@@ -16,13 +16,42 @@ import {
   renameFile,
   getLogs,
   getAvailableLogDates,
+  moveFileAsync,
+  zipFolderAsync,
+  downloadFile,
 } from './file'
 
 const mockedApi = vi.mocked(api)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.unstubAllGlobals()
+  localStorage.clear()
 })
+
+/** 构造 SSE 流 reader（按 chunk 依次返回，末位 done） */
+function makeReader(chunks: string[]) {
+  const encoder = new TextEncoder()
+  const queue = chunks.map((c) => encoder.encode(c))
+  let i = 0
+  return {
+    read: vi.fn(() => {
+      if (i < queue.length) {
+        const value = queue[i++]
+        return Promise.resolve({ done: false, value })
+      }
+      return Promise.resolve({ done: true, value: undefined })
+    }),
+  }
+}
+
+const flush = () => new Promise((r) => setTimeout(r, 20))
+
+function stubFetchStream(chunks: string[], ok = true) {
+  const reader = makeReader(chunks)
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok, body: { getReader: () => reader } }))
+  return reader
+}
 
 describe('api/file（axios 封装）', () => {
   it('getFiles 带 path 参数', async () => {
@@ -100,5 +129,105 @@ describe('api/file（axios 封装）', () => {
     const res = await getAvailableLogDates()
     expect(mockedApi.get).toHaveBeenCalledWith('/logs/dates')
     expect(res.dates).toEqual(['2026-08-10'])
+  })
+})
+
+describe('moveFileAsync / zipFolderAsync（fetch SSE 流）', () => {
+  it('moveFileAsync：progress 回调递增，complete 后 resolve', async () => {
+    stubFetchStream([
+      `data: ${JSON.stringify({ type: 'progress', progress: 30, speed: 1, totalSize: 100 })}\n\n`,
+      `data: ${JSON.stringify({ type: 'progress', progress: 60, speed: 2, totalSize: 100 })}\n\n`,
+      `data: ${JSON.stringify({ type: 'complete' })}\n\n`,
+    ])
+    const progress: number[] = []
+    await moveFileAsync('a.txt', 'b.txt', (p, s, t) => progress.push(p))
+    expect(progress).toEqual([30, 60])
+  })
+
+  it('moveFileAsync：error 事件 reject', async () => {
+    stubFetchStream([`data: ${JSON.stringify({ type: 'error', message: '磁盘已满' })}\n\n`])
+    await expect(moveFileAsync('a.txt', 'b.txt')).rejects.toThrow('磁盘已满')
+  })
+
+  it('moveFileAsync：非 ok 响应 reject', async () => {
+    stubFetchStream([], false)
+    await expect(moveFileAsync('a.txt', 'b.txt')).rejects.toThrow('移动失败')
+  })
+
+  it('moveFileAsync：携带 Authorization 头与 body', async () => {
+    localStorage.setItem('session_token', 'sess-1')
+    stubFetchStream([`data: ${JSON.stringify({ type: 'complete' })}\n\n`])
+    await moveFileAsync('a.txt', 'b.txt')
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/files/move', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer sess-1',
+      },
+      body: JSON.stringify({ fromPath: 'a.txt', toPath: 'b.txt' }),
+    })
+  })
+
+  it('zipFolderAsync：progress 回调 + complete resolve', async () => {
+    stubFetchStream([
+      `data: ${JSON.stringify({ type: 'progress', progress: 40 })}\n\n`,
+      `data: ${JSON.stringify({ type: 'complete' })}\n\n`,
+    ])
+    const progress: number[] = []
+    await zipFolderAsync('docs', (p) => progress.push(p))
+    expect(progress).toEqual([40])
+  })
+
+  it('zipFolderAsync：error 事件 reject', async () => {
+    stubFetchStream([`data: ${JSON.stringify({ type: 'error', message: '压缩失败' })}\n\n`])
+    await expect(zipFolderAsync('docs')).rejects.toThrow('压缩失败')
+  })
+
+  it('zipFolderAsync：非 ok 响应 reject', async () => {
+    stubFetchStream([], false)
+    await expect(zipFolderAsync('docs')).rejects.toThrow('压缩失败')
+  })
+})
+
+describe('downloadFile', () => {
+  it('解析 Content-Disposition 文件名并触发下载', async () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:fake')
+    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: async () => new Blob(['data']),
+        headers: {
+          get: () => `attachment; filename*=UTF-8''%E4%B8%AD%E6%96%87.txt`,
+        },
+      })
+    )
+    await downloadFile('dir/中文.txt')
+
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/files/download/dir%2F%E4%B8%AD%E6%96%87.txt',
+      { headers: { Authorization: 'Bearer ' } }
+    )
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revoke).toHaveBeenCalled()
+
+    clickSpy.mockRestore()
+    createObjectURL.mockRestore()
+    revoke.mockRestore()
+  })
+
+  it('非 ok 响应 → 抛出服务端错误信息', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ message: '文件不存在' }),
+      })
+    )
+    await expect(downloadFile('no-such.txt')).rejects.toThrow('文件不存在')
   })
 })
