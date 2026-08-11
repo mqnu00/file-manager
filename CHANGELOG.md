@@ -1,19 +1,39 @@
-## v3.0.0-beta5 (2026-08-06)
+## v3.0.0-beta5 (2026-08-11)
 
 ### 🏗️ 架构变更
 
-#### 测试系统搭建（三层测试体系 + CI）
+#### 三层测试体系 + CI 接入
 
-- **后端单元/集成测试**（Vitest + supertest）：`backend/src/**/*.test.ts`，覆盖鉴权（session/中间件/login/限流）与文件操作（列表/下载/重命名/移动/删除/批量删除/压缩/路径穿越防护）
+- **后端单元/集成测试**（Vitest + supertest）：214 个用例，覆盖鉴权（session/中间件/登录/限流）、文件操作（列表/下载/重命名/移动/删除/批量删除/压缩/路径穿越防护），并扩展覆盖配置/CLI/错误中间件/插件加载/文件路由/终端服务/包管理器/文件服务/插件加载监听与托管服务
   - 测试隔离：`CONFIG_PATH` / `LOG_DIR` / storageRoot 指向临时目录，不触碰真实数据与日志
   - `backend/vitest.config.ts` + `backend/test/setup.ts`；测试文件从 tsc 构建中排除（`tsconfig.json`）
-- **前端组件测试**（Vitest + @vue/test-utils + jsdom）：`frontend/src/**/*.test.ts`，覆盖 FileTable、Toolbar 与格式化工具函数
+- **前端组件测试**（Vitest + @vue/test-utils + jsdom）：197 个用例，覆盖 API/store/组件/组合式函数/视图/路由/插件加载/脚本运行及格式化工具函数
   - `frontend/vitest.config.ts` + `frontend/test/setup.ts`（Element Plus 全局挂载、jsdom 布局/API mock）
-- **端到端测试**（Playwright）：`e2e/`，覆盖登录认证、文件浏览/新建/重命名/删除、未登录安全防护
+- **端到端测试**（Playwright）：22 个用例，覆盖登录认证、文件浏览/新建/重命名/删除、未登录安全防护、任务、日志/配置/插件管理页面
   - 独立测试配置 `e2e/fixtures/config.yml`（token `e2e-token-123`），数据由 `e2e/prepare-data.mjs` 重建
   - 登录会话通过 storageState 复用（`e2e/tests/auth.setup.ts`），避免触发后端登录限流
+- **覆盖率报告**：接入 Vitest v8 provider，新增 `test:coverage` / `test:coverage:backend` / `test:coverage:frontend` 脚本
 - **CI 接入**：新增 `.github/workflows/test.yml`，push / PR 时运行三层测试（node 22）
 - 根 `package.json` 新增 `test` / `test:backend` / `test:frontend` / `test:e2e` 脚本
+- test 插件发布 v0.2.0 / v0.3.0 版本，用于验证版本切换与托管服务场景
+
+### ✨ 新增功能
+
+#### 插件托管服务机制
+
+- 新增 `ManagedServiceSpec` 与 `BackendPluginContext.manageService/startService/stopService/waitForService/isServiceRunning`：插件可注册启停可管理、状态可查询的托管服务，支持服务级依赖等待（`dependsOn`）
+- 启动时按依赖分层恢复 `config.yml` 中 `startedServices` 记录的服务（不阻塞服务器监听），插件热重载后自动恢复托管服务，卸载插件时停止其服务
+- smb 插件注册托管服务：`canAutoStart` 用 `sudo -n` 预检避免 PTY 挂起等待密码；start/stop 走托管包装并持久化 `startedServices`，重启文件管理器后 smbd 自动恢复
+- `saveSmbConfig` 合并保留插件配置系统字段（`enabled` / `source` / `startedServices`），避免整段覆盖丢失
+
+### 🐛 Bug 修复
+
+- 修复 npm 插件包丢失时删除报错 not found：来源 npm 的插件若包已不在磁盘上（如手动清理 node_modules），删除时仅清理 config.yml 配置并跳过 npm uninstall
+- 修复本地插件解析：优先解析 `plugins/` 本地开发目录，避免 node_modules 中同名包被 scope 扫描误匹配（如 `@playwright/test` 命中插件 "test"）
+
+### 🔄 改进优化
+
+- 简化 CI 触发：publish npm 与 deploy gh-pages 改为仅由 `v*` tag 推送触发，移除 `workflow_run` 双触发及守卫条件，保留 `workflow_dispatch` 手动触发
 
 ---
 
