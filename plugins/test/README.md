@@ -53,6 +53,7 @@ plugins/test/
 - `GET /api/plugin/test/service` — 服务状态：`{ running, port, startedAt, startCount }`
 - `POST /api/plugin/test/service/start` — 启动服务（`ctx.startService`，持久化 `startedServices`）
 - `POST /api/plugin/test/service/stop` — 停止服务（`ctx.stopService`，清理 `startedServices`）
+- `GET /api/plugin/test/service/request` — 由后端代发请求到服务并返回响应（需服务已启动）。服务仅监听 `127.0.0.1` 且端口未对外暴露，浏览器直连会被 CSP `connect-src` 拦截（Docker 部署下也无法到达），故前端统一走该同源接口
 
 服务本身响应：
 

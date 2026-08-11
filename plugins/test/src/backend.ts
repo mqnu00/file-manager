@@ -74,6 +74,32 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     }
   })
 
+  /**
+   * 托管服务请求转发：服务仅监听 127.0.0.1 且端口未对外暴露，
+   * 浏览器直连会被 CSP connect-src 拦截（Docker 部署下也无法到达），
+   * 由后端代发请求，前端保持同源调用。
+   */
+  router.get('/service/request', async (_req: Request, res: Response) => {
+    const status = getStatus()
+    if (!status.running) {
+      res.status(400).json({ error: '测试服务未运行' })
+      return
+    }
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    try {
+      const resp = await fetch(`http://127.0.0.1:${status.port}`, {
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      res.status(resp.status).json(await resp.json())
+    } catch (err: unknown) {
+      clearTimeout(timeout)
+      const message = err instanceof Error ? err.message : '请求测试服务失败'
+      res.status(502).json({ error: message })
+    }
+  })
+
   ctx.app.use('/api/plugin/test', router)
 
   // 注册托管服务：支持重启文件管理器后自动恢复，以及被其他插件依赖等待

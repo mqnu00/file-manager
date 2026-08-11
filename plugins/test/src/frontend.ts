@@ -150,9 +150,12 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
       const testRequest = async () => {
         serviceResponse.value = ''
         try {
-          const resp = await fetch(`http://127.0.0.1:${servicePort.value}`)
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
-          serviceResponse.value = JSON.stringify(await resp.json(), null, 2)
+          // 服务仅监听 127.0.0.1 且端口未对外暴露，浏览器直连会被 CSP connect-src 拦截，
+          // 统一走同源接口由后端代发请求
+          const resp = await fetch('/api/plugin/test/service/request')
+          const data = (await resp.json()) as { error?: string }
+          if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`)
+          serviceResponse.value = JSON.stringify(data, null, 2)
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : '请求失败'
           serviceResponse.value = `请求失败: ${message}`
