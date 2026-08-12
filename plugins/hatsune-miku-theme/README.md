@@ -70,12 +70,16 @@ plugins/hatsune-miku-theme/
 
 ## 主题配色
 
+参考 [DB_Hatsune-Miku-Theme](https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme)（Discord 初音未来主题）配色，青绿多层渐变 + 蓝 + 粉点缀，区别于主项目"赛博"主题的单青风格。
+
 | 用途 | 色值 |
 |---|---|
-| 背景（深黑蓝） | `#040405` |
-| 主色（青绿） | `#00f2ff` |
-| 次色（蓝） | `#0080ff` / `#03a9f4` |
-| 点缀（红/粉） | `#f40303` / `#E91E63` |
+| 背景（深黑） | `#040405`，面板为黑色半透明 |
+| 主色（青） | `#00f2ff`（主强调/按钮/文字 glow） |
+| 次色（青绿 teal） | `#0abdc6`（边框/hover/填充/滚动条） |
+| 辅助（蓝） | `#03a9f4`（进度渐变尾色） |
+| 点缀（粉/红） | `#E91E63`（表格选中行）/ `#f40303`（危险操作） |
+| 次级文本（青蓝） | `#6fb3c6` |
 | 文本 | `#ffffff` / `#dcddde` |
 
 > logo 与背景图版权归 [Hatsune-Mikun/DB_Hatsune-Miku-Theme](https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme) 作者所有，仅作主题装饰用途。

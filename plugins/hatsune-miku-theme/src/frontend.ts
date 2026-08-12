@@ -76,26 +76,32 @@ function applyBackground(id: string, bgs: BackgroundInfo[]): void {
 const THEME_CSS = `
 html.hatsune-miku {
   --miku-bg: url('${API_BASE}/bg/${DEFAULT_BG_ID}');
+  /* 初音特色色板（参考 DB_Hatsune-Miku-Theme）：主青 #00f2ff / 次青绿 #0abdc6 /
+     亮青 #00fff1 / 辅助蓝 #03a9f4 / 点缀粉 #e91e63 / 危险红 #f40303 */
+  --miku-cyan: #00f2ff;
+  --miku-teal: #0abdc6;
+  --miku-blue: #03a9f4;
+  --miku-pink: #e91e63;
   --app-bg: #040405;
-  --app-panel: rgb(10 10 14 / 55%);
-  --app-panel-solid: #0a0a0f;
-  --app-border: rgb(0 242 255 / 22%);
+  --app-panel: rgb(0 0 0 / 55%);
+  --app-panel-solid: #040405;
+  --app-border: rgb(10 189 198 / 25%);
   --app-shadow: 0 2px 8px rgb(0 0 0 / 60%);
-  --app-glow: 0 0 12px rgb(0 242 255 / 30%);
+  --app-glow: 0 0 12px rgb(0 242 255 / 25%);
   --app-text: #dcddde;
-  --app-text-dim: #7d8a99;
+  --app-text-dim: #6fb3c6;
   --app-text-bright: #ffffff;
   --app-accent: #00f2ff;
-  --app-accent-bg: rgb(0 242 255 / 8%);
-  --app-accent-bg-hover: rgb(0 242 255 / 12%);
-  --app-accent-bg-subtle: rgb(0 242 255 / 6%);
-  --app-accent-border: rgb(0 242 255 / 22%);
-  --app-accent-border-light: rgb(0 242 255 / 15%);
-  --app-input-bg: rgb(10 10 14 / 60%);
-  --app-table-header-bg: rgb(0 242 255 / 6%);
-  --app-table-header-border: rgb(0 242 255 / 18%);
-  --app-table-row-hover: rgb(0 242 255 / 6%);
-  --app-table-cell-border: rgb(0 242 255 / 8%);
+  --app-accent-bg: rgb(10 189 198 / 10%);
+  --app-accent-bg-hover: rgb(10 189 198 / 16%);
+  --app-accent-bg-subtle: rgb(10 189 198 / 7%);
+  --app-accent-border: rgb(10 189 198 / 26%);
+  --app-accent-border-light: rgb(10 189 198 / 18%);
+  --app-input-bg: rgb(0 0 0 / 45%);
+  --app-table-header-bg: rgb(10 189 198 / 7%);
+  --app-table-header-border: rgb(10 189 198 / 20%);
+  --app-table-row-hover: rgb(10 189 198 / 7%);
+  --app-table-cell-border: rgb(10 189 198 / 9%);
   --app-blur: blur(4px);
   --app-text-shadow: none;
   --app-text-glow: 0 0 6px rgb(0 242 255 / 45%);
@@ -105,9 +111,9 @@ html.hatsune-miku {
   --app-mask-bg: rgb(4 4 5 / 70%);
   --app-select-caret: #00f2ff;
   --app-scrollbar-width: 6px;
-  --app-scrollbar-track: rgb(4 4 5 / 50%);
-  --app-scrollbar-thumb: rgb(0 242 255 / 25%);
-  --app-scrollbar-thumb-hover: rgb(0 242 255 / 45%);
+  --app-scrollbar-track: rgb(0 0 0 / 50%);
+  --app-scrollbar-thumb: rgb(10 189 198 / 35%);
+  --app-scrollbar-thumb-hover: rgb(0 242 255 / 50%);
 
   /* Element Plus 主题变量覆盖 */
   --el-color-primary-light-9: rgb(0 242 255 / 10%);
@@ -160,10 +166,10 @@ html.hatsune-miku .el-button {
   --el-button-bg-color: transparent;
   --el-button-border-color: var(--app-border);
   --el-button-hover-text-color: var(--app-accent);
-  --el-button-hover-bg-color: rgb(0 242 255 / 8%);
+  --el-button-hover-bg-color: rgb(10 189 198 / 14%);
   --el-button-hover-border-color: var(--app-accent);
   --el-button-active-text-color: var(--app-accent);
-  --el-button-active-bg-color: rgb(0 242 255 / 12%);
+  --el-button-active-bg-color: rgb(10 189 198 / 20%);
   --el-button-active-border-color: var(--app-accent);
 
   border-radius: 6px !important;
@@ -178,7 +184,7 @@ html.hatsune-miku .el-button--default {
 
 html.hatsune-miku .el-button--default:hover {
   border-color: var(--app-accent) !important;
-  box-shadow: 0 0 10px rgb(0 242 255 / 20%);
+  box-shadow: 0 0 10px rgb(10 189 198 / 25%);
 }
 
 html.hatsune-miku .el-button--primary {
@@ -236,7 +242,7 @@ html.hatsune-miku .el-input__wrapper {
 }
 
 html.hatsune-miku .el-input__wrapper:hover {
-  border-color: rgb(0 242 255 / 40%) !important;
+  border-color: rgb(10 189 198 / 50%) !important;
 }
 
 html.hatsune-miku .el-input__inner {
@@ -273,7 +279,7 @@ html.hatsune-miku .el-message--error {
 }
 
 html.hatsune-miku .el-message--info {
-  --el-message-bg-color: rgb(0 242 255 / 8%);
+  --el-message-bg-color: rgb(10 189 198 / 10%);
   --el-message-border-color: var(--app-border);
   --el-message-text-color: var(--app-text);
 }
@@ -298,12 +304,12 @@ html.hatsune-miku .el-message-box__headerbtn .el-message-box__close {
 }
 
 html.hatsune-miku .el-progress-bar__outer {
-  background: rgb(0 242 255 / 6%) !important;
+  background: rgb(10 189 198 / 8%) !important;
   border-radius: 4px !important;
 }
 
 html.hatsune-miku .el-progress-bar__inner {
-  background: linear-gradient(90deg, var(--app-accent), #0080ff) !important;
+  background: linear-gradient(90deg, #00f2ff, #03a9f4) !important;
   border-radius: 4px !important;
   box-shadow: 0 0 8px rgb(0 242 255 / 40%);
 }
@@ -341,7 +347,7 @@ html.hatsune-miku .el-select__wrapper {
 }
 
 html.hatsune-miku .el-select__wrapper:hover {
-  box-shadow: 0 0 0 1px rgb(0 242 255 / 40%) inset !important;
+  box-shadow: 0 0 0 1px rgb(10 189 198 / 50%) inset !important;
 }
 
 html.hatsune-miku .el-select__wrapper.is-focused {
@@ -396,17 +402,17 @@ html.hatsune-miku ::-webkit-scrollbar {
 }
 
 html.hatsune-miku ::-webkit-scrollbar-track {
-  background: rgb(10 10 14 / 50%);
+  background: rgb(0 0 0 / 50%);
   border-radius: 3px;
 }
 
 html.hatsune-miku ::-webkit-scrollbar-thumb {
-  background: rgb(0 242 255 / 25%);
+  background: rgb(10 189 198 / 35%);
   border-radius: 3px;
 }
 
 html.hatsune-miku ::-webkit-scrollbar-thumb:hover {
-  background: rgb(0 242 255 / 40%);
+  background: rgb(0 242 255 / 50%);
 }
 
 /* el-card */
@@ -448,8 +454,8 @@ html.hatsune-miku .el-tag--danger {
 }
 
 html.hatsune-miku .el-tag--info {
-  --el-tag-bg-color: rgb(0 242 255 / 10%);
-  --el-tag-border-color: rgb(0 242 255 / 30%);
+  --el-tag-bg-color: rgb(10 189 198 / 12%);
+  --el-tag-border-color: rgb(10 189 198 / 35%);
   --el-tag-text-color: var(--app-accent);
 }
 
@@ -511,20 +517,20 @@ html.hatsune-miku .el-table td.el-table__cell {
 }
 
 html.hatsune-miku .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background: rgb(10 10 14 / 50%) !important;
+  background: rgb(0 0 0 / 45%) !important;
 }
 
 html.hatsune-miku .el-table__empty-text {
   color: var(--app-text-dim) !important;
 }
 
-/* el-table 选中行 */
+/* el-table 选中行（初音点缀粉，参考 DB 主题 mention 高亮 #E91E63） */
 html.hatsune-miku .el-table__row.current > td {
-  background: var(--app-accent-bg) !important;
+  background: rgb(233 30 99 / 14%) !important;
 }
 
 html.hatsune-miku .el-table__row.current > td .cell {
-  color: var(--app-accent) !important;
+  color: #ff5c8a !important;
 }
 
 /* el-loading mask 全局加载遮罩 */
@@ -564,7 +570,11 @@ html.hatsune-miku input:-webkit-autofill:focus {
    深色半透明渐变叠加保证前景文字可读性 */
 html.hatsune-miku body {
   background-color: var(--app-bg);
-  background-image: linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)), var(--miku-bg);
+  /* 顶部青色氛围光晕（初音霓虹感，参考 DB 主题 box-shadow glow）+ 深色压暗层 + 背景图 */
+  background-image:
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
