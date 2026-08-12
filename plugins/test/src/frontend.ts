@@ -13,6 +13,49 @@
 import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/frontend'
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
+  // 注册演示主题：安装插件后主项目主题下拉框出现"午夜"选项
+  // （覆盖 --app-* 核心变量，选择器对应 className）
+  ctx.composables.useTheme().registerTheme({
+    name: 'midnight',
+    label: '午夜',
+    className: 'midnight',
+    css: `
+html.midnight {
+  --app-bg: #0d1117;
+  --app-panel: #161b22;
+  --app-panel-solid: #161b22;
+  --app-border: #30363d;
+  --app-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+  --app-glow: none;
+  --app-text: #c9d1d9;
+  --app-text-dim: #8b949e;
+  --app-text-bright: #f0f6fc;
+  --app-accent: #58a6ff;
+  --app-accent-bg: rgb(88 166 255 / 10%);
+  --app-accent-bg-hover: rgb(88 166 255 / 15%);
+  --app-accent-bg-subtle: rgb(88 166 255 / 8%);
+  --app-accent-border: rgb(88 166 255 / 25%);
+  --app-accent-border-light: rgb(88 166 255 / 15%);
+  --app-input-bg: #0d1117;
+  --app-table-header-bg: #161b22;
+  --app-table-header-border: #21262d;
+  --app-table-row-hover: #161b22;
+  --app-table-cell-border: #21262d;
+  --app-blur: none;
+  --app-text-shadow: none;
+  --app-text-glow: none;
+  --app-text-glow-hover: none;
+  --app-checkbox-border: #30363d;
+  --app-checkbox-shadow: none;
+  --app-mask-bg: rgb(13 17 23 / 70%);
+  --app-select-caret: #8b949e;
+  --app-scrollbar-track: transparent;
+  --app-scrollbar-thumb: #30363d;
+  --app-scrollbar-thumb-hover: #484f58;
+  --el-color-primary-light-9: rgb(88 166 255 / 10%);
+}`,
+  })
+
   const { h, ref, onMounted, defineComponent } = ctx.Vue
   const {
     ElCard,

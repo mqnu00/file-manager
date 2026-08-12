@@ -6,8 +6,17 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
+const { mockedSetTheme } = vi.hoisted(() => ({ mockedSetTheme: vi.fn() }))
+
 vi.mock('@/composables/useTheme', () => ({
-  useTheme: () => ({ isCyber: false, toggle: vi.fn() }),
+  useTheme: () => ({
+    themes: [
+      { name: 'light', label: '白天', className: '' },
+      { name: 'cyber', label: '赛博', className: 'cyber' },
+    ],
+    activeTheme: { name: 'light', label: '白天', className: '' },
+    setTheme: mockedSetTheme,
+  }),
 }))
 
 function mountToolbar(overrides: Record<string, unknown> = {}) {
@@ -96,5 +105,23 @@ describe('Toolbar.vue', () => {
     })
     expect(wrapper.text()).toContain('压缩')
     expect(wrapper.text()).not.toContain('下载')
+  })
+
+  it('主题下拉框渲染已注册主题选项', () => {
+    const wrapper = mountToolbar()
+    // 工具栏含两个 el-select：排序 + 主题，取第二个（主题）的选项
+    const themeSelect = wrapper.findAllComponents({ name: 'ElSelect' })[1]
+    const options = themeSelect.findAllComponents({ name: 'ElOption' })
+    expect(options).toHaveLength(2)
+    expect(options[0].props('label')).toBe('白天')
+    expect(options[1].props('label')).toBe('赛博')
+  })
+
+  it('切换主题触发 setTheme', () => {
+    const wrapper = mountToolbar()
+    // 工具栏含两个 el-select：排序 + 主题，取第二个（主题）
+    const select = wrapper.findAllComponents({ name: 'ElSelect' })[1]
+    select.vm.$emit('update:model-value', 'cyber')
+    expect(mockedSetTheme).toHaveBeenCalledWith('cyber')
   })
 })

@@ -37,10 +37,22 @@
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
-        <el-button size="small" class="theme-toggle" @click="toggle">
-          <el-icon><Moon v-if="isCyber" /><Sunny v-else /></el-icon>
-          {{ isCyber ? '赛博' : '亮色' }}
-        </el-button>
+        <el-select
+          :model-value="activeTheme.name"
+          size="small"
+          style="width: 50px"
+          class="theme-toggle"
+          @update:model-value="setTheme"
+        >
+          <template #prefix>
+            <el-icon>
+              <Sunny v-if="activeTheme.name === 'light'" />
+              <Moon v-else-if="activeTheme.name === 'cyber'" />
+              <Brush v-else />
+            </el-icon>
+          </template>
+          <el-option v-for="t in themes" :key="t.name" :label="t.label" :value="t.name" />
+        </el-select>
         <el-button size="small" @click="router.push('/system')">
           <el-icon><Monitor /></el-icon>
         </el-button>
@@ -124,6 +136,7 @@ import {
   CircleClose,
   Moon,
   Sunny,
+  Brush,
   Setting,
   Monitor,
   Edit,
@@ -133,7 +146,7 @@ import {
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
-const { isCyber, toggle } = useTheme()
+const { themes, activeTheme, setTheme } = useTheme()
 
 defineProps<{
   breadcrumbParts: string[]

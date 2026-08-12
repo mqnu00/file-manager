@@ -179,11 +179,26 @@ export interface FrontendApi {
 
 // ==================== Composable 类型 ====================
 
+/** 主题定义（registerTheme 入参） */
+export interface ThemeDefinition {
+  /** 主题唯一标识，同时作为 localStorage 持久化值 */
+  name: string
+  /** 下拉框显示名称 */
+  label: string
+  /** 应用到 <html> 的类；light 为 ''（:root 即白天，无类） */
+  className: string
+  /** 可选主题样式文本，提供则由主项目注入 <style data-theme="name"> */
+  css?: string
+}
+
 /** useTheme 返回类型 */
 export interface ThemeComposable {
-  isDark: Ref<boolean>
-  toggleTheme(): void
+  themes: Ref<ThemeDefinition[]>
+  activeTheme: Ref<ThemeDefinition>
+  /** 是否为赛博主题（控制 SciFiBackground 等赛博特效显示） */
+  isCyber: Ref<boolean>
   setTheme(theme: string): void
+  registerTheme(def: ThemeDefinition): void
 }
 
 /** useContextMenu 返回类型 */
