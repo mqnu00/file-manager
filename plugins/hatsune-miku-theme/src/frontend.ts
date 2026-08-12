@@ -114,6 +114,452 @@ html.hatsune-miku {
   --el-color-danger: #f40303;
 }
 
+/* ===== Element Plus 组件暗色覆盖（移植自主项目 html.cyber，色值适配本主题） ===== */
+
+html.hatsune-miku .el-dialog {
+  --el-dialog-bg-color: var(--app-panel-solid);
+  --el-dialog-box-shadow: var(--app-glow), 0 8px 32px rgb(0 0 0 / 40%);
+
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-dialog__header {
+  border-bottom: 1px solid var(--app-border) !important;
+  padding: 16px 20px !important;
+}
+
+html.hatsune-miku .el-dialog__title {
+  color: var(--app-accent) !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgb(0 242 255 / 30%);
+}
+
+html.hatsune-miku .el-dialog__body {
+  color: var(--app-text) !important;
+  padding: 20px !important;
+}
+
+html.hatsune-miku .el-dialog__footer {
+  border-top: 1px solid var(--app-border) !important;
+  padding: 12px 20px !important;
+}
+
+html.hatsune-miku .el-dialog__headerbtn .el-dialog__close {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-dialog__headerbtn .el-dialog__close:hover {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button {
+  --el-button-text-color: var(--app-accent);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--app-border);
+  --el-button-hover-text-color: var(--app-accent);
+  --el-button-hover-bg-color: rgb(0 242 255 / 8%);
+  --el-button-hover-border-color: var(--app-accent);
+  --el-button-active-text-color: var(--app-accent);
+  --el-button-active-bg-color: rgb(0 242 255 / 12%);
+  --el-button-active-border-color: var(--app-accent);
+
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+
+html.hatsune-miku .el-button--default {
+  background: transparent !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--default:hover {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 10px rgb(0 242 255 / 20%);
+}
+
+html.hatsune-miku .el-button--primary {
+  --el-button-bg-color: rgb(0 242 255 / 15%);
+  --el-button-border-color: var(--app-accent);
+  --el-button-text-color: var(--app-accent);
+  --el-button-hover-bg-color: rgb(0 242 255 / 25%);
+  --el-button-hover-border-color: var(--app-accent);
+
+  background: rgb(0 242 255 / 15%) !important;
+  border-color: var(--app-accent) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--primary:hover {
+  box-shadow: 0 0 16px rgb(0 242 255 / 30%);
+}
+
+html.hatsune-miku .el-button--success {
+  --el-button-bg-color: rgb(0 255 100 / 12%);
+  --el-button-border-color: rgb(0 255 100 / 40%);
+
+  background: rgb(0 255 100 / 12%) !important;
+  border-color: rgb(0 255 100 / 40%) !important;
+  color: #00ff64 !important;
+}
+
+html.hatsune-miku .el-button--danger {
+  --el-button-bg-color: rgb(244 3 3 / 12%);
+  --el-button-border-color: rgb(244 3 3 / 40%);
+
+  background: rgb(244 3 3 / 12%) !important;
+  border-color: rgb(244 3 3 / 40%) !important;
+  color: #f40303 !important;
+}
+
+html.hatsune-miku .el-button--danger:hover {
+  box-shadow: 0 0 12px rgb(244 3 3 / 25%);
+}
+
+html.hatsune-miku .el-button--warning {
+  --el-button-bg-color: rgb(255 160 0 / 12%);
+  --el-button-border-color: rgb(255 160 0 / 40%);
+
+  background: rgb(255 160 0 / 12%) !important;
+  border-color: rgb(255 160 0 / 40%) !important;
+  color: #ffa000 !important;
+}
+
+html.hatsune-miku .el-input__wrapper {
+  background: var(--app-input-bg) !important;
+  border: 1px solid var(--app-border) !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+html.hatsune-miku .el-input__wrapper:hover {
+  border-color: rgb(0 242 255 / 40%) !important;
+}
+
+html.hatsune-miku .el-input__inner {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-input__inner::placeholder {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-message {
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-message--success {
+  --el-message-bg-color: rgb(0 255 100 / 10%);
+  --el-message-border-color: rgb(0 255 100 / 30%);
+  --el-message-text-color: #00ff64;
+}
+
+html.hatsune-miku .el-message--warning {
+  --el-message-bg-color: rgb(255 160 0 / 10%);
+  --el-message-border-color: rgb(255 160 0 / 30%);
+  --el-message-text-color: #ffa000;
+}
+
+html.hatsune-miku .el-message--error {
+  --el-message-bg-color: rgb(244 3 3 / 10%);
+  --el-message-border-color: rgb(244 3 3 / 30%);
+  --el-message-text-color: #f40303;
+}
+
+html.hatsune-miku .el-message--info {
+  --el-message-bg-color: rgb(0 242 255 / 8%);
+  --el-message-border-color: var(--app-border);
+  --el-message-text-color: var(--app-text);
+}
+
+html.hatsune-miku .el-message-box {
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-message-box__title {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-message-box__message {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-message-box__headerbtn .el-message-box__close {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-progress-bar__outer {
+  background: rgb(0 242 255 / 6%) !important;
+  border-radius: 4px !important;
+}
+
+html.hatsune-miku .el-progress-bar__inner {
+  background: linear-gradient(90deg, var(--app-accent), #0080ff) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 8px rgb(0 242 255 / 40%);
+}
+
+html.hatsune-miku .el-tree {
+  background: transparent !important;
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-tree-node__content:hover {
+  background: var(--app-accent-bg-hover) !important;
+}
+
+html.hatsune-miku .el-tree-node:focus > .el-tree-node__content {
+  background-color: var(--app-accent-bg-hover) !important;
+}
+
+html.hatsune-miku .el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+  background: var(--app-accent-bg-hover) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-tree-node__expand-icon {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-tree-node__expand-icon.is-leaf {
+  color: transparent !important;
+}
+
+/* el-select 触发器 */
+html.hatsune-miku .el-select__wrapper {
+  background: var(--app-input-bg) !important;
+  box-shadow: 0 0 0 1px var(--app-border) inset !important;
+}
+
+html.hatsune-miku .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px rgb(0 242 255 / 40%) inset !important;
+}
+
+html.hatsune-miku .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--app-accent) inset !important;
+}
+
+/* el-select 内容文字 */
+html.hatsune-miku .el-select__placeholder {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-select__selected-item {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-select__caret {
+  color: var(--app-accent) !important;
+}
+
+/* el-select 下拉菜单 */
+html.hatsune-miku .el-select-dropdown {
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-select-dropdown__item {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-select-dropdown__item.is-hovering {
+  background: var(--app-accent-bg-hover) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-select-dropdown__item.is-selected {
+  color: var(--app-accent) !important;
+  font-weight: 600;
+}
+
+html.hatsune-miku .el-loading-spinner .circular {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-loading-spinner .el-loading-text {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-track {
+  background: rgb(10 10 14 / 50%);
+  border-radius: 3px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-thumb {
+  background: rgb(0 242 255 / 25%);
+  border-radius: 3px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-thumb:hover {
+  background: rgb(0 242 255 / 40%);
+}
+
+/* el-card */
+html.hatsune-miku .el-card {
+  --el-card-bg-color: var(--app-panel-solid);
+
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+/* el-divider 分割线 */
+html.hatsune-miku .el-divider {
+  border-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-divider__text {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text-dim) !important;
+}
+
+/* el-input-number 数字输入框 */
+html.hatsune-miku .el-input-number .el-input-number__decrease,
+html.hatsune-miku .el-input-number .el-input-number__increase {
+  background: var(--app-input-bg) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-input-number .el-input-number__decrease:hover,
+html.hatsune-miku .el-input-number .el-input-number__increase:hover {
+  color: var(--app-accent) !important;
+}
+
+/* el-tag 标签 */
+html.hatsune-miku .el-tag--danger {
+  --el-tag-bg-color: rgb(244 3 3 / 12%);
+  --el-tag-border-color: rgb(244 3 3 / 40%);
+  --el-tag-text-color: #f40303;
+}
+
+html.hatsune-miku .el-tag--info {
+  --el-tag-bg-color: rgb(0 242 255 / 10%);
+  --el-tag-border-color: rgb(0 242 255 / 30%);
+  --el-tag-text-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-tag--warning {
+  --el-tag-bg-color: rgb(255 165 0 / 12%);
+  --el-tag-border-color: rgb(255 165 0 / 40%);
+  --el-tag-text-color: #ffa500;
+}
+
+/* el-pagination */
+html.hatsune-miku .el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--app-text);
+  --el-pagination-button-bg-color: var(--app-panel-solid);
+  --el-pagination-button-color: var(--app-text);
+  --el-pagination-hover-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-pagination .el-pager li {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+html.hatsune-miku .el-pagination .el-pager li.is-active {
+  background: var(--app-accent-bg) !important;
+  color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-pagination .btn-prev,
+html.hatsune-miku .el-pagination .btn-next {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+/* el-table */
+html.hatsune-miku .el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--app-panel-solid);
+  --el-table-header-text-color: var(--app-text);
+  --el-table-text-color: var(--app-text);
+  --el-table-border-color: var(--app-border);
+  --el-table-row-hover-bg-color: var(--app-accent-bg);
+  --el-table-current-row-bg-color: var(--app-accent-bg);
+  --el-table-expanded-cell-bg-color: transparent;
+}
+
+html.hatsune-miku .el-table th.el-table__cell {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-table td.el-table__cell {
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: rgb(10 10 14 / 50%) !important;
+}
+
+html.hatsune-miku .el-table__empty-text {
+  color: var(--app-text-dim) !important;
+}
+
+/* el-table 选中行 */
+html.hatsune-miku .el-table__row.current > td {
+  background: var(--app-accent-bg) !important;
+}
+
+html.hatsune-miku .el-table__row.current > td .cell {
+  color: var(--app-accent) !important;
+}
+
+/* el-loading mask 全局加载遮罩 */
+html.hatsune-miku .el-loading-mask {
+  background: var(--app-mask-bg) !important;
+}
+
+/* el-form-item 表单标签 */
+html.hatsune-miku .el-form-item__label {
+  color: var(--app-text) !important;
+}
+
+/* el-button text 文字按钮 */
+html.hatsune-miku .el-button--text {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--text:hover {
+  color: var(--app-accent) !important;
+  text-shadow: var(--app-text-glow-hover);
+}
+
+html.hatsune-miku .el-button.is-text:not(.is-disabled):hover {
+  background-color: var(--app-accent-bg-hover) !important;
+}
+
+/* 浏览器自动填充背景覆盖 */
+html.hatsune-miku input:-webkit-autofill,
+html.hatsune-miku input:-webkit-autofill:hover,
+html.hatsune-miku input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
+  -webkit-text-fill-color: var(--app-text-bright) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 /* 整体背景图：默认使用 --miku-bg，用户在插件主页切换后以 html 内联变量覆盖；
    深色半透明渐变叠加保证前景文字可读性 */
 html.hatsune-miku body {
