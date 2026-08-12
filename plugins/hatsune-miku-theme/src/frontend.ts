@@ -8,51 +8,59 @@
  * 配色改编自 DB_Hatsune-Miku-Theme（Discord 初音未来主题）：
  *   https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme
  * 深黑蓝背景 + 青绿霓虹高亮（#00f2ff / #0abdc6）+ 蓝/红粉点缀。
- * 整体背景图取自 DB_Hatsune-Miku-Theme/media（logo3.png 除外），
- * 可在插件主页（/plugin/hatsune-miku-theme）切换，选择按浏览器持久化。
+ * 图片静态资源（内置背景图 + logo + 用户上传背景图）由插件后端
+ * /api/hatsune-miku-theme 提供，不依赖主项目 /plugins-assets。
  *
  * 类型由 @mqn00/file-manager/plugin/frontend 提供。
  */
 
 import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/frontend'
 
-/** 静态资源前缀：/plugins-assets/<短名>/assets/ 由主项目静态服务提供 */
-const ASSETS_URL = '/plugins-assets/hatsune-miku-theme/assets'
-const LOGO_URL = `${ASSETS_URL}/logo.png`
-const BG_URL_PREFIX = `${ASSETS_URL}/bg`
+/** 插件后端 API 前缀（图片静态资源由插件自己提供） */
+const API_BASE = '/api/hatsune-miku-theme'
+const LOGO_URL = `${API_BASE}/logo`
 
 /** localStorage 键：用户选择的背景图（与主题存储机制一致，按浏览器持久化） */
 const STORAGE_KEY_BG = 'hatsune-miku-theme-bg'
 
-/** 可选背景图（来自 DB_Hatsune-Miku-Theme/media，logo3.png 不适合做背景故排除） */
-const BACKGROUNDS = [
-  { id: 'f3DwR01P.png', label: 'f3DwR01P.png', url: `${BG_URL_PREFIX}/f3DwR01P.png` },
-  { id: 'o_1dmto233h1ap1grj1kn511qn1oim1o.jpg', label: 'o_1dmto233h1ap1grj1kn511qn1oim1o.jpg', url: `${BG_URL_PREFIX}/o_1dmto233h1ap1grj1kn511qn1oim1o.jpg` },
-]
-const DEFAULT_BG_ID = BACKGROUNDS[0].id
+/** 内置背景图（来自 DB_Hatsune-Miku-Theme/media，logo3.png 不适合做背景故排除） */
+const BUILTIN_BG_FILES = ['f3DwR01P.png', 'o_1dmto233h1ap1grj1kn511qn1oim1o.jpg']
+const DEFAULT_BG_ID = BUILTIN_BG_FILES[0]
 
-/** 根据 id 查找背景定义；未知 id 回退默认 */
-function findBackground(id: string | null): (typeof BACKGROUNDS)[number] {
-  return BACKGROUNDS.find((b) => b.id === id) ?? BACKGROUNDS[0]
+interface BackgroundInfo {
+  id: string
+  label: string
+  url: string
+  builtin: boolean
+}
+
+/** 后端不可用时的兜底列表（仅内置图） */
+function builtinFallback(): BackgroundInfo[] {
+  return BUILTIN_BG_FILES.map((f) => ({ id: f, label: f, url: `${API_BASE}/bg/${f}`, builtin: true }))
+}
+
+/** 根据 id 查找背景定义；未知 id 回退列表第一项 */
+function findBackground(bgs: BackgroundInfo[], id: string | null): BackgroundInfo {
+  return bgs.find((b) => b.id === id) ?? bgs[0]
 }
 
 /** 读取当前生效的背景 id（未选择或损坏时返回默认） */
-function currentBackgroundId(): string {
+function currentBackgroundId(bgs: BackgroundInfo[]): string {
   let stored: string | null = null
   try {
     stored = localStorage.getItem(STORAGE_KEY_BG)
   } catch {
     // localStorage not available
   }
-  return findBackground(stored).id
+  return findBackground(bgs, stored).id
 }
 
 /**
  * 应用背景图：写入 localStorage 并通过 html 内联 --miku-bg 覆盖主题 CSS 默认值。
  * 选择默认图时清除内联属性，由主题 CSS 中的默认 URL 生效。
  */
-function applyBackground(id: string): void {
-  const bg = findBackground(id)
+function applyBackground(id: string, bgs: BackgroundInfo[]): void {
+  const bg = findBackground(bgs, id)
   try {
     localStorage.setItem(STORAGE_KEY_BG, bg.id)
   } catch {
@@ -67,7 +75,7 @@ function applyBackground(id: string): void {
 
 const THEME_CSS = `
 html.hatsune-miku {
-  --miku-bg: url('${BACKGROUNDS[0].url}');
+  --miku-bg: url('${API_BASE}/bg/${DEFAULT_BG_ID}');
   --app-bg: #040405;
   --app-panel: rgb(10 10 14 / 55%);
   --app-panel-solid: #0a0a0f;
@@ -143,8 +151,11 @@ const PAGE_CSS = `
 .miku-bg-item:hover { border-color: var(--app-accent); }
 .miku-bg-item.active { border-color: var(--app-accent); box-shadow: var(--app-glow); }
 .miku-bg-thumb { width: 100%; height: 120px; object-fit: cover; display: block; }
-.miku-bg-name { font-size: 12px; color: var(--app-text-dim); padding: 6px 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.miku-bg-name { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; color: var(--app-text-dim); padding: 4px 8px; }
+.miku-bg-name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .miku-bg-item.active .miku-bg-name { color: var(--app-accent); }
+.miku-bg-upload { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.miku-bg-upload-tip { font-size: 12px; color: var(--app-text-dim); }
 `
 
 function injectPageStyles(): void {
@@ -155,9 +166,9 @@ function injectPageStyles(): void {
   document.head.appendChild(style)
 }
 
-export const install: FrontendPluginInstallFunction = (ctx) => {
+export const install: FrontendPluginInstallFunction = async (ctx) => {
   const { h, ref, defineComponent } = ctx.Vue
-  const { ElButton, ElDivider, ElMessage } = ctx.ElementPlus
+  const { ElButton, ElDivider, ElMessage, ElMessageBox } = ctx.ElementPlus
 
   ctx.composables.useTheme().registerTheme({
     name: 'hatsune-miku',
@@ -166,21 +177,90 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     css: THEME_CSS,
   })
 
-  // 恢复用户上次选择的背景图（默认图无需内联覆盖）
-  applyBackground(currentBackgroundId())
-
   injectPageStyles()
 
-  // 插件主页：背景图切换
+  /** 背景列表（内置 + 自定义），失败时保持内置兜底 */
+  const backgrounds = ref<BackgroundInfo[]>(builtinFallback())
+
+  async function refreshBackgrounds(): Promise<void> {
+    try {
+      const res = await ctx.api.instance.get('/hatsune-miku-theme/backgrounds')
+      const list = res.data?.backgrounds
+      if (Array.isArray(list) && list.length > 0) {
+        backgrounds.value = list
+      }
+    } catch {
+      // 后端不可用：保持内置兜底列表
+    }
+  }
+
+  // 恢复用户上次选择的背景图（默认图无需内联覆盖）
+  await refreshBackgrounds()
+  applyBackground(currentBackgroundId(backgrounds.value), backgrounds.value)
+
+  // 插件主页：背景图切换 + 自定义背景上传/删除
   const BackgroundView = defineComponent({
     name: 'HatsuneMikuThemeView',
     setup() {
-      const selectedId = ref(currentBackgroundId())
+      const selectedId = ref(currentBackgroundId(backgrounds.value))
+      const uploading = ref(false)
+      const fileInputRef = ref<HTMLInputElement | null>(null)
 
       function select(id: string) {
-        applyBackground(id)
+        applyBackground(id, backgrounds.value)
         selectedId.value = id
         ElMessage.success('背景图已切换')
+      }
+
+      async function handleFileChange(event: Event) {
+        const input = event.target as HTMLInputElement
+        const file = input.files?.[0]
+        input.value = ''
+        if (!file) return
+        const formData = new FormData()
+        formData.append('file', file)
+        uploading.value = true
+        try {
+          const res = await ctx.api.instance.post('/hatsune-miku-theme/backgrounds', formData)
+          const uploaded = res.data as { id?: string; url?: string }
+          ElMessage.success('背景图已上传')
+          await refreshBackgrounds()
+          if (uploaded?.id) {
+            applyBackground(uploaded.id, backgrounds.value)
+            selectedId.value = uploaded.id
+          }
+        } catch (err: unknown) {
+          const msg =
+            err && typeof err === 'object' && 'response' in err
+              ? ((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? '上传失败')
+              : '上传失败'
+          ElMessage.error(msg)
+        } finally {
+          uploading.value = false
+        }
+      }
+
+      async function confirmDelete(bg: BackgroundInfo) {
+        try {
+          await ElMessageBox.confirm(`确定删除背景图 "${bg.label}" 吗？`, '删除确认', {
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            type: 'warning',
+          })
+        } catch {
+          return // 用户取消
+        }
+        try {
+          await ctx.api.instance.delete(`/hatsune-miku-theme/backgrounds/${encodeURIComponent(bg.id)}`)
+          ElMessage.success('背景图已删除')
+          if (selectedId.value === bg.id) {
+            applyBackground(DEFAULT_BG_ID, backgrounds.value)
+            selectedId.value = DEFAULT_BG_ID
+          }
+          await refreshBackgrounds()
+        } catch {
+          ElMessage.error('删除失败')
+        }
       }
 
       return () => {
@@ -193,20 +273,46 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
         const m: any[] = []
         m.push(h('div', { class: 'miku-bg-header' }, [h('h3', { class: 'miku-bg-title' }, '初音未来主题')]))
-        m.push(h('p', { class: 'miku-bg-sub' }, '选择主界面背景图，切换后立即生效并自动保存。'))
-        m.push(
-          h(ElDivider, { contentPosition: 'left' }, () => h('span', { class: 'miku-bg-divider' }, '背景图')),
-          h('div', { class: 'miku-bg-grid' }, BACKGROUNDS.map((bg) => {
-            const active = bg.id === selectedId.value
-            return h('div', {
-              class: ['miku-bg-item', active ? 'active' : ''],
-              onClick: () => select(bg.id),
-            }, [
-              h('img', { class: 'miku-bg-thumb', src: bg.url, alt: bg.label, loading: 'lazy' }),
-              h('div', { class: 'miku-bg-name' }, bg.label),
-            ])
-          }))
-        )
+        m.push(h('p', { class: 'miku-bg-sub' }, '选择主界面背景图，切换后立即生效并自动保存。可上传自定义背景图。'))
+        m.push(h(ElDivider, { contentPosition: 'left' }, () => h('span', { class: 'miku-bg-divider' }, '背景图')))
+
+        const items = backgrounds.value.map((bg) => {
+          const active = bg.id === selectedId.value
+          const name = h('div', { class: 'miku-bg-name' }, [
+            h('span', bg.label),
+            bg.builtin
+              ? null
+              : h(ElButton, {
+                  size: 'small',
+                  text: true,
+                  type: 'danger',
+                  onClick: (e: MouseEvent) => {
+                    e.stopPropagation()
+                    confirmDelete(bg)
+                  },
+                }, () => '删除'),
+          ])
+          return h('div', {
+            class: ['miku-bg-item', active ? 'active' : ''],
+            onClick: () => select(bg.id),
+          }, [
+            h('img', { class: 'miku-bg-thumb', src: bg.url, alt: bg.label, loading: 'lazy' }),
+            name,
+          ])
+        })
+        m.push(h('div', { class: 'miku-bg-grid' }, items))
+
+        m.push(h('div', { class: 'miku-bg-upload' }, [
+          h('input', {
+            ref: fileInputRef,
+            type: 'file',
+            accept: 'image/*',
+            style: { display: 'none' },
+            onChange: handleFileChange,
+          }),
+          h(ElButton, { type: 'primary', loading: uploading.value, onClick: () => fileInputRef.value?.click() }, () => '上传背景图'),
+          h('span', { class: 'miku-bg-upload-tip' }, '支持 png / jpg / webp / gif，最大 10MB'),
+        ]))
 
         children.push(h('div', { style: { padding: '20px 36px' } }, m))
         return h('div', { class: 'miku-bg-container' }, [h('div', { class: 'miku-bg-card' }, children)])

@@ -31,11 +31,15 @@
     "hatsune-miku",
     "miku"
   ],
+  "dependencies": {
+    "multer": "^1.4.5-lts.1"
+  },
   "peerDependencies": {
     "@mqn00/file-manager": "^3.0.0-beta5"
   },
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",
+    "@types/multer": "^2.1.0",
     "esbuild": "^0.28.1",
     "typescript": "^5.4.0"
   },
