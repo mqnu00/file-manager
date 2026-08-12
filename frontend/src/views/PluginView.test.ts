@@ -139,38 +139,44 @@ describe('PluginView.vue', () => {
   })
 
   it('搜索 → searchPlugins 结果渲染', async () => {
-    mockedSearchPlugins.mockResolvedValue([
-      {
-        name: '@mqn00/file-manager-plugin-smb',
-        version: '1.0.0',
-        description: 'SMB 共享插件',
-        publisher: 'mqn00',
-        date: '2026-01-01',
-        links: { npm: 'https://npmjs.com/x' },
-      },
-    ])
+    mockedSearchPlugins.mockResolvedValue({
+      total: 1,
+      results: [
+        {
+          name: '@mqn00/file-manager-plugin-smb',
+          version: '1.0.0',
+          description: 'SMB 共享插件',
+          publisher: 'mqn00',
+          date: '2026-01-01',
+          links: { npm: 'https://npmjs.com/x' },
+        },
+      ],
+    })
     const wrapper = await mountView()
     const searchInput = wrapper.get('input[placeholder="搜索 npm registry 中的插件…"]')
     await searchInput.setValue('smb')
     await searchInput.trigger('keyup.enter')
     await flushPromises()
-    expect(mockedSearchPlugins).toHaveBeenCalledWith('smb')
+    expect(mockedSearchPlugins).toHaveBeenCalledWith('smb', 1, 20)
     expect(wrapper.text()).toContain('@mqn00/file-manager-plugin-smb')
     expect(wrapper.text()).toContain('SMB 共享插件')
   })
 
   it('搜索：已安装插件的版本下拉框传入当前版本', async () => {
     // @mqn00/file-manager-plugin-smb 的 shortName 为 smb，已安装插件 smb 版本 1.2.0
-    mockedSearchPlugins.mockResolvedValue([
-      {
-        name: '@mqn00/file-manager-plugin-smb',
-        version: '3.0.0',
-        description: 'SMB 共享插件',
-        publisher: 'mqn00',
-        date: '2026-01-01',
-        links: { npm: 'https://npmjs.com/x' },
-      },
-    ])
+    mockedSearchPlugins.mockResolvedValue({
+      total: 1,
+      results: [
+        {
+          name: '@mqn00/file-manager-plugin-smb',
+          version: '3.0.0',
+          description: 'SMB 共享插件',
+          publisher: 'mqn00',
+          date: '2026-01-01',
+          links: { npm: 'https://npmjs.com/x' },
+        },
+      ],
+    })
     const wrapper = await mountView()
     const searchInput = wrapper.get('input[placeholder="搜索 npm registry 中的插件…"]')
     await searchInput.setValue('smb')
@@ -180,5 +186,56 @@ describe('PluginView.vue', () => {
     const select = wrapper.find('.pvs-stub')
     expect(select.attributes('data-pkg')).toBe('@mqn00/file-manager-plugin-smb')
     expect(select.attributes('data-installed-version')).toBe('1.2.0')
+  })
+
+  it('搜索：结果超过一页时渲染分页组件，翻页触发带 page 的请求', async () => {
+    const items = Array.from({ length: 20 }, (_, i) => ({
+      name: `file-manager-plugin-p${i}`,
+      version: '1.0.0',
+      description: `插件 ${i}`,
+      publisher: 'mqn00',
+      date: '2026-01-01',
+      links: { npm: 'https://npmjs.com/x' },
+    }))
+    mockedSearchPlugins.mockResolvedValue({ total: 45, results: items })
+    const wrapper = await mountView()
+    const searchInput = wrapper.get('input[placeholder="搜索 npm registry 中的插件…"]')
+    await searchInput.setValue('smb')
+    await searchInput.trigger('keyup.enter')
+    await flushPromises()
+
+    const pagination = wrapper.getComponent({ name: 'ElPagination' })
+    pagination.vm.$emit('update:current-page', 2)
+    pagination.vm.$emit('current-change', 2)
+    await flushPromises()
+    expect(mockedSearchPlugins).toHaveBeenLastCalledWith('smb', 2, 20)
+
+    // 每页条数变化：页码重置为 1
+    pagination.vm.$emit('update:page-size', 50)
+    pagination.vm.$emit('size-change', 50)
+    await flushPromises()
+    expect(mockedSearchPlugins).toHaveBeenLastCalledWith('smb', 1, 50)
+  })
+
+  it('搜索：结果不足一页时不渲染分页组件', async () => {
+    mockedSearchPlugins.mockResolvedValue({
+      total: 3,
+      results: [
+        {
+          name: '@mqn00/file-manager-plugin-smb',
+          version: '1.0.0',
+          description: 'SMB 共享插件',
+          publisher: 'mqn00',
+          date: '2026-01-01',
+          links: { npm: 'https://npmjs.com/x' },
+        },
+      ],
+    })
+    const wrapper = await mountView()
+    const searchInput = wrapper.get('input[placeholder="搜索 npm registry 中的插件…"]')
+    await searchInput.setValue('smb')
+    await searchInput.trigger('keyup.enter')
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'ElPagination' }).exists()).toBe(false)
   })
 })

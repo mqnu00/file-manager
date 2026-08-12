@@ -43,10 +43,21 @@ describe('api/plugins', () => {
     expect(mockedApi.post).toHaveBeenCalledWith('/plugins/test/unload')
   })
 
-  it('searchPlugins 调用 GET /plugins/search 并携带 q 参数', async () => {
-    mockedApi.get.mockResolvedValue({ data: [] })
+  it('searchPlugins 调用 GET /plugins/search 并携带 q/page/pageSize 参数', async () => {
+    mockedApi.get.mockResolvedValue({ data: { total: 45, results: [] } })
+    const res = await searchPlugins('smb', 2, 10)
+    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/search', {
+      params: { q: 'smb', page: 2, pageSize: 10 },
+    })
+    expect(res.total).toBe(45)
+  })
+
+  it('searchPlugins 默认 page=1 pageSize=20', async () => {
+    mockedApi.get.mockResolvedValue({ data: { total: 0, results: [] } })
     await searchPlugins('smb')
-    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/search', { params: { q: 'smb' } })
+    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/search', {
+      params: { q: 'smb', page: 1, pageSize: 20 },
+    })
   })
 
   it('getPluginVersions 调用 GET /plugins/versions 并携带 name 参数', async () => {

@@ -113,16 +113,20 @@ function deriveShortName(packageName: string): string {
 // 搜索 npm registry 中的 file-manager-plugin 包
 router.get('/search', authMiddleware, async (req: Request, res: Response) => {
   const q = (req.query.q as string) || ''
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1)
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string, 10) || 20))
   const keyword = 'file-manager-plugin'
   const query = q ? `keywords:${keyword}+${encodeURIComponent(q)}` : `keywords:${keyword}`
+  const from = (page - 1) * pageSize
 
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
 
-    const resp = await fetch(`https://registry.npmjs.org/-/v1/search?text=${query}&size=20`, {
-      signal: controller.signal,
-    })
+    const resp = await fetch(
+      `https://registry.npmjs.org/-/v1/search?text=${query}&size=${pageSize}&from=${from}`,
+      { signal: controller.signal }
+    )
     clearTimeout(timeout)
 
     if (!resp.ok) {
@@ -131,6 +135,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
     }
 
     const data = (await resp.json()) as {
+      total?: number
       objects?: Array<{
         package: {
           name: string
@@ -156,7 +161,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
       },
     }))
 
-    res.json(results)
+    res.json({ total: data.total ?? 0, results })
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
       res.status(504).json({ error: 'npm registry request timed out' })

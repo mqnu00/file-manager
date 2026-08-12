@@ -25,6 +25,11 @@ export interface NpmSearchResult {
   links: { npm: string; repository?: string; homepage?: string }
 }
 
+export interface NpmSearchResponse {
+  total: number
+  results: NpmSearchResult[]
+}
+
 export function getPlugins(): Promise<PluginInfo[]> {
   return api.get('/plugins').then((res) => res.data)
 }
@@ -37,8 +42,14 @@ export function unloadPlugin(name: string): Promise<void> {
   return api.post(`/plugins/${name}/unload`).then((res) => res.data)
 }
 
-export function searchPlugins(query: string): Promise<NpmSearchResult[]> {
-  return api.get('/plugins/search', { params: { q: query } }).then((res) => res.data)
+export function searchPlugins(
+  query: string,
+  page = 1,
+  pageSize = 20
+): Promise<NpmSearchResponse> {
+  return api
+    .get('/plugins/search', { params: { q: query, page, pageSize } })
+    .then((res) => res.data)
 }
 
 export interface PluginVersions {

@@ -82,6 +82,7 @@ describe('插件 API（集成）', () => {
       ok: true,
       status: 200,
       json: async () => ({
+        total: 1,
         objects: [
           {
             package: {
@@ -101,14 +102,54 @@ describe('插件 API（集成）', () => {
       .query({ q: 'smb' })
       .set('Authorization', authHeader)
     expect(res.status).toBe(200)
-    expect(res.body[0]).toMatchObject({
+    expect(res.body.total).toBe(1)
+    expect(res.body.results[0]).toMatchObject({
       name: 'file-manager-plugin-smb',
       version: '1.2.0',
       publisher: 'mqn00',
     })
-    // 请求携带 keywords:file-manager-plugin 查询
+    // 请求携带 keywords:file-manager-plugin 查询，默认 size=20 & from=0
     const searchUrl = fetchMock.mock.calls[0][0] as string
     expect(searchUrl).toContain('keywords:file-manager-plugin')
+    expect(searchUrl).toContain('size=20')
+    expect(searchUrl).toContain('from=0')
+  })
+
+  it('GET /search：page/pageSize 参数映射为 size/from 偏移并透传 total', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        total: 45,
+        objects: [],
+      }),
+    })
+    const res = await request(app)
+      .get('/api/plugins/search')
+      .query({ q: 'smb', page: '2', pageSize: '10' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(200)
+    expect(res.body.total).toBe(45)
+    expect(res.body.results).toEqual([])
+    const searchUrl = fetchMock.mock.calls[0][0] as string
+    expect(searchUrl).toContain('size=10')
+    expect(searchUrl).toContain('from=10')
+  })
+
+  it('GET /search：pageSize 超上限被 clamp 到 100，非法 page 回落默认', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ total: 0, objects: [] }),
+    })
+    const res = await request(app)
+      .get('/api/plugins/search')
+      .query({ q: 'smb', page: '0', pageSize: '9999' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(200)
+    const searchUrl = fetchMock.mock.calls[0][0] as string
+    expect(searchUrl).toContain('size=100')
+    expect(searchUrl).toContain('from=0')
   })
 
   it('GET /search：registry 非 2xx → 502', async () => {

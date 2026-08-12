@@ -167,6 +167,18 @@
               description="未找到匹配的插件"
               :image-size="100"
             />
+
+            <div v-if="searchTotal > pageSize" class="pagination-wrapper">
+              <el-pagination
+                v-model:current-page="currentPage"
+                v-model:page-size="pageSize"
+                :total="searchTotal"
+                :page-sizes="[20, 50, 100]"
+                layout="total, sizes, prev, pager, next"
+                @current-change="fetchSearch"
+                @size-change="handleSizeChange"
+              />
+            </div>
           </el-tab-pane>
         </el-tabs>
 
@@ -209,6 +221,9 @@ const searchQuery = ref('')
 const searching = ref(false)
 const searched = ref(false)
 const searchResults = ref<NpmSearchResult[]>([])
+const searchTotal = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(20)
 const installing = ref<string | null>(null)
 const installVersions = ref<Record<string, string>>({})
 const forceInstall = ref(false)
@@ -313,12 +328,25 @@ async function handleSearch() {
   if (!searchQuery.value.trim()) {
     searchResults.value = []
     searched.value = false
+    searchTotal.value = 0
     return
   }
+  currentPage.value = 1
+  await fetchSearch()
+}
+
+function handleSizeChange() {
+  currentPage.value = 1
+  fetchSearch()
+}
+
+async function fetchSearch() {
   searching.value = true
   searched.value = false
   try {
-    searchResults.value = await searchPlugins(searchQuery.value.trim())
+    const res = await searchPlugins(searchQuery.value.trim(), currentPage.value, pageSize.value)
+    searchResults.value = res.results
+    searchTotal.value = res.total
     // 初始化版本号
     const versions: Record<string, string> = {}
     for (const item of searchResults.value) {
@@ -493,6 +521,12 @@ function formatDate(dateStr: string): string {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .search-result-item {
