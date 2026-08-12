@@ -10,6 +10,7 @@ File Manager 主题插件：**初音未来（Hatsune Miku）**青绿霓虹风格
 - 整体背景图取自 [DB_Hatsune-Miku-Theme](https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme) 的 `media/` 目录（`logo3.png` 除外），默认 `f3DwR01P.png`
 - **图片静态资源由插件后端提供**（`/api/hatsune-miku-theme`，不依赖主项目 `/plugins-assets`）：内置背景图、登录卡片 logo、用户上传的背景图
 - 插件主页（插件管理 → 打开页面）可选择背景图、**上传自定义背景图**、删除自定义背景，切换立即生效并按浏览器持久化
+- 插件主页可配置**面板黑色半透明程度**（0-100%，默认 55%）与**面板背景模糊度**（0-30px，默认 4px），拖动实时预览，点击「保存面板效果」后生效并按浏览器持久化
 - 登录卡片内"文件管理器"标题上方显示初音 logo（`assets/logo.png`，来自 [DB_Hatsune-Miku-Theme](https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme)）
 - 安装插件后，主项目工具栏主题下拉框自动出现**「初音未来」**选项，切换即生效并持久化
 
@@ -63,6 +64,12 @@ plugins/hatsune-miku-theme/
   - 点击缩略图切换背景图；选择存入 `localStorage`（键 `hatsune-miku-theme-bg`），刷新后保持，仅在当前浏览器生效
   - 「上传背景图」支持 png/jpg/webp/gif、最大 10MB；文件保存至 `~/.file-manager/hatsune-miku-theme/`（与主项目生产数据目录一致，插件重装/升级不丢）
   - 自定义背景可删除（内置背景不可删），删除当前使用中的背景会自动回退默认图
+- 面板效果：插件主页「面板效果」区**先预览后保存**：
+  - 面板黑色半透明程度（0-100%，默认 55%）与面板背景模糊度（0-30px，默认 4px）
+  - 拖动滑块实时预览（当前卡片即预览，主界面工具栏/文件表格/登录卡片同步变化）
+  - 点击「保存面板效果」后才真正生效并持久化（分别存入 `localStorage` 键 `hatsune-miku-theme-panel-opacity` / `hatsune-miku-theme-panel-blur`）；有未保存修改时按钮可用并显示提示，离开页面未保存的预览自动还原
+  - 透明度/模糊度仅作用于本主题，切换赛博/白天等其他主题自动恢复各自默认效果，互不影响
+  - 背景图切换仍为点击立即生效，无需保存
 - 后端接口：
   - `GET /backgrounds` 背景列表（内置 + 自定义）
   - `POST /backgrounds`（需登录）上传自定义背景，multipart 字段 `file`
@@ -74,7 +81,7 @@ plugins/hatsune-miku-theme/
 
 | 用途 | 色值 |
 |---|---|
-| 背景（深黑） | `#040405`，面板为黑色半透明 |
+| 背景（深黑） | `#040405`，面板为黑色半透明（默认 55% 可调 0-100%）+ 背景模糊（默认 4px 可调 0-30px，均插件主页可调） |
 | 主色（青） | `#00f2ff`（主强调/按钮/文字 glow） |
 | 次色（青绿 teal） | `#0abdc6`（边框/hover/填充/滚动条） |
 | 辅助（蓝） | `#03a9f4`（进度渐变尾色） |
@@ -82,4 +89,4 @@ plugins/hatsune-miku-theme/
 | 次级文本（青蓝） | `#6fb3c6` |
 | 文本 | `#ffffff` / `#dcddde` |
 
-> logo 与背景图版权归 [Hatsune-Mikun/DB_Hatsune-Miku-Theme](https://github.com/Hatsune-Mikun/DB_Hatsune-Miku-Theme) 作者所有，仅作主题装饰用途。
+> logo 与背景图版权归原作者所有，仅作主题装饰用途。
