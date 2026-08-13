@@ -1,0 +1,663 @@
+/* 初音未来主题样式。占位符 __MIKU_DEFAULT_BG_URL__ / __MIKU_LOGO_URL__ 由
+   frontend.ts 读入本文件后 replace 注入真实 URL（保持常量唯一来源）。 */
+html.hatsune-miku {
+  --miku-bg: url('__MIKU_DEFAULT_BG_URL__');
+  /* 初音特色色板（参考 DB_Hatsune-Miku-Theme）：主青 #00f2ff / 次青绿 #0abdc6 /
+     亮青 #00fff1 / 辅助蓝 #03a9f4 / 点缀粉 #e91e63 / 危险红 #f40303 */
+  --miku-cyan: #00f2ff;
+  --miku-teal: #0abdc6;
+  --miku-blue: #03a9f4;
+  --miku-pink: #e91e63;
+  --app-bg: #040405;
+  /* 面板黑色半透明程度（alpha 百分比），可在插件主页配置，默认 55% */
+  --app-panel-opacity: 55%;
+  --app-panel: rgb(0 0 0 / var(--app-panel-opacity));
+  --app-panel-solid: #040405;
+  --app-border: rgb(10 189 198 / 25%);
+  --app-shadow: 0 2px 8px rgb(0 0 0 / 60%);
+  --app-glow: 0 0 12px rgb(0 242 255 / 25%);
+  --app-text: #dcddde;
+  --app-text-dim: #6fb3c6;
+  --app-text-bright: #ffffff;
+  --app-accent: #00f2ff;
+  --app-accent-bg: rgb(10 189 198 / 10%);
+  --app-accent-bg-hover: rgb(10 189 198 / 16%);
+  --app-accent-bg-subtle: rgb(10 189 198 / 7%);
+  --app-accent-border: rgb(10 189 198 / 26%);
+  --app-accent-border-light: rgb(10 189 198 / 18%);
+  /* 输入控件背景 = 面板黑色半透明程度 + 20%（跟随用户配置，默认 55% + 20% = 75%） */
+  --app-input-bg: rgb(0 0 0 / calc(var(--app-panel-opacity) + 20%));
+  --app-table-header-bg: rgb(10 189 198 / 7%);
+  --app-table-header-border: rgb(10 189 198 / 20%);
+  --app-table-row-hover: rgb(10 189 198 / 7%);
+  --app-table-cell-border: rgb(10 189 198 / 9%);
+  --app-blur: blur(4px);
+  --app-text-shadow: none;
+  --app-text-glow: 0 0 6px rgb(0 242 255 / 45%);
+  --app-text-glow-hover: 0 0 12px rgb(0 242 255 / 70%);
+  --app-checkbox-border: rgb(0 242 255 / 35%);
+  --app-checkbox-shadow: 0 0 6px rgb(0 242 255 / 50%);
+  --app-mask-bg: rgb(4 4 5 / 70%);
+  --app-select-caret: #00f2ff;
+  --app-scrollbar-width: 6px;
+  --app-scrollbar-track: rgb(0 0 0 / 50%);
+  --app-scrollbar-thumb: rgb(10 189 198 / 35%);
+  --app-scrollbar-thumb-hover: rgb(0 242 255 / 50%);
+
+  /* Element Plus 主题变量覆盖 */
+  --el-color-primary-light-9: rgb(0 242 255 / 10%);
+  --el-color-danger: #f40303;
+}
+
+/* ===== Element Plus 组件暗色覆盖（移植自主项目 html.cyber，色值适配本主题） ===== */
+
+/* dialog 被 teleport 到 body，改用 background-attachment: fixed 把 body 同款背景层
+   按视口坐标铺到 dialog 上，透出「body 背景的对应位置」；最顶层叠一层 --app-panel
+   半透明黑保证文字可读，与 el-select 下拉面板 / 后台任务面板同一套视觉。 */
+html.hatsune-miku .el-dialog {
+  --el-dialog-bg-color: var(--app-bg);
+  --el-dialog-box-shadow: var(--app-glow), 0 8px 32px rgb(0 0 0 / 40%);
+
+  border: 1px solid var(--app-border) !important;
+  border-radius: 12px !important;
+  background-color: var(--app-bg);
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* dialog 进出场默认对 .el-overlay-dialog 做 translateY（transform），transform 会让
+   background-attachment: fixed 的镜像背景相对动画容器重定位并逐帧重绘，表现同
+   el-select 下拉：打开瞬间背景先错位再对齐。这里覆盖为纯淡入淡出、去掉 transform。 */
+html.hatsune-miku .dialog-fade-enter-active .el-overlay-dialog {
+  animation: miku-dialog-fade-in var(--el-transition-duration) !important;
+}
+
+html.hatsune-miku .dialog-fade-leave-active .el-overlay-dialog {
+  animation: miku-dialog-fade-out var(--el-transition-duration) !important;
+}
+
+@keyframes miku-dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes miku-dialog-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+html.hatsune-miku .el-dialog__header {
+  border-bottom: 1px solid var(--app-border) !important;
+  padding: 16px 20px !important;
+}
+
+html.hatsune-miku .el-dialog__title {
+  color: var(--app-accent) !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgb(0 242 255 / 30%);
+}
+
+html.hatsune-miku .el-dialog__body {
+  color: var(--app-text) !important;
+  padding: 20px !important;
+}
+
+html.hatsune-miku .el-dialog__footer {
+  border-top: 1px solid var(--app-border) !important;
+  padding: 12px 20px !important;
+}
+
+html.hatsune-miku .el-dialog__headerbtn .el-dialog__close {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-dialog__headerbtn .el-dialog__close:hover {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button {
+  --el-button-text-color: var(--app-accent);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--app-border);
+  --el-button-hover-text-color: var(--app-accent);
+  --el-button-hover-bg-color: rgb(10 189 198 / 14%);
+  --el-button-hover-border-color: var(--app-accent);
+  --el-button-active-text-color: var(--app-accent);
+  --el-button-active-bg-color: rgb(10 189 198 / 20%);
+  --el-button-active-border-color: var(--app-accent);
+
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+
+html.hatsune-miku .el-button--default {
+  background: transparent !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--default:hover {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 10px rgb(10 189 198 / 25%);
+}
+
+html.hatsune-miku .el-button--primary {
+  --el-button-bg-color: rgb(0 242 255 / 15%);
+  --el-button-border-color: var(--app-accent);
+  --el-button-text-color: var(--app-accent);
+  --el-button-hover-bg-color: rgb(0 242 255 / 25%);
+  --el-button-hover-border-color: var(--app-accent);
+
+  background: rgb(0 242 255 / 15%) !important;
+  border-color: var(--app-accent) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--primary:hover {
+  box-shadow: 0 0 16px rgb(0 242 255 / 30%);
+}
+
+html.hatsune-miku .el-button--success {
+  --el-button-bg-color: rgb(0 255 100 / 12%);
+  --el-button-border-color: rgb(0 255 100 / 40%);
+
+  background: rgb(0 255 100 / 12%) !important;
+  border-color: rgb(0 255 100 / 40%) !important;
+  color: #00ff64 !important;
+}
+
+html.hatsune-miku .el-button--danger {
+  --el-button-bg-color: rgb(244 3 3 / 12%);
+  --el-button-border-color: rgb(244 3 3 / 40%);
+
+  background: rgb(244 3 3 / 12%) !important;
+  border-color: rgb(244 3 3 / 40%) !important;
+  color: #f40303 !important;
+}
+
+html.hatsune-miku .el-button--danger:hover {
+  box-shadow: 0 0 12px rgb(244 3 3 / 25%);
+}
+
+html.hatsune-miku .el-button--warning {
+  --el-button-bg-color: rgb(255 160 0 / 12%);
+  --el-button-border-color: rgb(255 160 0 / 40%);
+
+  background: rgb(255 160 0 / 12%) !important;
+  border-color: rgb(255 160 0 / 40%) !important;
+  color: #ffa000 !important;
+}
+
+html.hatsune-miku .el-input__wrapper {
+  background: var(--app-input-bg) !important;
+  border: 1px solid var(--app-border) !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+html.hatsune-miku .el-input__wrapper:hover {
+  border-color: rgb(10 189 198 / 50%) !important;
+}
+
+html.hatsune-miku .el-input__inner {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-input__inner::placeholder {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-message {
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-message--success {
+  --el-message-bg-color: rgb(0 255 100 / 10%);
+  --el-message-border-color: rgb(0 255 100 / 30%);
+  --el-message-text-color: #00ff64;
+}
+
+html.hatsune-miku .el-message--warning {
+  --el-message-bg-color: rgb(255 160 0 / 10%);
+  --el-message-border-color: rgb(255 160 0 / 30%);
+  --el-message-text-color: #ffa000;
+}
+
+html.hatsune-miku .el-message--error {
+  --el-message-bg-color: rgb(244 3 3 / 10%);
+  --el-message-border-color: rgb(244 3 3 / 30%);
+  --el-message-text-color: #f40303;
+}
+
+html.hatsune-miku .el-message--info {
+  --el-message-bg-color: rgb(10 189 198 / 10%);
+  --el-message-border-color: var(--app-border);
+  --el-message-text-color: var(--app-text);
+}
+
+html.hatsune-miku .el-message-box {
+  background: var(--app-panel-solid) !important;
+  border: 1px solid var(--app-border) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+}
+
+html.hatsune-miku .el-message-box__title {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-message-box__message {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-message-box__headerbtn .el-message-box__close {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-progress-bar__outer {
+  background: rgb(10 189 198 / 8%) !important;
+  border-radius: 4px !important;
+}
+
+html.hatsune-miku .el-progress-bar__inner {
+  background: linear-gradient(90deg, #00f2ff, #03a9f4) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 8px rgb(0 242 255 / 40%);
+}
+
+html.hatsune-miku .el-tree {
+  background: transparent !important;
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-tree-node__content:hover {
+  background: var(--app-accent-bg-hover) !important;
+}
+
+html.hatsune-miku .el-tree-node:focus > .el-tree-node__content {
+  background-color: var(--app-accent-bg-hover) !important;
+}
+
+html.hatsune-miku .el-tree--highlight-current .el-tree-node.is-current > .el-tree-node__content {
+  background: var(--app-accent-bg-hover) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-tree-node__expand-icon {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-tree-node__expand-icon.is-leaf {
+  color: transparent !important;
+}
+
+/* el-select 触发器 */
+html.hatsune-miku .el-select__wrapper {
+  background: var(--app-input-bg) !important;
+  box-shadow: 0 0 0 1px var(--app-border) inset !important;
+}
+
+html.hatsune-miku .el-select__wrapper:hover {
+  box-shadow: 0 0 0 1px rgb(10 189 198 / 50%) inset !important;
+}
+
+html.hatsune-miku .el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--app-accent) inset !important;
+}
+
+/* el-select 内容文字 */
+html.hatsune-miku .el-select__placeholder {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-select__selected-item {
+  color: var(--app-text-bright) !important;
+}
+
+html.hatsune-miku .el-select__caret {
+  color: var(--app-accent) !important;
+}
+
+/* el-select 下拉菜单（EP 2.4+ 新结构）：外部 popper（.el-select__popper.el-popper）
+   是被 teleport 到 body 的独立元素，内部 .el-select-dropdown 只是透明容器，之前把
+   磨砂打在它上面只会透出 popper 自身的白色底（--el-bg-color-overlay），看不到磨砂。
+   这里改用 background-attachment: fixed 把 body 同款背景层按视口坐标铺到 popper 上，
+   让下拉面板透出「body 背景的对应位置」；最顶层叠一层 --app-panel 半透明黑保证文字
+   可读，并继续复用「面板黑色半透明程度」设置。 */
+html.hatsune-miku .el-select__popper.el-popper {
+  border: 1px solid var(--app-border) !important;
+  box-shadow: var(--app-glow), var(--app-shadow);
+  background-color: var(--app-bg);
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* 下拉展开动画默认是 scaleY 缩放（transform）。transform 会让 background-attachment:
+   fixed 的镜像背景相对 popper 重新定位，并在动画每一帧重绘，表现为「打开时图片先错位
+   再对齐、每次下拉都要重新计算」。这里改成纯淡入、去掉 transform，让 fixed 背景始终
+   锚定视口、只光栅化一次。 */
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-enter-active,
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-leave-active {
+  opacity: 1 !important;
+  transition: opacity var(--el-transition-duration) var(--el-transition-function-fast-bezier) !important;
+  transform: none !important;
+}
+
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-enter-from,
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-leave-to {
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+/* popper 箭头底色/边框跟随主题，避免出现白色三角 */
+html.hatsune-miku .el-select__popper.el-popper .el-popper__arrow::before {
+  background: var(--app-panel) !important;
+  border-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-select-dropdown__item {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-select-dropdown__item.is-hovering {
+  background: var(--app-accent-bg-hover) !important;
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-select-dropdown__item.is-selected {
+  color: var(--app-accent) !important;
+  font-weight: 600;
+}
+
+html.hatsune-miku .el-loading-spinner .circular {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-loading-spinner .el-loading-text {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-track {
+  background: rgb(0 0 0 / 50%);
+  border-radius: 3px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-thumb {
+  background: rgb(10 189 198 / 35%);
+  border-radius: 3px;
+}
+
+html.hatsune-miku ::-webkit-scrollbar-thumb:hover {
+  background: rgb(0 242 255 / 50%);
+}
+
+/* el-card（系统信息页卡片）：背景半透明程度 = 面板设置 + 20%（复用 --app-input-bg），
+   模糊度跟随面板设置 */
+html.hatsune-miku .el-card {
+  --el-card-bg-color: var(--app-input-bg);
+
+  background: var(--app-input-bg) !important;
+  border: 1px solid var(--app-border) !important;
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
+}
+
+/* el-divider 分割线 */
+html.hatsune-miku .el-divider {
+  border-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-divider__text {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text-dim) !important;
+}
+
+/* el-input-number 数字输入框 */
+html.hatsune-miku .el-input-number .el-input-number__decrease,
+html.hatsune-miku .el-input-number .el-input-number__increase {
+  background: var(--app-input-bg) !important;
+  border-color: var(--app-border) !important;
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-input-number .el-input-number__decrease:hover,
+html.hatsune-miku .el-input-number .el-input-number__increase:hover {
+  color: var(--app-accent) !important;
+}
+
+/* el-slider 滑块（插件主页面板透明度配置） */
+html.hatsune-miku .el-slider__runway {
+  background: rgb(10 189 198 / 20%) !important;
+}
+
+html.hatsune-miku .el-slider__bar {
+  background: linear-gradient(90deg, #00f2ff, #03a9f4) !important;
+}
+
+html.hatsune-miku .el-slider__button {
+  border-color: var(--app-accent) !important;
+  box-shadow: 0 0 6px rgb(0 242 255 / 50%) !important;
+}
+
+html.hatsune-miku .el-slider__stop {
+  background: rgb(10 189 198 / 30%) !important;
+}
+
+/* el-tag 标签 */
+html.hatsune-miku .el-tag--primary {
+  --el-tag-bg-color: rgb(0 242 255 / 12%);
+  --el-tag-border-color: rgb(0 242 255 / 40%);
+  --el-tag-text-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-tag--danger {
+  --el-tag-bg-color: rgb(244 3 3 / 12%);
+  --el-tag-border-color: rgb(244 3 3 / 40%);
+  --el-tag-text-color: #f40303;
+}
+
+html.hatsune-miku .el-tag--info {
+  --el-tag-bg-color: rgb(10 189 198 / 12%);
+  --el-tag-border-color: rgb(10 189 198 / 35%);
+  --el-tag-text-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-tag--success {
+  --el-tag-bg-color: rgb(0 255 100 / 12%);
+  --el-tag-border-color: rgb(0 255 100 / 40%);
+  --el-tag-text-color: #00ff64;
+}
+
+html.hatsune-miku .el-tag--warning {
+  --el-tag-bg-color: rgb(255 165 0 / 12%);
+  --el-tag-border-color: rgb(255 165 0 / 40%);
+  --el-tag-text-color: #ffa500;
+}
+
+/* el-pagination */
+html.hatsune-miku .el-pagination {
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--app-text);
+  --el-pagination-button-bg-color: var(--app-panel-solid);
+  --el-pagination-button-color: var(--app-text);
+  --el-pagination-hover-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-pagination .el-pager li {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+html.hatsune-miku .el-pagination .el-pager li.is-active {
+  background: var(--app-accent-bg) !important;
+  color: var(--app-accent) !important;
+  border-color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-pagination .btn-prev,
+html.hatsune-miku .el-pagination .btn-next {
+  background: var(--app-panel-solid) !important;
+  color: var(--app-text) !important;
+  border: 1px solid var(--app-border) !important;
+}
+
+/* el-table */
+html.hatsune-miku .el-table {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--app-panel);
+  --el-table-header-text-color: var(--app-text);
+  --el-table-text-color: var(--app-text);
+  --el-table-border-color: var(--app-border);
+  --el-table-row-hover-bg-color: var(--app-accent-bg);
+  --el-table-current-row-bg-color: var(--app-accent-bg);
+  --el-table-expanded-cell-bg-color: transparent;
+}
+
+html.hatsune-miku .el-table th.el-table__cell {
+  background: var(--app-panel) !important;
+  color: var(--app-text) !important;
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-table td.el-table__cell {
+  border-bottom-color: var(--app-border) !important;
+}
+
+html.hatsune-miku .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: rgb(0 0 0 / 45%) !important;
+}
+
+html.hatsune-miku .el-table__empty-text {
+  color: var(--app-text-dim) !important;
+}
+
+/* el-table 选中行（初音点缀粉，参考 DB 主题 mention 高亮 #E91E63） */
+html.hatsune-miku .el-table__row.current > td {
+  background: rgb(233 30 99 / 14%) !important;
+}
+
+html.hatsune-miku .el-table__row.current > td .cell {
+  color: #ff5c8a !important;
+}
+
+/* el-loading mask 全局加载遮罩 */
+html.hatsune-miku .el-loading-mask {
+  background: var(--app-mask-bg) !important;
+}
+
+/* el-form-item 表单标签 */
+html.hatsune-miku .el-form-item__label {
+  color: var(--app-text) !important;
+}
+
+/* el-button text 文字按钮 */
+html.hatsune-miku .el-button--text {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-button--text:hover {
+  color: var(--app-accent) !important;
+  text-shadow: var(--app-text-glow-hover);
+}
+
+html.hatsune-miku .el-button.is-text:not(.is-disabled):hover {
+  background-color: var(--app-accent-bg-hover) !important;
+}
+
+/* 浏览器自动填充背景覆盖 */
+html.hatsune-miku input:-webkit-autofill,
+html.hatsune-miku input:-webkit-autofill:hover,
+html.hatsune-miku input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px var(--app-input-bg) inset !important;
+  -webkit-text-fill-color: var(--app-text-bright) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 插件搜索结果列表项：背景半透明程度 = 面板设置 + 20%（复用 --app-input-bg），
+   模糊度跟随面板设置；覆盖 PluginView 里默认的实色 var(--app-bg) */
+html.hatsune-miku .search-result-item {
+  background: var(--app-input-bg) !important;
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
+}
+
+/* 后台任务面板：用 background-attachment: fixed 透出 body 背景对应位置。
+   覆盖外层 .task-panel 容器（含子元素间 gap）及 header/empty/badge/card 子元素，
+   替换 TaskPanel 里 scoped 的实色 var(--app-panel-solid) 与 .task-card 的 blur。 */
+html.hatsune-miku .task-panel,
+html.hatsune-miku .task-panel__header,
+html.hatsune-miku .task-panel__empty,
+html.hatsune-miku .task-badge,
+html.hatsune-miku .task-card {
+  background-color: var(--app-bg) !important;
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  backdrop-filter: none !important;
+}
+
+/* 卡片进出场动画默认 translateX（transform）会让 fixed 背景相对卡片重定位、
+   错位后再对齐，去掉 transform，只保留淡入淡出。 */
+html.hatsune-miku .task-item-enter-from,
+html.hatsune-miku .task-item-leave-to {
+  transform: none !important;
+}
+
+/* 整体背景图：默认使用 --miku-bg，用户在插件主页切换后以 html 内联变量覆盖；
+   深色半透明渐变叠加保证前景文字可读性 */
+html.hatsune-miku body {
+  background-color: var(--app-bg);
+  /* 顶部青色氛围光晕（初音霓虹感，参考 DB 主题 box-shadow glow）+ 深色压暗层 + 背景图 */
+  background-image:
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* 登录卡片：logo 显示在"文件管理器"标题上方，按原始比例（2000×857，透明背景 PNG）自动缩放 */
+html.hatsune-miku .login-header::before {
+  content: '';
+  display: block;
+  width: 240px;
+  aspect-ratio: 2000 / 857;
+  margin: 0 auto 14px;
+  background-color: transparent;
+  background-image: url('__MIKU_LOGO_URL__');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}

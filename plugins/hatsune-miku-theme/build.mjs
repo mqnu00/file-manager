@@ -10,6 +10,9 @@ await esbuild.build({
   platform: 'browser',
   target: 'es2020',
   external: ['@mqn00/file-manager/plugin/frontend'],
+  loader: {
+    '.css': 'text', // 主题样式作为文本内联
+  },
 })
 
 console.log('Frontend bundled to dist/frontend.js')
