@@ -48,7 +48,12 @@ interface BackgroundInfo {
 
 /** 后端不可用时的兜底列表（仅内置图） */
 function builtinFallback(): BackgroundInfo[] {
-  return BUILTIN_BG_FILES.map((f) => ({ id: f, label: f, url: `${API_BASE}/bg/${f}`, builtin: true }))
+  return BUILTIN_BG_FILES.map((f) => ({
+    id: f,
+    label: f,
+    url: `${API_BASE}/bg/${f}`,
+    builtin: true,
+  }))
 }
 
 /** 根据 id 查找背景定义；未知 id 回退列表第一项 */
@@ -185,7 +190,8 @@ html.hatsune-miku {
   --app-accent-bg-subtle: rgb(10 189 198 / 7%);
   --app-accent-border: rgb(10 189 198 / 26%);
   --app-accent-border-light: rgb(10 189 198 / 18%);
-  --app-input-bg: rgb(0 0 0 / 45%);
+  /* 输入控件背景 = 面板黑色半透明程度 + 20%（跟随用户配置，默认 55% + 20% = 75%） */
+  --app-input-bg: rgb(0 0 0 / calc(var(--app-panel-opacity) + 20%));
   --app-table-header-bg: rgb(10 189 198 / 7%);
   --app-table-header-border: rgb(10 189 198 / 20%);
   --app-table-row-hover: rgb(10 189 198 / 7%);
@@ -455,11 +461,31 @@ html.hatsune-miku .el-select__caret {
   color: var(--app-accent) !important;
 }
 
-/* el-select 下拉菜单 */
-html.hatsune-miku .el-select-dropdown {
-  background: var(--app-panel-solid) !important;
+/* el-select 下拉菜单（EP 2.4+ 新结构）：外部 popper（.el-select__popper.el-popper）
+   是被 teleport 到 body 的独立元素，内部 .el-select-dropdown 只是透明容器，之前把
+   磨砂打在它上面只会透出 popper 自身的白色底（--el-bg-color-overlay），看不到磨砂。
+   这里改用 background-attachment: fixed 把 body 同款背景层按视口坐标铺到 popper 上，
+   让下拉面板透出「body 背景的对应位置」；最顶层叠一层 --app-panel 半透明黑保证文字
+   可读，并继续复用「面板黑色半透明程度」设置。 */
+html.hatsune-miku .el-select__popper.el-popper {
   border: 1px solid var(--app-border) !important;
-  backdrop-filter: blur(8px);
+  box-shadow: var(--app-glow), var(--app-shadow);
+  background-color: var(--app-bg);
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* popper 箭头底色/边框跟随主题，避免出现白色三角 */
+html.hatsune-miku .el-select__popper.el-popper .el-popper__arrow::before {
+  background: var(--app-panel) !important;
+  border-color: var(--app-border) !important;
 }
 
 html.hatsune-miku .el-select-dropdown__item {
@@ -603,7 +629,7 @@ html.hatsune-miku .el-pagination .btn-next {
 html.hatsune-miku .el-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: var(--app-panel-solid);
+  --el-table-header-bg-color: var(--app-panel);
   --el-table-header-text-color: var(--app-text);
   --el-table-text-color: var(--app-text);
   --el-table-border-color: var(--app-border);
@@ -613,7 +639,7 @@ html.hatsune-miku .el-table {
 }
 
 html.hatsune-miku .el-table th.el-table__cell {
-  background: var(--app-panel-solid) !important;
+  background: var(--app-panel) !important;
   color: var(--app-text) !important;
   border-bottom-color: var(--app-border) !important;
 }
@@ -810,7 +836,8 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
         } catch (err: unknown) {
           const msg =
             err && typeof err === 'object' && 'response' in err
-              ? ((err as { response?: { data?: { error?: string } } }).response?.data?.error ?? '上传失败')
+              ? ((err as { response?: { data?: { error?: string } } }).response?.data?.error ??
+                '上传失败')
               : '上传失败'
           ElMessage.error(msg)
         } finally {
@@ -829,7 +856,9 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
           return // 用户取消
         }
         try {
-          await ctx.api.instance.delete(`/hatsune-miku-theme/backgrounds/${encodeURIComponent(bg.id)}`)
+          await ctx.api.instance.delete(
+            `/hatsune-miku-theme/backgrounds/${encodeURIComponent(bg.id)}`
+          )
           ElMessage.success('背景图已删除')
           if (selectedId.value === bg.id) {
             applyBackground(DEFAULT_BG_ID, backgrounds.value)
@@ -859,14 +888,32 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
         const children: any[] = []
         children.push(
           h('div', { style: { paddingTop: '10px', paddingLeft: '10px' } }, [
-            h(ElButton, { text: true, class: 'back-btn', onClick: () => window.history.back() }, () => '← 返回'),
+            h(
+              ElButton,
+              { text: true, class: 'back-btn', onClick: () => window.history.back() },
+              () => '← 返回'
+            ),
           ])
         )
 
         const m: any[] = []
-        m.push(h('div', { class: 'miku-bg-header' }, [h('h3', { class: 'miku-bg-title' }, '初音未来主题')]))
-        m.push(h('p', { class: 'miku-bg-sub' }, '选择主界面背景图，切换后立即生效并自动保存。可上传自定义背景图。'))
-        m.push(h(ElDivider, { contentPosition: 'left' }, () => h('span', { class: 'miku-bg-divider' }, '背景图')))
+        m.push(
+          h('div', { class: 'miku-bg-header' }, [
+            h('h3', { class: 'miku-bg-title' }, '初音未来主题'),
+          ])
+        )
+        m.push(
+          h(
+            'p',
+            { class: 'miku-bg-sub' },
+            '选择主界面背景图，切换后立即生效并自动保存。可上传自定义背景图。'
+          )
+        )
+        m.push(
+          h(ElDivider, { contentPosition: 'left' }, () =>
+            h('span', { class: 'miku-bg-divider' }, '背景图')
+          )
+        )
 
         const items = backgrounds.value.map((bg) => {
           const active = bg.id === selectedId.value
@@ -874,113 +921,173 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
             h('span', bg.label),
             bg.builtin
               ? null
-              : h(ElButton, {
-                  size: 'small',
-                  text: true,
-                  type: 'danger',
-                  onClick: (e: MouseEvent) => {
-                    e.stopPropagation()
-                    confirmDelete(bg)
+              : h(
+                  ElButton,
+                  {
+                    size: 'small',
+                    text: true,
+                    type: 'danger',
+                    onClick: (e: MouseEvent) => {
+                      e.stopPropagation()
+                      confirmDelete(bg)
+                    },
                   },
-                }, () => '删除'),
+                  () => '删除'
+                ),
           ])
-          return h('div', {
-            class: ['miku-bg-item', active ? 'active' : ''],
-            onClick: () => select(bg.id),
-          }, [
-            h('img', { class: 'miku-bg-thumb', src: bg.url, alt: bg.label, loading: 'lazy' }),
-            name,
-          ])
+          return h(
+            'div',
+            {
+              class: ['miku-bg-item', active ? 'active' : ''],
+              onClick: () => select(bg.id),
+            },
+            [
+              h('img', { class: 'miku-bg-thumb', src: bg.url, alt: bg.label, loading: 'lazy' }),
+              name,
+            ]
+          )
         })
         m.push(h('div', { class: 'miku-bg-grid' }, items))
 
-        m.push(h('div', { class: 'miku-bg-upload' }, [
-          h('input', {
-            ref: fileInputRef,
-            type: 'file',
-            accept: 'image/*',
-            style: { display: 'none' },
-            onChange: handleFileChange,
-          }),
-          h(ElButton, { type: 'primary', loading: uploading.value, onClick: () => fileInputRef.value?.click() }, () => '上传背景图'),
-          h('span', { class: 'miku-bg-upload-tip' }, '支持 png / jpg / webp / gif，最大 10MB'),
-        ]))
+        m.push(
+          h('div', { class: 'miku-bg-upload' }, [
+            h('input', {
+              ref: fileInputRef,
+              type: 'file',
+              accept: 'image/*',
+              style: { display: 'none' },
+              onChange: handleFileChange,
+            }),
+            h(
+              ElButton,
+              {
+                type: 'primary',
+                loading: uploading.value,
+                onClick: () => fileInputRef.value?.click(),
+              },
+              () => '上传背景图'
+            ),
+            h('span', { class: 'miku-bg-upload-tip' }, '支持 png / jpg / webp / gif，最大 10MB'),
+          ])
+        )
 
         const hasChanges =
           panelOpacity.value !== savedOpacity.value || panelBlur.value !== savedBlur.value
 
-        m.push(h(ElDivider, { contentPosition: 'left' }, () => h('span', { class: 'miku-bg-divider' }, '面板效果')))
-        m.push(h('div', { class: 'miku-config-row' }, [
-          h('div', { class: 'miku-config-label' }, [
-            h('span', '面板黑色半透明程度'),
-            h('span', { class: 'miku-config-value' }, `${panelOpacity.value}%`),
-          ]),
-          h('div', { class: 'miku-config-slider' }, [
-            h(ElSlider, {
-              min: 0,
-              max: 100,
-              modelValue: panelOpacity.value,
-              'onUpdate:modelValue': (v: number | number[]) => {
-                const value = Array.isArray(v) ? v[0] : v
-                panelOpacity.value = value
-                previewPanelSettings(value, panelBlur.value)
+        m.push(
+          h(ElDivider, { contentPosition: 'left' }, () =>
+            h('span', { class: 'miku-bg-divider' }, '面板效果')
+          )
+        )
+        m.push(
+          h('div', { class: 'miku-config-row' }, [
+            h('div', { class: 'miku-config-label' }, [
+              h('span', '面板黑色半透明程度'),
+              h('span', { class: 'miku-config-value' }, `${panelOpacity.value}%`),
+            ]),
+            h('div', { class: 'miku-config-slider' }, [
+              h(ElSlider, {
+                min: 0,
+                max: 100,
+                modelValue: panelOpacity.value,
+                'onUpdate:modelValue': (v: number | number[]) => {
+                  const value = Array.isArray(v) ? v[0] : v
+                  panelOpacity.value = value
+                  previewPanelSettings(value, panelBlur.value)
+                },
+              }),
+              h(
+                ElButton,
+                {
+                  size: 'small',
+                  text: true,
+                  disabled: panelOpacity.value === DEFAULT_PANEL_OPACITY,
+                  onClick: () => {
+                    panelOpacity.value = DEFAULT_PANEL_OPACITY
+                    previewPanelSettings(DEFAULT_PANEL_OPACITY, panelBlur.value)
+                  },
+                },
+                () => '重置默认'
+              ),
+            ]),
+            h(
+              'p',
+              { class: 'miku-bg-upload-tip' },
+              '数值越大面板越不透明，默认 55%，拖动实时预览，点击下方「保存面板效果」后生效。'
+            ),
+          ])
+        )
+        m.push(
+          h('div', { class: 'miku-config-row' }, [
+            h('div', { class: 'miku-config-label' }, [
+              h('span', '面板背景模糊度'),
+              h(
+                'span',
+                { class: 'miku-config-value' },
+                panelBlur.value === 0 ? '无模糊' : `${panelBlur.value}px`
+              ),
+            ]),
+            h('div', { class: 'miku-config-slider' }, [
+              h(ElSlider, {
+                min: 0,
+                max: 30,
+                modelValue: panelBlur.value,
+                'onUpdate:modelValue': (v: number | number[]) => {
+                  const value = Array.isArray(v) ? v[0] : v
+                  panelBlur.value = value
+                  previewPanelSettings(panelOpacity.value, value)
+                },
+              }),
+              h(
+                ElButton,
+                {
+                  size: 'small',
+                  text: true,
+                  disabled: panelBlur.value === DEFAULT_PANEL_BLUR,
+                  onClick: () => {
+                    panelBlur.value = DEFAULT_PANEL_BLUR
+                    previewPanelSettings(panelOpacity.value, DEFAULT_PANEL_BLUR)
+                  },
+                },
+                () => '重置默认'
+              ),
+            ]),
+            h(
+              'p',
+              { class: 'miku-bg-upload-tip' },
+              '数值越大背景越模糊，默认 4px，拖动实时预览，点击下方「保存面板效果」后生效。'
+            ),
+          ])
+        )
+        m.push(
+          h('div', { class: 'miku-config-save' }, [
+            h(
+              ElButton,
+              {
+                type: 'primary',
+                disabled: !hasChanges,
+                onClick: savePanelSettings,
               },
-            }),
-            h(ElButton, {
-              size: 'small',
-              text: true,
-              disabled: panelOpacity.value === DEFAULT_PANEL_OPACITY,
-              onClick: () => {
-                panelOpacity.value = DEFAULT_PANEL_OPACITY
-                previewPanelSettings(DEFAULT_PANEL_OPACITY, panelBlur.value)
-              },
-            }, () => '重置默认'),
-          ]),
-          h('p', { class: 'miku-bg-upload-tip' }, '数值越大面板越不透明，默认 55%，拖动实时预览，点击下方「保存面板效果」后生效。'),
-        ]))
-        m.push(h('div', { class: 'miku-config-row' }, [
-          h('div', { class: 'miku-config-label' }, [
-            h('span', '面板背景模糊度'),
-            h('span', { class: 'miku-config-value' }, panelBlur.value === 0 ? '无模糊' : `${panelBlur.value}px`),
-          ]),
-          h('div', { class: 'miku-config-slider' }, [
-            h(ElSlider, {
-              min: 0,
-              max: 30,
-              modelValue: panelBlur.value,
-              'onUpdate:modelValue': (v: number | number[]) => {
-                const value = Array.isArray(v) ? v[0] : v
-                panelBlur.value = value
-                previewPanelSettings(panelOpacity.value, value)
-              },
-            }),
-            h(ElButton, {
-              size: 'small',
-              text: true,
-              disabled: panelBlur.value === DEFAULT_PANEL_BLUR,
-              onClick: () => {
-                panelBlur.value = DEFAULT_PANEL_BLUR
-                previewPanelSettings(panelOpacity.value, DEFAULT_PANEL_BLUR)
-              },
-            }, () => '重置默认'),
-          ]),
-          h('p', { class: 'miku-bg-upload-tip' }, '数值越大背景越模糊，默认 4px，拖动实时预览，点击下方「保存面板效果」后生效。'),
-        ]))
-        m.push(h('div', { class: 'miku-config-save' }, [
-          h(ElButton, {
-            type: 'primary',
-            disabled: !hasChanges,
-            onClick: savePanelSettings,
-          }, () => '保存面板效果'),
-          h('span', { class: 'miku-bg-upload-tip' }, hasChanges ? '有未保存的修改，点击保存后真正生效' : '当前已保存，无未保存修改'),
-        ]))
+              () => '保存面板效果'
+            ),
+            h(
+              'span',
+              { class: 'miku-bg-upload-tip' },
+              hasChanges ? '有未保存的修改，点击保存后真正生效' : '当前已保存，无未保存修改'
+            ),
+          ])
+        )
 
         children.push(h('div', { style: { padding: '20px 36px' } }, m))
-        return h('div', { class: 'miku-bg-container' }, [h('div', { class: 'miku-bg-card' }, children)])
+        return h('div', { class: 'miku-bg-container' }, [
+          h('div', { class: 'miku-bg-card' }, children),
+        ])
       }
     },
   })
 
   ctx.router.addRoute({ path: '/plugin/hatsune-miku-theme', component: BackgroundView })
-  console.log('[Hatsune Miku Theme] Frontend loaded — theme "hatsune-miku" registered, page at /plugin/hatsune-miku-theme')
+  console.log(
+    '[Hatsune Miku Theme] Frontend loaded — theme "hatsune-miku" registered, page at /plugin/hatsune-miku-theme'
+  )
 }
