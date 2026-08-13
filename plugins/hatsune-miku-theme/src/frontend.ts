@@ -715,6 +715,14 @@ html.hatsune-miku input:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* 插件搜索结果列表项：背景半透明程度 = 面板设置 + 20%（复用 --app-input-bg），
+   模糊度跟随面板设置；覆盖 PluginView 里默认的实色 var(--app-bg) */
+html.hatsune-miku .search-result-item {
+  background: var(--app-input-bg) !important;
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
+}
+
 /* 整体背景图：默认使用 --miku-bg，用户在插件主页切换后以 html 内联变量覆盖；
    深色半透明渐变叠加保证前景文字可读性 */
 html.hatsune-miku body {
