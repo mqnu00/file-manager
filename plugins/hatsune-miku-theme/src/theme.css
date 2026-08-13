@@ -504,6 +504,28 @@ html.hatsune-miku .el-tag--warning {
   --el-tag-text-color: #ffa500;
 }
 
+/* el-tabs */
+html.hatsune-miku .el-tabs__item {
+  color: var(--app-text) !important;
+}
+
+html.hatsune-miku .el-tabs__item:hover,
+html.hatsune-miku .el-tabs__item.is-active {
+  color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-tabs__item.is-disabled {
+  color: var(--app-text-dim) !important;
+}
+
+html.hatsune-miku .el-tabs__active-bar {
+  background-color: var(--app-accent) !important;
+}
+
+html.hatsune-miku .el-tabs__nav-wrap::after {
+  background-color: var(--app-border) !important;
+}
+
 /* el-pagination */
 html.hatsune-miku .el-pagination {
   --el-pagination-bg-color: transparent;
