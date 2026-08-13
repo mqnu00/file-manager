@@ -546,12 +546,15 @@ html.hatsune-miku ::-webkit-scrollbar-thumb:hover {
   background: rgb(0 242 255 / 50%);
 }
 
-/* el-card */
+/* el-card（系统信息页卡片）：背景半透明程度 = 面板设置 + 20%（复用 --app-input-bg），
+   模糊度跟随面板设置 */
 html.hatsune-miku .el-card {
-  --el-card-bg-color: var(--app-panel-solid);
+  --el-card-bg-color: var(--app-input-bg);
 
-  background: var(--app-panel-solid) !important;
+  background: var(--app-input-bg) !important;
   border: 1px solid var(--app-border) !important;
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
 }
 
 /* el-divider 分割线 */
