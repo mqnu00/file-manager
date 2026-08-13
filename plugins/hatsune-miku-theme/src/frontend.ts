@@ -16,6 +16,7 @@
 
 import type { FrontendPluginInstallFunction } from '@mqn00/file-manager/plugin/frontend'
 import rawThemeCss from './theme.css'
+import pageCss from './page.css'
 
 /** 插件后端 API 前缀（图片静态资源由插件自己提供） */
 const API_BASE = '/api/hatsune-miku-theme'
@@ -171,38 +172,12 @@ const THEME_CSS = rawThemeCss
 
 /** 插件主页样式（跟随当前主题变量，任何主题下均可渲染） */
 const PAGE_STYLE_ID = 'hatsune-miku-theme-page-styles'
-const PAGE_CSS = `
-.miku-bg-container { height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding-top: 60px; overflow-y: auto; }
-.miku-bg-card { width: 760px; background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 12px; box-shadow: var(--app-glow), var(--app-shadow); backdrop-filter: var(--app-blur); }
-.miku-bg-card .back-btn { color: var(--app-text-dim); padding: 4px 8px; }
-.miku-bg-title { margin: 0; font-size: 20px; color: var(--app-text-bright); }
-.miku-bg-header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
-.miku-bg-sub { font-size: 13px; color: var(--app-text-dim); margin: 4px 0 0; }
-.miku-bg-divider { font-size: 14px; font-weight: 600; color: var(--app-text-bright); }
-.miku-bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
-.miku-bg-item { border: 2px solid var(--app-border); border-radius: 8px; overflow: hidden; cursor: pointer; background: var(--app-bg); transition: border-color 0.2s, box-shadow 0.2s; }
-.miku-bg-item:hover { border-color: var(--app-accent); }
-.miku-bg-item.active { border-color: var(--app-accent); box-shadow: var(--app-glow); }
-.miku-bg-thumb { width: 100%; height: 120px; object-fit: cover; display: block; }
-.miku-bg-name { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; color: var(--app-text-dim); padding: 4px 8px; }
-.miku-bg-name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.miku-bg-item.active .miku-bg-name { color: var(--app-accent); }
-.miku-bg-upload { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-.miku-bg-upload-tip { font-size: 12px; color: var(--app-text-dim); }
-.miku-config-row { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-.miku-config-label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--app-text); }
-.miku-config-value { color: var(--app-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-.miku-config-slider { display: flex; align-items: center; gap: 12px; }
-.miku-config-slider .el-slider { flex: 1; }
-.miku-config-save { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
-.miku-tag-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-`
 
 function injectPageStyles(): void {
   if (document.getElementById(PAGE_STYLE_ID)) return
   const style = document.createElement('style')
   style.id = PAGE_STYLE_ID
-  style.textContent = PAGE_CSS
+  style.textContent = pageCss
   document.head.appendChild(style)
 }
 
