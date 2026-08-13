@@ -1,3 +1,36 @@
+## v3.0.0-beta6 (2026-08-13)
+
+### ✨ 新增功能
+
+#### 主题系统插件化
+
+- 新增插件主题注册能力：插件通过 `useTheme.registerTheme` 注册 `ThemeDefinition`（`name`/`label`/`className`/`css`），主题切换按钮由「赛博/亮色」二元切换改为下拉框，可列出并切换全部已注册主题
+- `useTheme` 重构：新增 `themes` / `activeTheme` / `setTheme` / `registerTheme`，`isCyber` 改为计算属性（用于控制赛博特效显示）
+- 插件提供的主题 CSS 由主项目注入 `<style data-theme="name">`（按 id 去重，插件重载时覆盖）
+- 插件注册晚于主应用启动时，若持久化主题名与之匹配则立即应用，不覆写 localStorage 存储值
+
+#### 插件发现页增强
+
+- 搜索支持分页：后端 `GET /api/plugins/search` 新增 `page`/`pageSize` 参数，返回 `{ total, results }`；前端新增页码条与每页 20/50/100 切换
+- 版本下拉框标注已安装版本：后端 `GET /api/plugins` 返回插件 `version`（读取 package.json），下拉选项标注「最新」「当前」，同一版本合并为「最新 · 当前」
+
+### 🐛 Bug 修复
+
+- 修复离开主页后文件选中状态残留，导致批量操作标签在其他页面/再次返回时仍显示的问题（`onUnmounted` 清空选择）
+- 修复移动文件对话框路径自动定位的死循环与定位失效：等待节点注册/懒加载改为带超时轮询，路径规范化与 `node-key` 对齐，根目录直接滚动到顶部
+
+### 🔧 工程改进
+
+- 合并 test 与 release 为单一 workflow（测试通过后执行 release），删除独立的 test workflow
+- release 后显式触发 publish 与 deploy-gh-pages（GITHUB_TOKEN 创建的 tag 不触发 push 事件）
+- 修复 test job 缺少 test 插件构建产物导致的 CI 失败
+
+### 📝 文档
+
+- 新增插件编写规范文档 `plugin-design.md`（含 ctx API、构建发布、静态资源两种模式）
+
+---
+
 ## v3.0.0-beta5 (2026-08-11)
 
 ### 🏗️ 架构变更
