@@ -482,6 +482,23 @@ html.hatsune-miku .el-select__popper.el-popper {
   background-repeat: no-repeat;
 }
 
+/* 下拉展开动画默认是 scaleY 缩放（transform）。transform 会让 background-attachment:
+   fixed 的镜像背景相对 popper 重新定位，并在动画每一帧重绘，表现为「打开时图片先错位
+   再对齐、每次下拉都要重新计算」。这里改成纯淡入、去掉 transform，让 fixed 背景始终
+   锚定视口、只光栅化一次。 */
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-enter-active,
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-leave-active {
+  opacity: 1 !important;
+  transition: opacity var(--el-transition-duration) var(--el-transition-function-fast-bezier) !important;
+  transform: none !important;
+}
+
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-enter-from,
+html.hatsune-miku .el-select__popper.el-popper.el-zoom-in-top-leave-to {
+  opacity: 0 !important;
+  transform: none !important;
+}
+
 /* popper 箭头底色/边框跟随主题，避免出现白色三角 */
 html.hatsune-miku .el-select__popper.el-popper .el-popper__arrow::before {
   background: var(--app-panel) !important;
