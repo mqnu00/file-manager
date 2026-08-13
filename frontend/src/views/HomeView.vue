@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFileStore } from '@/stores/file'
 import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize, downloadFile } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -366,6 +366,11 @@ const handleCancelSelection = () => {
 onMounted(() => {
   loadFiles()
   taskStore.init()
+})
+
+// 离开主页时清空选择，避免 store 中的选中状态残留到其他页面/再次返回时显示
+onUnmounted(() => {
+  fileStore.setSelectedFiles([])
 })
 </script>
 

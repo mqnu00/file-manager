@@ -168,4 +168,15 @@ describe('HomeView.vue', () => {
     await flushPromises()
     expect(mockedGetFiles).toHaveBeenCalledWith('dirb')
   })
+
+  it('离开页面 unmount → 清空选中状态，避免残留', async () => {
+    const wrapper = await mountView()
+    const fileStore = useFileStore()
+    fileStore.setSelectedFiles(['/a.txt'])
+    expect(fileStore.selectedFiles).toEqual(['/a.txt'])
+
+    wrapper.unmount()
+
+    expect(fileStore.selectedFiles).toEqual([])
+  })
 })
