@@ -216,14 +216,46 @@ html.hatsune-miku {
 
 /* ===== Element Plus 组件暗色覆盖（移植自主项目 html.cyber，色值适配本主题） ===== */
 
+/* dialog 被 teleport 到 body，改用 background-attachment: fixed 把 body 同款背景层
+   按视口坐标铺到 dialog 上，透出「body 背景的对应位置」；最顶层叠一层 --app-panel
+   半透明黑保证文字可读，与 el-select 下拉面板 / 后台任务面板同一套视觉。 */
 html.hatsune-miku .el-dialog {
-  --el-dialog-bg-color: var(--app-panel-solid);
+  --el-dialog-bg-color: var(--app-bg);
   --el-dialog-box-shadow: var(--app-glow), 0 8px 32px rgb(0 0 0 / 40%);
 
-  background: var(--app-panel-solid) !important;
   border: 1px solid var(--app-border) !important;
   border-radius: 12px !important;
-  backdrop-filter: blur(8px);
+  background-color: var(--app-bg);
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* dialog 进出场默认对 .el-overlay-dialog 做 translateY（transform），transform 会让
+   background-attachment: fixed 的镜像背景相对动画容器重定位并逐帧重绘，表现同
+   el-select 下拉：打开瞬间背景先错位再对齐。这里覆盖为纯淡入淡出、去掉 transform。 */
+html.hatsune-miku .dialog-fade-enter-active .el-overlay-dialog {
+  animation: miku-dialog-fade-in var(--el-transition-duration) !important;
+}
+
+html.hatsune-miku .dialog-fade-leave-active .el-overlay-dialog {
+  animation: miku-dialog-fade-out var(--el-transition-duration) !important;
+}
+
+@keyframes miku-dialog-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes miku-dialog-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 html.hatsune-miku .el-dialog__header {
