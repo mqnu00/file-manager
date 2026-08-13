@@ -394,6 +394,31 @@ html.hatsune-miku .el-select-dropdown__item.is-selected {
   font-weight: 600;
 }
 
+/* el-tooltip：与 el-select 下拉面板一致，用 background-attachment: fixed 透出
+   body 背景对应位置。tooltip popper 默认用 transform（translate3d）定位，会让 fixed
+   退化为相对元素定位，故由 frontend.ts 的 setupTooltipFixedBackground 把 transform
+   换算成 left/top 后再生效。 */
+html.hatsune-miku .el-tooltip.el-popper {
+  border: 1px solid var(--app-border) !important;
+  box-shadow: var(--app-glow), var(--app-shadow);
+  color: var(--app-text-bright) !important;
+  background-color: var(--app-bg);
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+html.hatsune-miku .el-tooltip.el-popper .el-popper__arrow::before {
+  background: var(--app-panel) !important;
+  border-color: var(--app-border) !important;
+}
+
 html.hatsune-miku .el-loading-spinner .circular {
   color: var(--app-accent) !important;
 }
