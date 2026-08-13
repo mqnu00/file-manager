@@ -304,7 +304,7 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
       return () => {
         const children: any[] = []
         children.push(
-          h('div', { style: { paddingTop: '10px', paddingLeft: '10px' } }, [
+          h('div', { class: 'miku-bg-card-header' }, [
             h(
               ElButton,
               { text: true, class: 'back-btn', onClick: () => window.history.back() },
@@ -549,7 +549,7 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
           ])
         )
 
-        children.push(h('div', { style: { padding: '20px 36px' } }, m))
+        children.push(h('div', { class: 'miku-bg-card-body' }, m))
         return h('div', { class: 'miku-bg-container' }, [
           h('div', { class: 'miku-bg-card' }, children),
         ])

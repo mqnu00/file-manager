@@ -1,19 +1,33 @@
 /* 初音未来主题插件主页样式（跟随当前主题变量，任何主题下均可渲染）。 */
 .miku-bg-container {
   height: 100vh;
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 60px;
-  overflow-y: auto;
+  padding: 60px 0;
 }
 .miku-bg-card {
   width: 760px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
+}
+.miku-bg-card-header {
+  flex-shrink: 0;
+  padding: 10px 0 0 10px;
+}
+.miku-bg-card-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 36px;
 }
 .miku-bg-card .back-btn {
   color: var(--app-text-dim);
