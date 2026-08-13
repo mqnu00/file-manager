@@ -596,6 +596,12 @@ html.hatsune-miku .el-slider__stop {
 }
 
 /* el-tag 标签 */
+html.hatsune-miku .el-tag--primary {
+  --el-tag-bg-color: rgb(0 242 255 / 12%);
+  --el-tag-border-color: rgb(0 242 255 / 40%);
+  --el-tag-text-color: var(--app-accent);
+}
+
 html.hatsune-miku .el-tag--danger {
   --el-tag-bg-color: rgb(244 3 3 / 12%);
   --el-tag-border-color: rgb(244 3 3 / 40%);
@@ -606,6 +612,12 @@ html.hatsune-miku .el-tag--info {
   --el-tag-bg-color: rgb(10 189 198 / 12%);
   --el-tag-border-color: rgb(10 189 198 / 35%);
   --el-tag-text-color: var(--app-accent);
+}
+
+html.hatsune-miku .el-tag--success {
+  --el-tag-bg-color: rgb(0 255 100 / 12%);
+  --el-tag-border-color: rgb(0 255 100 / 40%);
+  --el-tag-text-color: #00ff64;
 }
 
 html.hatsune-miku .el-tag--warning {
@@ -807,6 +819,7 @@ const PAGE_CSS = `
 .miku-config-slider { display: flex; align-items: center; gap: 12px; }
 .miku-config-slider .el-slider { flex: 1; }
 .miku-config-save { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.miku-tag-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 `
 
 function injectPageStyles(): void {
@@ -819,7 +832,7 @@ function injectPageStyles(): void {
 
 export const install: FrontendPluginInstallFunction = async (ctx) => {
   const { h, ref, defineComponent, onUnmounted } = ctx.Vue
-  const { ElButton, ElDivider, ElMessage, ElMessageBox, ElSlider } = ctx.ElementPlus
+  const { ElButton, ElDivider, ElMessage, ElMessageBox, ElSlider, ElTag } = ctx.ElementPlus
 
   ctx.composables.useTheme().registerTheme({
     name: 'hatsune-miku',
@@ -1128,6 +1141,21 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
               { class: 'miku-bg-upload-tip' },
               hasChanges ? '有未保存的修改，点击保存后真正生效' : '当前已保存，无未保存修改'
             ),
+          ])
+        )
+
+        m.push(
+          h(ElDivider, { contentPosition: 'left' }, () =>
+            h('span', { class: 'miku-bg-divider' }, '标签预览')
+          )
+        )
+        m.push(
+          h('div', { class: 'miku-tag-preview' }, [
+            h(ElTag, { type: 'primary' }, () => 'primary'),
+            h(ElTag, { type: 'success' }, () => 'success'),
+            h(ElTag, { type: 'info' }, () => 'info'),
+            h(ElTag, { type: 'warning' }, () => 'warning'),
+            h(ElTag, { type: 'danger' }, () => 'danger'),
           ])
         )
 
