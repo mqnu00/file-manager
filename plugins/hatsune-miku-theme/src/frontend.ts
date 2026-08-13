@@ -723,6 +723,34 @@ html.hatsune-miku .search-result-item {
   -webkit-backdrop-filter: var(--app-blur);
 }
 
+/* 后台任务面板：用 background-attachment: fixed 透出 body 背景对应位置。
+   覆盖外层 .task-panel 容器（含子元素间 gap）及 header/empty/badge/card 子元素，
+   替换 TaskPanel 里 scoped 的实色 var(--app-panel-solid) 与 .task-card 的 blur。 */
+html.hatsune-miku .task-panel,
+html.hatsune-miku .task-panel__header,
+html.hatsune-miku .task-panel__empty,
+html.hatsune-miku .task-badge,
+html.hatsune-miku .task-card {
+  background-color: var(--app-bg) !important;
+  background-image:
+    linear-gradient(var(--app-panel), var(--app-panel)),
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)),
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%),
+    var(--miku-bg) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+  backdrop-filter: none !important;
+}
+
+/* 卡片进出场动画默认 translateX（transform）会让 fixed 背景相对卡片重定位、
+   错位后再对齐，去掉 transform，只保留淡入淡出。 */
+html.hatsune-miku .task-item-enter-from,
+html.hatsune-miku .task-item-leave-to {
+  transform: none !important;
+}
+
 /* 整体背景图：默认使用 --miku-bg，用户在插件主页切换后以 html 内联变量覆盖；
    深色半透明渐变叠加保证前景文字可读性 */
 html.hatsune-miku body {
