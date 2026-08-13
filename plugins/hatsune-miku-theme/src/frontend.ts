@@ -510,6 +510,45 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
           ])
         )
 
+        m.push(
+          h(ElDivider, { contentPosition: 'left' }, () =>
+            h('span', { class: 'miku-bg-divider' }, '消息预览')
+          )
+        )
+        m.push(
+          h('div', { class: 'miku-message-preview' }, [
+            h(
+              ElButton,
+              {
+                size: 'small',
+                type: 'primary',
+                onClick: () => ElMessage({ type: 'primary', message: 'primary 消息' }),
+              },
+              () => 'primary'
+            ),
+            h(
+              ElButton,
+              { size: 'small', type: 'success', onClick: () => ElMessage.success('success 消息') },
+              () => 'success'
+            ),
+            h(
+              ElButton,
+              { size: 'small', type: 'info', onClick: () => ElMessage.info('info 消息') },
+              () => 'info'
+            ),
+            h(
+              ElButton,
+              { size: 'small', type: 'warning', onClick: () => ElMessage.warning('warning 消息') },
+              () => 'warning'
+            ),
+            h(
+              ElButton,
+              { size: 'small', type: 'danger', onClick: () => ElMessage.error('error 消息') },
+              () => 'error'
+            ),
+          ])
+        )
+
         children.push(h('div', { style: { padding: '20px 36px' } }, m))
         return h('div', { class: 'miku-bg-container' }, [
           h('div', { class: 'miku-bg-card' }, children),

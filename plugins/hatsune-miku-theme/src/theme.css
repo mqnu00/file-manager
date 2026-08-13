@@ -215,10 +215,18 @@ html.hatsune-miku .el-input__inner::placeholder {
 }
 
 html.hatsune-miku .el-message {
-  background: var(--app-panel-solid) !important;
+  /* 背景透明度 = 面板设置 + 20%（复用 --app-input-bg），模糊度跟随设置 */
+  background: var(--app-input-bg) !important;
   border: 1px solid var(--app-border) !important;
   border-radius: 8px !important;
-  backdrop-filter: blur(8px);
+  backdrop-filter: var(--app-blur);
+  -webkit-backdrop-filter: var(--app-blur);
+}
+
+html.hatsune-miku .el-message--primary {
+  --el-message-bg-color: rgb(0 242 255 / 10%);
+  --el-message-border-color: rgb(0 242 255 / 30%);
+  --el-message-text-color: var(--app-accent);
 }
 
 html.hatsune-miku .el-message--success {

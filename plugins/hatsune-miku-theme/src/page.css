@@ -135,3 +135,10 @@
   gap: 8px;
   margin-top: 12px;
 }
+.miku-message-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
