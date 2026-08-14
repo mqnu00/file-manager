@@ -14,16 +14,29 @@
 - 搜索支持分页：后端 `GET /api/plugins/search` 新增 `page`/`pageSize` 参数，返回 `{ total, results }`；前端新增页码条与每页 20/50/100 切换
 - 版本下拉框标注已安装版本：后端 `GET /api/plugins` 返回插件 `version`（读取 package.json），下拉选项标注「最新」「当前」，同一版本合并为「最新 · 当前」
 
+#### gh-pages demo 集成主题插件
+
+- 插件 `backgrounds.ts` 静态资源地址改为 esbuild `define` 可注入（`__MIKU_API_BASE__` / `__MIKU_LOGO_URL__`），`build.mjs` 新增 `--demo` 产出 `dist/frontend.demo.js`，资源前缀烘焙为 `/file-manager/`（gh-pages 项目站点无后端）
+- 新增 `scripts/sync-demo-plugins.mjs`：`build:demo` 串接构建插件 demo bundle，并同步 bundle 与静态资源到 `frontend/public`（产物已 gitignore）
+- 新增 `frontend/src/demo/plugins.ts`（`DEMO_PLUGINS` + `DEMO_DEFAULT_THEME`），mockHandlers 虚拟化 `/api/plugins` 列表与 load/unload 接口，demo 插件可出现在插件管理页并支持启停
+- `pluginLoader` 在 `VITE_DEMO_MODE=true` 时跳过 `/api/plugins` 直接加载内置静态插件；`main.ts` 无主题偏好时默认应用 miku 主题
+- 配套测试：pluginLoader demo 分支、mockHandlers 插件接口及测试 fixture
+
 ### 🐛 Bug 修复
 
 - 修复离开主页后文件选中状态残留，导致批量操作标签在其他页面/再次返回时仍显示的问题（`onUnmounted` 清空选择）
 - 修复移动文件对话框路径自动定位的死循环与定位失效：等待节点注册/懒加载改为带超时轮询，路径规范化与 `node-key` 对齐，根目录直接滚动到顶部
+
+### 🎨 样式优化
+
+- hatsune-miku 主题面板默认透明度改为 10%、模糊度改为 0px，毛玻璃效果更通透
 
 ### 🔧 工程改进
 
 - 合并 test 与 release 为单一 workflow（测试通过后执行 release），删除独立的 test workflow
 - release 后显式触发 publish 与 deploy-gh-pages（GITHUB_TOKEN 创建的 tag 不触发 push 事件）
 - 修复 test job 缺少 test 插件构建产物导致的 CI 失败
+- 拆分 `install:all-demo` 脚本：gh-pages 构建改用其安装主题插件依赖（根 + 前端 + 后端 + 主题插件），普通 `install:all` 不再安装插件依赖
 
 ### 📝 文档
 
