@@ -1,6 +1,16 @@
-/** 插件后端 API 前缀（图片静态资源由插件自己提供） */
-export const API_BASE = '/api/hatsune-miku-theme'
-export const LOGO_URL = `${API_BASE}/logo`
+/**
+ * 插件后端 API 前缀（图片静态资源由插件自己提供）。
+ * 构建期可用 esbuild `define` 注入 __MIKU_API_BASE__ / __MIKU_LOGO_URL__，
+ * 供 gh-pages demo 等无后端场景改用静态文件地址；未注入时回落生产 /api 路径。
+ * typeof 守卫避免 ESM 严格模式下未声明标识符抛错。
+ */
+declare const __MIKU_API_BASE__: string | undefined
+declare const __MIKU_LOGO_URL__: string | undefined
+
+export const API_BASE =
+  typeof __MIKU_API_BASE__ !== 'undefined' ? __MIKU_API_BASE__ : '/api/hatsune-miku-theme'
+export const LOGO_URL =
+  typeof __MIKU_LOGO_URL__ !== 'undefined' ? __MIKU_LOGO_URL__ : `${API_BASE}/logo`
 
 /** localStorage 键：用户选择的背景图（与主题存储机制一致，按浏览器持久化） */
 const STORAGE_KEY_BG = 'hatsune-miku-theme-bg'

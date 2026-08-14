@@ -8,6 +8,8 @@ dist/
 dist-electron/
 gh-pages-dist/
 release/
+# demo 插件同步产物
+frontend/public/plugins/
 
 # 测试覆盖率报告
 coverage/

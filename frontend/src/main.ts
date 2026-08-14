@@ -8,6 +8,9 @@ import router from './router'
 import { ctx } from './context'
 import { initScriptRunner } from './scriptRunner'
 import { initPlugins } from './pluginLoader'
+import { useTheme } from './composables/useTheme'
+import { STORAGE_KEY_THEME } from './constants'
+import { DEMO_DEFAULT_THEME } from './demo/plugins'
 import 'element-plus/dist/index.css'
 
 function exposeToGlobal() {
@@ -50,6 +53,17 @@ app.use(ElementPlus)
 // 初始化插件系统（必须在 router/mount 前完成，确保插件路由先注册再解析 URL）
 initPlugins().then(() => {
   console.log('[Plugin] All plugins initialized')
+
+  // demo 默认主题：无用户偏好时应用（此时 demo 插件已注册其主题）
+  if (import.meta.env.VITE_DEMO_MODE === 'true' && DEMO_DEFAULT_THEME) {
+    try {
+      if (!localStorage.getItem(STORAGE_KEY_THEME)) {
+        useTheme().setTheme(DEMO_DEFAULT_THEME)
+      }
+    } catch {
+      // localStorage 不可用：跳过
+    }
+  }
 
   // router 必须在插件注册完路由之后才安装，否则初始导航找不到插件路由
   app.use(router)

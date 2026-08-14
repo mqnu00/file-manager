@@ -6,6 +6,7 @@
  */
 
 import { ctx } from '@/context'
+import { DEMO_PLUGINS } from '@/demo/plugins'
 
 interface PluginInfo {
   name: string
@@ -39,7 +40,38 @@ export async function loadPluginFrontend(plugin: PluginInfo, cacheBust = true): 
   }
 }
 
+/** demo 模式：加载内置静态插件（gh-pages 无后端，跳过 /api/plugins） */
+async function loadDemoPlugins(): Promise<void> {
+  const base = import.meta.env.BASE_URL
+
+  for (const plugin of DEMO_PLUGINS) {
+    const entry = `${base}${plugin.entry}`
+    try {
+      // @vite-ignore: demo 插件为构建期同步进 public 的静态 ESM
+      const mod = await import(/* @vite-ignore */ entry)
+      const install =
+        mod.install ||
+        (typeof mod.default === 'function' ? mod.default : null) ||
+        mod.default?.install
+
+      if (typeof install === 'function') {
+        await install(ctx)
+        console.log(`[Plugin] ${plugin.name} loaded (demo)`)
+      } else {
+        console.warn(`[Plugin] ${plugin.name} has no install function`)
+      }
+    } catch (err) {
+      console.error(`[Plugin] ${plugin.name} failed (demo):`, err)
+    }
+  }
+}
+
 export async function initPlugins(): Promise<void> {
+  if (import.meta.env.VITE_DEMO_MODE === 'true') {
+    await loadDemoPlugins()
+    return
+  }
+
   try {
     const res = await fetch('/api/plugins')
     if (!res.ok) {

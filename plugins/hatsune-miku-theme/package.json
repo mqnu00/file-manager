@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "tsc && node build.mjs",
+    "build:demo": "node build.mjs --demo",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build",
     "publish:npm": "node scripts/publish.mjs"

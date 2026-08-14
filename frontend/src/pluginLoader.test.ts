@@ -32,6 +32,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('loadPluginFrontend', () => {
@@ -120,5 +121,20 @@ describe('initPlugins', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
     await expect(initPlugins()).resolves.toBeUndefined()
     expect(console.warn).toHaveBeenCalledWith('[Plugin] Failed to fetch plugin list:', expect.any(Error))
+  })
+})
+
+describe('initPlugins（demo 模式）', () => {
+  it('VITE_DEMO_MODE=true 时跳过 /api/plugins，直接加载静态 demo 插件', async () => {
+    vi.stubEnv('VITE_DEMO_MODE', 'true')
+    vi.stubEnv('BASE_URL', FIXTURE + '/')
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await initPlugins()
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(calls()).toEqual(['miku-demo'])
+    expect(ctxs()).toEqual([{ tag: 'mock-ctx' }])
   })
 })

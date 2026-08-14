@@ -1,12 +1,35 @@
 import type { AxiosInstance } from 'axios'
 import { mockFileTree, mockSystemInfo, mockConfig, mockLogs, getMockLogDates } from './mockData'
 import type { FileItem } from '@/types'
+import { DEMO_PLUGINS } from './plugins'
+import type { DemoPluginConfig } from './plugins'
+import type { PluginInfo } from '@/api/plugins'
 
 // 可变的文件树副本（同一会话内可操作）
 let tree: Record<string, FileItem[]> = {}
 
 function initTree() {
   tree = JSON.parse(JSON.stringify(mockFileTree))
+}
+
+// demo 插件启用状态（内存态，刷新重置为全部启用）
+const demoPluginsEnabled = new Map<string, boolean>()
+
+function initDemoPlugins() {
+  demoPluginsEnabled.clear()
+  for (const p of DEMO_PLUGINS) demoPluginsEnabled.set(p.name, true)
+}
+
+function demoPluginToInfo(p: DemoPluginConfig): PluginInfo {
+  const base = import.meta.env.BASE_URL || '/'
+  return {
+    name: p.name,
+    enabled: demoPluginsEnabled.get(p.name) ?? true,
+    local: true,
+    source: 'local',
+    frontendPath: `${base}${p.entry}`,
+    version: p.version,
+  }
 }
 
 function randomDelay(): number {
@@ -28,6 +51,7 @@ function getFilesInDir(dirPath: string): FileItem[] {
 
 export function setupMockApi(api: AxiosInstance) {
   initTree()
+  initDemoPlugins()
 
   // 拦截所有请求
   api.interceptors.request.use((config) => {
@@ -298,6 +322,26 @@ export function setupMockApi(api: AxiosInstance) {
 
     if (fullUrl === '/api/logs/dates' && method === 'get') {
       return mockResponse({ dates: getMockLogDates() })
+    }
+
+    // ============================================================
+    // Plugins：demo 内置本地插件（按 name 命中 DEMO_PLUGINS）
+    // ============================================================
+    if (fullUrl === '/api/plugins' && method === 'get') {
+      return mockResponse(DEMO_PLUGINS.map(demoPluginToInfo))
+    }
+
+    if (fullUrl === '/api/plugins/load' && method === 'post') {
+      const name = (config.data as { name?: string } | undefined)?.name
+      const plugin = DEMO_PLUGINS.find((p) => p.name === name)
+      if (plugin) demoPluginsEnabled.set(plugin.name, true)
+      return mockResponse(plugin ? demoPluginToInfo(plugin) : { error: `Plugin "${name}" not found` })
+    }
+
+    if (fullUrl.startsWith('/api/plugins/') && fullUrl.endsWith('/unload') && method === 'post') {
+      const name = fullUrl.replace('/api/plugins/', '').replace(/\/unload$/, '')
+      if (demoPluginsEnabled.has(name)) demoPluginsEnabled.set(name, false)
+      return mockResponse({ success: true })
     }
 
     // 未匹配的 API 请求 — 让请求通过（会失败，但不会崩溃）
