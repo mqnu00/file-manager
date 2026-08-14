@@ -2,13 +2,13 @@
 const STORAGE_KEY_PANEL_OPACITY = 'hatsune-miku-theme-panel-opacity'
 
 /** 面板透明度默认值（与主题 CSS 默认 --app-panel 的 alpha 一致） */
-export const DEFAULT_PANEL_OPACITY = 55
+export const DEFAULT_PANEL_OPACITY = 10
 
 /** localStorage 键：面板背景模糊度（px 0-30） */
 const STORAGE_KEY_PANEL_BLUR = 'hatsune-miku-theme-panel-blur'
 
 /** 面板模糊度默认值（px，与主题 CSS 默认 --app-blur 一致） */
-export const DEFAULT_PANEL_BLUR = 4
+export const DEFAULT_PANEL_BLUR = 0
 
 /** 读取当前面板透明度（0-100 整数，未配置或损坏时返回默认值） */
 export function currentPanelOpacity(): number {

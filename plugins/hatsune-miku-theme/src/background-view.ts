@@ -238,7 +238,7 @@ export function createBackgroundView(ctx: FrontendPluginContext, deps: Backgroun
             h(
               'p',
               { class: 'miku-bg-upload-tip' },
-              '数值越大面板越不透明，默认 55%，拖动实时预览，点击下方「保存面板效果」后生效。'
+              '数值越大面板越不透明，默认 10%，拖动实时预览，点击下方「保存面板效果」后生效。'
             ),
           ])
         )
@@ -280,7 +280,7 @@ export function createBackgroundView(ctx: FrontendPluginContext, deps: Backgroun
             h(
               'p',
               { class: 'miku-bg-upload-tip' },
-              '数值越大背景越模糊，默认 4px，拖动实时预览，点击下方「保存面板效果」后生效。'
+              '数值越大背景越模糊，默认 0px，拖动实时预览，点击下方「保存面板效果」后生效。'
             ),
           ])
         )

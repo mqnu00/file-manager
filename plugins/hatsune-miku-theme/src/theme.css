@@ -9,8 +9,8 @@ html.hatsune-miku {
   --miku-blue: #03a9f4;
   --miku-pink: #e91e63;
   --app-bg: #040405;
-  /* 面板黑色半透明程度（alpha 百分比），可在插件主页配置，默认 55% */
-  --app-panel-opacity: 55%;
+  /* 面板黑色半透明程度（alpha 百分比），可在插件主页配置，默认 10% */
+  --app-panel-opacity: 10%;
   --app-panel: rgb(0 0 0 / var(--app-panel-opacity));
   --app-panel-solid: #040405;
   --app-border: rgb(10 189 198 / 25%);
@@ -25,13 +25,13 @@ html.hatsune-miku {
   --app-accent-bg-subtle: rgb(10 189 198 / 7%);
   --app-accent-border: rgb(10 189 198 / 26%);
   --app-accent-border-light: rgb(10 189 198 / 18%);
-  /* 输入控件背景 = 面板黑色半透明程度 + 20%（跟随用户配置，默认 55% + 20% = 75%） */
+  /* 输入控件背景 = 面板黑色半透明程度 + 20%（跟随用户配置，默认 10% + 20% = 30%） */
   --app-input-bg: rgb(0 0 0 / calc(var(--app-panel-opacity) + 20%));
   --app-table-header-bg: rgb(10 189 198 / 7%);
   --app-table-header-border: rgb(10 189 198 / 20%);
   --app-table-row-hover: rgb(10 189 198 / 7%);
   --app-table-cell-border: rgb(10 189 198 / 9%);
-  --app-blur: blur(4px);
+  --app-blur: blur(0px);
   --app-text-shadow: none;
   --app-text-glow: 0 0 6px rgb(0 242 255 / 45%);
   --app-text-glow-hover: 0 0 12px rgb(0 242 255 / 70%);
