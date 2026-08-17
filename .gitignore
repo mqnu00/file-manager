@@ -59,3 +59,5 @@ backend/files/
 .qwen/
 .sema/
 backend/tasks.json
+
+*timestamp*
