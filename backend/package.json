@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager",
-  "version": "3.0.0-beta6",
+  "version": "3.0.0-beta7",
   "main": "dist/app.js",
   "exports": {
     ".": {

@@ -1,3 +1,14 @@
+## v3.0.0-beta7 (2026-08-17)
+
+### ✨ 新增功能
+
+- 插件页面路由支持 `meta.requiresAuth` 自声明登录拦截：插件通过 `ctx.router.addRoute` 声明 `requiresAuth: true` 时，未登录访问该页面会被路由守卫重定向到登录页（登录后跳回原页面）；纯主题/公开页面不声明即默认放行
+  - 类型定义同步：backend 插件类型（`backend/src/plugin/frontend-types.ts`）与前端 context（`frontend/src/context.ts`）新增 `PluginRouteRecord`，提供 `meta.requiresAuth` 类型提示与文档
+  - hatsune-miku 主题插件页面落地声明（其自定义背景上传/删除接口已挂认证，页面随之需要登录）
+  - 配套测试：路由守卫新增插件路由 requiresAuth 拦截/放行用例
+
+---
+
 ## v3.0.0-beta6 (2026-08-13)
 
 ### ✨ 新增功能
