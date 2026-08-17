@@ -96,6 +96,7 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
 |---|---|
 | `ctx.app` | Express Router，插件路由挂载点（插件只能注册路由，不能启动服务器） |
 | `ctx.express` | express 命名空间，用 `ctx.express.Router()` 创建子路由 |
+| `ctx.middleware.auth` | 认证中间件，校验 `Authorization: Bearer <token>`；敏感路由应挂载：`ctx.app.use('/api/xxx', ctx.middleware.auth, router)` |
 | `ctx.registerService(name, impl)` | 注册插件间共享服务；重名抛错，卸载时自动清理 |
 | `ctx.getService(name)` | 获取其他插件注册的服务；未注册抛错 |
 | `ctx.manageService(name, spec)` | 注册托管服务（见「托管服务」） |

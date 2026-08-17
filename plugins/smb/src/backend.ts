@@ -18,7 +18,8 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   initSmbManager(ctx)
 
   // 注册 SMB API 路由（路径保持 /api/smb，前端 API 客户端无需改动）
-  ctx.app.use('/api/smb', createRouter(ctx))
+  // 挂载 auth 中间件：所有 /api/smb/* 端点均需 Bearer token 认证
+  ctx.app.use('/api/smb', ctx.middleware.auth, createRouter(ctx))
 
   // 注册插件间共享服务
   ctx.registerService('smb', { getStatus, start, stop })
