@@ -58,4 +58,49 @@ describe('router 认证守卫', () => {
     await router.push('/login')
     expect(authState.init).toHaveBeenCalled()
   })
+
+  // 插件通过 ctx.router.addRoute 注册路由，自带 meta.requiresAuth 声明时同样受守卫拦截
+  it('插件路由声明 requiresAuth → 未认证访问被重定向到 /login 并带 redirect', async () => {
+    const removeRoute = router.addRoute({
+      path: '/plugin/requires-auth-test',
+      component: { template: '<div />' },
+      meta: { requiresAuth: true },
+    })
+    try {
+      await router.push('/plugin/requires-auth-test')
+      expect(router.currentRoute.value.name).toBe('login')
+      expect(router.currentRoute.value.query.redirect).toBe('/plugin/requires-auth-test')
+    } finally {
+      removeRoute()
+    }
+  })
+
+  it('插件路由声明 requiresAuth 且已认证 → 允许进入', async () => {
+    const removeRoute = router.addRoute({
+      path: '/plugin/requires-auth-test',
+      component: { template: '<div />' },
+      meta: { requiresAuth: true },
+    })
+    try {
+      authState.isAuthenticated = true
+      await router.push('/plugin/requires-auth-test')
+      expect(router.currentRoute.value.path).toBe('/plugin/requires-auth-test')
+    } finally {
+      removeRoute()
+    }
+  })
+
+  it('插件路由未声明 requiresAuth → 未认证直接放行', async () => {
+    const removeRoute = router.addRoute({
+      path: '/plugin/public-test',
+      component: { template: '<div />' },
+    })
+    try {
+      await router.push('/plugin/public-test')
+      expect(router.currentRoute.value.path).toBe('/plugin/public-test')
+      expect(router.currentRoute.value.name).not.toBe('login')
+    } finally {
+      removeRoute()
+    }
+  })
 })

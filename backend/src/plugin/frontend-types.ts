@@ -19,6 +19,7 @@ import type {
   RouterOptions,
   Router,
   RouterHistory,
+  RouteRecordRaw,
 } from 'vue-router'
 import type { Ref } from 'vue'
 
@@ -222,6 +223,22 @@ export interface FileSortComposable {
   sortOrder: Ref<string>
 }
 
+// ==================== 插件路由声明 ====================
+
+/**
+ * 插件页面路由记录。
+ *
+ * 页面是否需要登录由插件自行声明：`meta.requiresAuth: true` 时，
+ * 未登录访问该页面将被路由守卫重定向到 /login（登录后跳回原页面）。
+ * 不声明（如纯主题、公开页面）则默认放行。
+ */
+export type PluginRouteRecord = Omit<RouteRecordRaw, 'meta'> & {
+  meta?: {
+    /** 页面是否需要登录：true 时未登录访问重定向到登录页 */
+    requiresAuth?: boolean
+  }
+}
+
 // ==================== 主接口 ====================
 
 /**
@@ -278,7 +295,11 @@ export interface FrontendPluginContext {
     createRouter(options: RouterOptions): Router
     createWebHistory(base?: string): RouterHistory
     createWebHashHistory(base?: string): RouterHistory
-    addRoute: Router['addRoute']
+    /**
+     * 注册插件页面路由。需要登录的页面声明 `meta: { requiresAuth: true }`，
+     * 未登录访问会被重定向到登录页（登录后跳回原页面）。
+     */
+    addRoute(route: PluginRouteRecord): () => void
   }
 }
 

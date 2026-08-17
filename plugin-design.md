@@ -161,7 +161,8 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const { h, ref, defineComponent } = ctx.Vue
   const { ElButton, ElMessage } = ctx.ElementPlus
   // …
-  ctx.router.addRoute({ path: '/plugin/test', component: PageComponent })
+  // 页面需要登录时声明 requiresAuth: true（未登录访问重定向到登录页，登录后跳回）
+  ctx.router.addRoute({ path: '/plugin/test', component: PageComponent, meta: { requiresAuth: true } })
 }
 ```
 
@@ -169,6 +170,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 - **不得直接 `import vue` / `import element-plus`** —— 所有依赖通过 ctx 获取。前端产物是零外部依赖的独立 JS 文件（esbuild 打包时 `external: ['@mqn00/file-manager/plugin/frontend']`，该导入仅为类型，无运行时依赖）
 - 页面用 `h()` 渲染函数 + `defineComponent` 编写（插件不走 SFC/模板编译）
 - 页面路由用 `ctx.router.addRoute({ path, component })` 注册，建议路径 `plugin/<短名>` 或 `/plugin/<短名>`
+- 页面需要登录时在 `addRoute` 中声明 `meta: { requiresAuth: true }`：未登录访问该页面会被主项目路由守卫重定向到登录页（登录后自动跳回原页面）；纯主题/公开页面不声明即默认放行。插件前端资源（JS/静态图）的加载不受影响，是否拦截由插件自行声明决定
 
 ### ctx 能力
 

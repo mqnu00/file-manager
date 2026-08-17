@@ -18,7 +18,12 @@ import * as configApi from '@/api/config'
 import * as taskApi from '@/api/task'
 import * as systemApi from '@/api/system'
 
-import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+import {
+  createRouter,
+  createWebHashHistory,
+  createWebHistory,
+  type RouteRecordRaw,
+} from 'vue-router'
 import router from '@/router'
 
 import { useAuthStore } from '@/stores/auth'
@@ -40,6 +45,20 @@ import {
   THEME_VALUE_LIGHT,
   API_BASE_URL,
 } from '@/constants'
+
+/**
+ * 插件页面路由记录（与 backend/src/plugin/frontend-types.ts 保持同步）。
+ *
+ * 页面是否需要登录由插件自行声明：`meta.requiresAuth: true` 时，
+ * 未登录访问该页面将被路由守卫重定向到 /login（登录后跳回原页面）。
+ * 不声明（如纯主题、公开页面）则默认放行。
+ */
+export type PluginRouteRecord = Omit<RouteRecordRaw, 'meta'> & {
+  meta?: {
+    /** 页面是否需要登录：true 时未登录访问重定向到登录页 */
+    requiresAuth?: boolean
+  }
+}
 
 export interface ScriptContext {
   /** Vue 核心库 */
@@ -97,7 +116,11 @@ export interface ScriptContext {
     createRouter: typeof createRouter
     createWebHistory: typeof createWebHistory
     createWebHashHistory: typeof createWebHashHistory
-    addRoute: typeof router.addRoute
+    /**
+     * 注册插件页面路由。需要登录的页面声明 `meta: { requiresAuth: true }`，
+     * 未登录访问会被重定向到登录页（登录后跳回原页面）。
+     */
+    addRoute: (route: PluginRouteRecord) => () => void
     currentRoute: typeof router.currentRoute
   }
 
@@ -155,7 +178,8 @@ export function createScriptContext(): ScriptContext {
       createRouter,
       createWebHistory,
       createWebHashHistory,
-      addRoute: router.addRoute.bind(router),
+      // 插件仅使用单参数重载（RouteRecordRaw 宽于 PluginRouteRecord，需收窄签名）
+      addRoute: router.addRoute.bind(router) as (route: PluginRouteRecord) => () => void,
       currentRoute: router.currentRoute,
     },
   }

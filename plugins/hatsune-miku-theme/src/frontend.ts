@@ -80,7 +80,12 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
 
   const BackgroundView = createBackgroundView(ctx, { backgrounds, refreshBackgrounds })
 
-  ctx.router.addRoute({ path: '/plugin/hatsune-miku-theme', component: BackgroundView })
+  // 自定义背景上传/删除接口已挂认证 → 页面声明 requiresAuth，未登录访问重定向到登录页
+  ctx.router.addRoute({
+    path: '/plugin/hatsune-miku-theme',
+    component: BackgroundView,
+    meta: { requiresAuth: true },
+  })
   console.log(
     '[Hatsune Miku Theme] Frontend loaded — theme "hatsune-miku" registered, page at /plugin/hatsune-miku-theme'
   )
