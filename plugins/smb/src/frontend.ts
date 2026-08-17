@@ -365,6 +365,11 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     },
   })
 
-  ctx.router.addRoute({ path: '/plugin/smb', component: SmbView })
+  // SMB 管理接口已挂认证（ctx.middleware.auth）→ 页面声明 requiresAuth，未登录访问重定向到登录页
+  ctx.router.addRoute({
+    path: '/plugin/smb',
+    component: SmbView,
+    meta: { requiresAuth: true },
+  })
   console.log('[SMB Plugin] Frontend loaded — page registered at /plugin/smb')
 }
