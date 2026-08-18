@@ -55,4 +55,33 @@ test.describe('文件浏览与操作', () => {
     await page.getByLabel('确认删除').getByRole('button', { name: '删除' }).click()
     await expect(page.getByText('中文文件.txt')).toHaveCount(0)
   })
+
+  test('停留在子目录时刷新页面 → 刷新后回到根目录', async ({ page }) => {
+    await openHome(page)
+    await page.locator('.file-name-text').filter({ hasText: 'docs' }).click()
+    await expect(page.getByText('readme.md')).toBeVisible()
+    // 刷新：需求为刷新回到 storageRoot，docs 内容应消失、根目录文件可见
+    await page.reload()
+    await expect(page.getByText('readme.md')).toHaveCount(0)
+    await expect(page.locator('.file-name-text').filter({ hasText: 'docs' })).toBeVisible()
+  })
+
+  test('停留在子目录时进入设置页再返回 → 返回后仍在该目录', async ({ page }) => {
+    await openHome(page)
+    await page.locator('.file-name-text').filter({ hasText: 'docs' }).click()
+    await expect(page.getByText('readme.md')).toBeVisible()
+    // 进入设置页：用户实际是点击工具栏（SPA 内跳转），主页会先卸载并写入路径记忆。
+    // 这里用 pushState+popstate 模拟 SPA 内导航；不能用 page.goto（整页导航不触发主页卸载钩子）
+    await page.evaluate(() => {
+      history.pushState(history.state ?? null, '', '/config')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    await expect(page.locator('.config-card')).toBeVisible()
+    // 设置页「返回」按钮回到主页
+    await page.getByRole('button', { name: '返回', exact: true }).click()
+    await expect(page.getByText('readme.md')).toBeVisible()
+    // 清理：回到根目录
+    await page.locator('.breadcrumb-home').click()
+    await expect(page.getByText('readme.md')).toHaveCount(0)
+  })
 })

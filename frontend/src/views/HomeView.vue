@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useFileStore } from '@/stores/file'
 import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize, downloadFile } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -122,6 +122,7 @@ import RenameDialog from '../components/dialogs/RenameDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
 import TaskPanel from '../components/TaskPanel.vue'
 import { FileItem } from '@/types/index.ts'
+import { STORAGE_KEY_FILE_PATH } from '@/constants'
 
 const fileStore = useFileStore()
 const progress = useFileProgress()
@@ -197,6 +198,11 @@ const loadFiles = async (path: string = '') => {
     fileStore.setCurrentPath(res.path)
     sortFiles()
   } catch (e: any) {
+    // 临时记忆的路径已失效（目录被删除等）：回退根目录
+    if (path && fileStore.files.length === 0) {
+      loadFiles('')
+      return
+    }
     ElMessage.error(e.response?.data?.message || '加载失败')
   } finally {
     fileStore.setLoading(false)
@@ -364,8 +370,27 @@ const handleCancelSelection = () => {
 }
 
 onMounted(() => {
-  loadFiles()
+  // 从其他页面返回主页时恢复上次查看的路径（用后即焚）；
+  // 刷新不经过本流程（没有离开主页的写入），因此刷新始终从 storageRoot 开始
+  let savedPath = ''
+  try {
+    savedPath = sessionStorage.getItem(STORAGE_KEY_FILE_PATH) ?? ''
+    sessionStorage.removeItem(STORAGE_KEY_FILE_PATH)
+  } catch {
+    savedPath = ''
+  }
+  loadFiles(savedPath)
   taskStore.init()
+})
+
+// 离开主页（进入设置/插件等页面）时临时保存当前路径，供返回时恢复；
+// 浏览器整页刷新不会触发卸载钩子，因此刷新不会残留记忆
+onBeforeUnmount(() => {
+  try {
+    sessionStorage.setItem(STORAGE_KEY_FILE_PATH, fileStore.currentPath)
+  } catch {
+    // sessionStorage 不可用，跳过记忆
+  }
 })
 
 // 离开主页时清空选择，避免 store 中的选中状态残留到其他页面/再次返回时显示

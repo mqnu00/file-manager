@@ -41,6 +41,7 @@ import HomeView from './HomeView.vue'
 import { getFiles, createFolder as createFolderApi, batchDeleteFiles } from '@/api/file'
 import { useFileStore } from '@/stores/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { STORAGE_KEY_FILE_PATH } from '@/constants'
 
 const mockedGetFiles = vi.mocked(getFiles)
 const mockedCreateFolder = vi.mocked(createFolderApi)
@@ -53,6 +54,9 @@ const dirB: FileItem = { name: 'dirb', path: '/dirb', isDirectory: true, size: 0
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  // 清空存储：避免上个用例留下的路径记忆影响本次挂载
+  sessionStorage.clear()
+  localStorage.clear()
   mockedGetFiles.mockResolvedValue({ path: '', files: [fileA, dirB] })
   mockedCreateFolder.mockResolvedValue({ success: true })
   mockedBatchDelete.mockResolvedValue({ success: 1, failed: [] })
@@ -178,5 +182,41 @@ describe('HomeView.vue', () => {
     wrapper.unmount()
 
     expect(fileStore.selectedFiles).toEqual([])
+  })
+
+  it('返回主页：离开时写入记忆，重新挂载恢复进入其他页面前的路径', async () => {
+    // 模拟后端原样返回请求路径
+    mockedGetFiles.mockImplementation(async (p: string) => ({ path: p, files: [] }))
+    const first = await mountView()
+    // 进入子目录 dirb（等价用户停留在该目录）
+    await first.getComponent({ name: 'FileTable' }).vm.$emit('open', 'dirb')
+    await flushPromises()
+    // 卸载（进入设置页）时写入当前路径到 sessionStorage
+    first.unmount()
+
+    expect(sessionStorage.getItem(STORAGE_KEY_FILE_PATH)).toBe('dirb')
+    // 从设置页返回 → HomeView 重新挂载，应恢复 dirb 而非回到根目录
+    mockedGetFiles.mockClear()
+    await mountView()
+    expect(mockedGetFiles).toHaveBeenCalledWith('dirb')
+    // 记忆用后即焚：读取后清空，后续刷新/再挂载不再恢复
+    expect(sessionStorage.getItem(STORAGE_KEY_FILE_PATH)).toBeNull()
+  })
+
+  it('返回主页：无记忆残留（直接刷新场景）→ 从根目录开始', async () => {
+    // 无任何记忆：等效于用户在主页直接刷新（onBeforeUnmount 未执行，无写入）
+    await mountView()
+    expect(mockedGetFiles).toHaveBeenCalledWith('')
+  })
+
+  it('返回主页：记忆路径已失效 → 回退根目录并消费记忆', async () => {
+    sessionStorage.setItem(STORAGE_KEY_FILE_PATH, 'gone')
+    mockedGetFiles.mockRejectedValueOnce(new Error('路径不存在'))
+    const wrapper = await mountView()
+    // 第一次带记忆路径失败 → 回退根目录（第二次调用，成功返回 path:''）
+    expect(mockedGetFiles).toHaveBeenNthCalledWith(1, 'gone')
+    expect(mockedGetFiles).toHaveBeenNthCalledWith(2, '')
+    // 记忆已消费
+    expect(sessionStorage.getItem(STORAGE_KEY_FILE_PATH)).toBeNull()
   })
 })
