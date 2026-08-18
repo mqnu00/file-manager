@@ -21,6 +21,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     className: 'midnight',
     css: `
 html.midnight {
+  color-scheme: dark;
   --app-bg: #0d1117;
   --app-panel: #161b22;
   --app-panel-solid: #161b22;

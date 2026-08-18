@@ -38,6 +38,8 @@ body {
 }
 
 :root {
+  /* 原生控件（媒体播放条/表单/滚动条）跟随浅色主题 */
+  color-scheme: light;
   --app-bg: #f5f7fa;
   --app-panel: #fff;
   --app-panel-solid: #fff;
@@ -73,6 +75,8 @@ body {
 }
 
 html.cyber {
+  /* 原生控件（媒体播放条/表单/Chromium PDF 查看器）自动切暗色 */
+  color-scheme: dark;
   --app-bg: #060b1a;
   --app-panel: rgb(10 18 40 / 35%);
   --app-panel-solid: rgb(10 18 40 / 60%);

@@ -1,6 +1,8 @@
 /* 初音未来主题样式。占位符 __MIKU_DEFAULT_BG_URL__ / __MIKU_LOGO_URL__ 由
    frontend.ts 读入本文件后 replace 注入真实 URL（保持常量唯一来源）。 */
 html.hatsune-miku {
+  /* 原生控件（媒体播放条/表单/Chromium PDF 查看器）自动切暗色 */
+  color-scheme: dark;
   --miku-bg: url('__MIKU_DEFAULT_BG_URL__');
   /* 初音特色色板（参考 DB_Hatsune-Miku-Theme）：主青 #00f2ff / 次青绿 #0abdc6 /
      亮青 #00fff1 / 辅助蓝 #03a9f4 / 点缀粉 #e91e63 / 危险红 #f40303 */

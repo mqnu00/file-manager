@@ -208,6 +208,92 @@ html.midnight {
 - 自带资源（图片等）经 `/plugins-assets/<短名>/assets/...` 引用，需将 `assets/` 列入 package.json `files` 随包发布
 - 纯前端主题插件（无后端功能）仍需提供最小后端入口（空 `install`）满足加载器要求
 
+### 插件样式与主题适配（样式规范）
+
+插件自带的容器/自定义元素不随主题自动换肤，需遵守以下规范才能在「白天 / 赛博 / 初音未来…」等主题下外观一致（file-viewer 查看器系插件以此整改，见 `plugins/file-*`）。
+
+#### 1. 颜色只用主题令牌
+
+主项目以 CSS 变量提供一套**主题令牌**，所有主题（含插件注册的主题）都通过覆盖这些变量换肤。插件样式**禁止硬编码颜色**（`#fff`、`rgb(...)`、`#ccc` 等），一律引用令牌并带 fallback，保证令牌缺失时仍可读：
+
+```css
+.my-panel {
+  background: var(--app-panel-solid, #fff);
+  color: var(--app-text, #333);
+  border: 1px solid var(--app-border, #ccc);
+}
+```
+
+令牌清单（`:root` 定义，暗色主题同名覆盖）：
+
+| 令牌 | 语义 |
+|---|---|
+| `--app-bg` | 页面背景 |
+| `--app-panel` | 面板背景（暗色主题可为半透明） |
+| `--app-panel-solid` | 不透明面板背景（正文阅读区用这个） |
+| `--app-border` | 边框 / 分割线 |
+| `--app-text` / `--app-text-dim` / `--app-text-bright` | 正文 / 次要 / 标题文字 |
+| `--app-accent` | 主强调色（按钮、高亮） |
+| `--app-accent-bg` / `-bg-hover` / `-bg-subtle` | 强调色背景（强 / 中 / 弱） |
+| `--app-accent-border` / `-border-light` | 强调色边框 |
+| `--app-input-bg` | 输入控件背景 |
+| `--app-shadow` / `--app-glow` / `--app-blur` | 阴影 / 辉光 / 磨砂 |
+| `--app-mask-bg` | 遮罩背景 |
+| `--app-table-header-bg` 等 `--app-table-*` | 表格细节 |
+| `--app-checkbox-border` / `--app-select-caret` / `--app-scrollbar-*` | 对应组件细节 |
+
+内联 `style`（`h('div', { style: { color: '...' } })`）同样只允许令牌引用。
+
+#### 2. 暗色主题声明 color-scheme
+
+`<video>`/`<audio>`、原生 `<input>`、Chromium 内置 PDF 查看器的控件外观由浏览器按 `color-scheme` 渲染。主项目内置暗色主题（`html.cyber`）已声明 `color-scheme: dark`；**插件注册的暗色主题必须在自己的 css 里同样声明**：
+
+```css
+html.my-theme { color-scheme: dark; }
+```
+
+否则暗色主题下原生控件仍是亮色，观感割裂（参考 `plugins/test` 示例）。
+
+#### 3. 类名加插件前缀
+
+插件注入的 `<style>` 是全局样式，为防与其他插件 / 主项目类名冲突，**所有类名必须带插件专属前缀**，禁止使用 `media-viewer`、`code-bar`、`hex-input` 这类通用词。file-viewer 系前缀约定：
+
+| 插件 | 前缀 |
+|---|---|
+| file-viewer（核心） | `fv-` |
+| file-code-viewer | `fcv-` |
+| file-image-viewer | `fiv-` |
+| file-video-viewer | `fvv-` |
+| file-music-viewer | `fmu-` |
+| file-office-viewer | `fov-` |
+| file-binary-viewer | `fbv-` |
+
+样式注入惯例：`install()` 时创建带稳定 id 的 `<style>` 标签，先查重后追加（插件卸载/热重载时同 id 覆盖或复用）：
+
+```ts
+function injectStyles(): void {
+  if (document.getElementById('my-plugin-style')) return
+  const style = document.createElement('style')
+  style.id = 'my-plugin-style'
+  style.textContent = `.mp-panel { ... }`
+  document.head.appendChild(style)
+}
+```
+
+#### 4. 第三方组件内部主题联动
+
+Monaco、docx-preview、SheetJS、PDF 等库自带内部主题（不读 CSS 变量），需订阅主项目主题做组件级切换：
+
+```ts
+const theme = ctx.composables.useTheme()
+watch(() => theme.activeTheme.value.name, () => {
+  // 按当前主题切换第三方组件主题；className 为 '' 表示亮色（light）
+  editor.setTheme(theme.activeTheme.value.className === '' ? 'vs' : 'vs-dark')
+})
+```
+
+「是否暗色」以 `activeTheme.value.className` 是否为空判断，不要硬编码主题名；PDF/影片等中性色内容（如播放器黑底、PDF 灰底）保持惯例即可。
+
 ## 六、静态资源
 
 - 后端静态服务：`/plugins-assets/<短名>/<包内相对路径>`（含路径穿越防护），如 `/plugins-assets/hatsune-miku-theme/assets/logo.png`
