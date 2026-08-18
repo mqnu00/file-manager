@@ -354,8 +354,24 @@ async function loadSinglePlugin(
     // 整体复制而非仅入口文件，保证多文件插件（入口 require('./xxx')）的相对依赖可解析。
     let mod: unknown
     if (cacheBust) {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-'))
-      fs.cpSync(path.dirname(entryAbs), tmpDir, { recursive: true })
+      // 临时副本建在插件根目录下（rootDir/.reload-xxx/）并复制 dist 内容。
+      // 关键：副本必须是插件根目录的子孙路径，require 向上查找才能命中
+      // 插件根 node_modules（dist 的父级）；复制到系统 /tmp 会丢失依赖解析链，
+      // 导致 require('mime-types') 等外部依赖报 Cannot find module。
+      // watcher 仅监视 dist/ 内 .js 文件，副本目录不会触发重载循环。
+      const distDir = path.dirname(entryAbs)
+      let tmpDir: string
+      try {
+        tmpDir = fs.mkdtempSync(path.join(rootDir, '.reload-'))
+      } catch {
+        // 插件根目录不可写（罕见）时回退系统临时目录，并补齐 node_modules 符号链接
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plugin-'))
+        const rootModules = path.join(rootDir, 'node_modules')
+        if (fs.existsSync(rootModules)) {
+          fs.symlinkSync(rootModules, path.join(tmpDir, 'node_modules'), 'junction')
+        }
+      }
+      fs.cpSync(distDir, tmpDir, { recursive: true })
       mod = require(path.join(tmpDir, path.basename(entryAbs)))
       // 延迟清理：install 可能异步引用相对依赖，30 秒后删除临时目录
       setTimeout(() => {
