@@ -112,7 +112,7 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
 
       return () => {
         // 工具栏
-        const toolbar = h('div', { class: 'img-bar' }, [
+        const toolbar = h('div', { class: 'fiv-bar' }, [
           h(ElTag as never, { size: 'small', type: 'info' }, () =>
             `${props.file.name.toUpperCase()} · ${fmtSize()}`
           ),
@@ -126,13 +126,13 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
           h(ElButton as never, { size: 'small', onClick: () => zoom(ZOOM_STEP) }, () => '放大'),
           h(ElButton as never, { size: 'small', onClick: () => { rotate.value = (rotate.value + 90) % 360 } }, () => '旋转'),
           // 原生元素 children 不能用函数（会被静默丢弃），用字符串
-          h('span', { class: 'img-zoom-info' }, `${Math.round(scale.value * 100)}% · ${rotate.value}°`),
+          h('span', { class: 'fiv-zoom-info' }, `${Math.round(scale.value * 100)}% · ${rotate.value}°`),
           h(ElSlider as never, {
             modelValue: scale.value,
             min: 0.1,
             max: 4,
             step: ZOOM_STEP,
-            class: 'img-zoom-slider',
+            class: 'fiv-zoom-slider',
             onUpdate: (v: number | number[]) => {
               fitWindow.value = false
               scale.value = typeof v === 'number' ? v : (v[0] ?? 1)
@@ -142,7 +142,7 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
         ])
 
         if (error.value) {
-          return h('div', { class: 'img-viewer' }, [
+          return h('div', { class: 'fiv-viewer' }, [
             toolbar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
@@ -152,9 +152,9 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
         }
 
         if (!token.value) {
-          return h('div', { class: 'img-viewer' }, [
+          return h('div', { class: 'fiv-viewer' }, [
             toolbar,
-            h('div', { class: 'img-loading' }, '加载图片地址中…'),
+            h('div', { class: 'fiv-loading' }, '加载图片地址中…'),
           ])
         }
 
@@ -162,11 +162,11 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
           ? ''
           : `scale(${scale.value}) rotate(${rotate.value}deg)`
 
-        return h('div', { class: 'img-viewer' }, [
+        return h('div', { class: 'fiv-viewer' }, [
           toolbar,
-          h('div', { class: 'img-stage' }, [
+          h('div', { class: 'fiv-stage' }, [
             h('img', {
-              class: fitWindow.value ? 'img-fit' : 'img-zoom',
+              class: fitWindow.value ? 'fiv-fit' : 'fiv-zoom',
               src: api.streamUrl(token.value),
               alt: props.file.name,
               draggable: false,
@@ -184,18 +184,18 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'file-image-viewer-style'
   style.textContent = `
-.img-viewer { height: 100%; display: flex; flex-direction: column; }
-.img-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.img-zoom-info { color: var(--app-text-dim); font-size: 12px; min-width: 70px; text-align: center; }
-.img-zoom-slider { width: 160px !important; }
-.img-loading { color: var(--app-text-dim); }
-.img-stage {
+.fiv-viewer { height: 100%; display: flex; flex-direction: column; }
+.fiv-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.fiv-zoom-info { color: var(--app-text-dim); font-size: 12px; min-width: 70px; text-align: center; }
+.fiv-zoom-slider { width: 160px !important; }
+.fiv-loading { color: var(--app-text-dim); }
+.fiv-stage {
   flex: 1; min-height: 0; overflow: auto; display: flex;
   align-items: flex-start; justify-content: center;
   padding: 12px; border: 1px solid var(--app-border); border-radius: 6px;
 }
-.img-fit { max-width: 100%; max-height: 100%; object-fit: contain; }
-.img-zoom { transform-origin: top left; }
+.fiv-fit { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fiv-zoom { transform-origin: top left; }
 `
   document.head.appendChild(style)
 }

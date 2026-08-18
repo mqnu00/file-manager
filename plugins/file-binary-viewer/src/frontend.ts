@@ -176,10 +176,10 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
         for (let i = 0; i < count; i += 16) {
           const rowCells = cells.value.slice(i, i + 16)
           rows.push(
-            h('div', { class: 'hex-row', key: pageOffset.value + i }, [
+            h('div', { class: 'fbv-row', key: pageOffset.value + i }, [
               h(
                 'span',
-                { class: 'hex-offset' },
+                { class: 'fbv-offset' },
                 (pageOffset.value + i).toString(16).padStart(8, '0')
               ),
               ...rowCells.map((cell, j) => {
@@ -189,11 +189,11 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
                   {
                     size: 'small',
                     effect: cell.hex !== null ? 'warning' : 'plain',
-                    class: 'hex-cell',
+                    class: 'fbv-cell',
                   },
                   () =>
                     h('input', {
-                      class: 'hex-input',
+                      class: 'fbv-input',
                       value: cell.hex ?? cell.byte.toString(16).padStart(2, '0').toUpperCase(),
                       maxlength: 2,
                       spellcheck: false,
@@ -203,7 +203,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
                 )
               }),
               ...Array.from({ length: 16 - rowCells.length }, () =>
-                h('span', { class: 'hex-void' }, '')
+                h('span', { class: 'fbv-void' }, '')
               ),
               '  ',
               ...rowCells.map((cell, j) => {
@@ -213,11 +213,11 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
                   {
                     size: 'small',
                     effect: cell.ascii !== null ? 'warning' : 'plain',
-                    class: 'hex-ascii-cell',
+                    class: 'fbv-ascii-cell',
                   },
                   () =>
                     h('input', {
-                      class: 'hex-input ascii',
+                      class: 'fbv-input ascii',
                       value: cell.ascii ?? printableChar(cell.byte),
                       maxlength: 1,
                       spellcheck: false,
@@ -230,8 +230,8 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
           )
         }
 
-        return h('div', { class: 'hex-viewer' }, [
-          h('div', { class: 'hex-bar' }, [
+        return h('div', { class: 'fbv-viewer' }, [
+          h('div', { class: 'fbv-bar' }, [
             h(
               ElButton as never,
               {
@@ -253,14 +253,14 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
             h(ElButton as never, { size: 'small', disabled: loading.value, onClick: jumpToEnd }, () =>
               '跳到底'
             ),
-            h('span', { class: 'hex-page-info' }, () =>
+            h('span', { class: 'fbv-page-info' }, () =>
               `第 ${currentPage.value} / ${totalPages.value} 页 · ${ctx.utils.formatSize(fileSize.value)}`
             ),
             h(ElInput as never, {
               modelValue: goToOffsetRaw.value,
               placeholder: '跳转偏移',
               size: 'small',
-              class: 'hex-offset-input',
+              class: 'fbv-offset-input',
               onUpdate: (v: string) => {
                 goToOffsetRaw.value = v
               },
@@ -287,8 +287,8 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
                 closable: false,
               })
             : null,
-          h('div', { class: 'hex-grid', style: { opacity: loading.value ? 0.5 : 1 } }, [
-            ...(rows.length > 0 ? rows : [h('div', { class: 'hex-empty' }, '（空文件）')]),
+          h('div', { class: 'fbv-grid', style: { opacity: loading.value ? 0.5 : 1 } }, [
+            ...(rows.length > 0 ? rows : [h('div', { class: 'fbv-empty' }, '（空文件）')]),
           ]),
         ])
       }
@@ -303,17 +303,17 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'file-binary-viewer-style'
   style.textContent = `
-.hex-viewer { height: 100%; display: flex; flex-direction: column; }
-.hex-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.hex-grid { flex: 1; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 12px; line-height: 2; overflow: auto; }
-.hex-row { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
-.hex-offset { color: var(--app-text-dim); min-width: 74px; user-select: none; }
-.hex-input { width: 24px; border: none; outline: none; background: transparent; color: var(--app-text); font: inherit; text-align: center; padding: 0; }
-.hex-input.ascii { width: 12px; }
-.hex-void { min-width: 14px; }
-.hex-page-info { color: var(--app-text-dim); font-size: 12px; }
-.hex-empty { color: var(--app-text-dim); padding: 24px; }
-.hex-offset-input { width: 140px; }
+.fbv-viewer { height: 100%; display: flex; flex-direction: column; }
+.fbv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.fbv-grid { flex: 1; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 12px; line-height: 2; overflow: auto; }
+.fbv-row { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.fbv-offset { color: var(--app-text-dim); min-width: 74px; user-select: none; }
+.fbv-input { width: 24px; border: none; outline: none; background: transparent; color: var(--app-text); font: inherit; text-align: center; padding: 0; }
+.fbv-input.ascii { width: 12px; }
+.fbv-void { min-width: 14px; }
+.fbv-page-info { color: var(--app-text-dim); font-size: 12px; }
+.fbv-empty { color: var(--app-text-dim); padding: 24px; }
+.fbv-offset-input { width: 140px; }
 `
   document.head.appendChild(style)
 }

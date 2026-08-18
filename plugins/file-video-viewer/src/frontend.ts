@@ -68,16 +68,16 @@ function createVideoViewer(ctx: FrontendPluginContext): unknown {
 
       return () => {
         if (error.value) {
-          return h('div', { class: 'media-viewer' }, [
+          return h('div', { class: 'fvv-viewer' }, [
             h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
             h('div', { style: { height: '12px' } }),
             h(ElButton as never, { size: 'small', onClick: download }, () => '下载文件'),
           ])
         }
         if (!token.value) {
-          return h('div', { class: 'media-viewer media-loading' }, '加载播放地址中…')
+          return h('div', { class: 'fvv-viewer fvv-loading' }, '加载播放地址中…')
         }
-        return h('div', { class: 'media-viewer' }, [
+        return h('div', { class: 'fvv-viewer' }, [
           h('video', {
             src: api.streamUrl(token.value),
             controls: true,
@@ -98,8 +98,8 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'file-video-viewer-style'
   style.textContent = `
-.media-viewer { padding: 24px 0; }
-.media-loading { color: var(--app-text-dim); }
+.fvv-viewer { padding: 24px 0; }
+.fvv-loading { color: var(--app-text-dim); }
 `
   document.head.appendChild(style)
 }

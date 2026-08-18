@@ -145,9 +145,9 @@ function createOfficeViewer(ctx: FrontendPluginContext): unknown {
 
       return () => {
         const isSheet = ext === 'xlsx' || ext === 'xls'
-        const bar = h('div', { class: 'office-bar' }, [
+        const bar = h('div', { class: 'fov-bar' }, [
           h(ElTag as never, { size: 'small', type: 'info' }, () => `${ext.toUpperCase()} 预览（只读）`),
-          loading.value ? h('span', { class: 'office-loading' }, '加载中…') : null,
+          loading.value ? h('span', { class: 'fov-loading' }, '加载中…') : null,
           isSheet && sheetNames.value.length > 1
             ? h(ElSelect as never, {
                 modelValue: activeSheet.value,
@@ -163,23 +163,23 @@ function createOfficeViewer(ctx: FrontendPluginContext): unknown {
         ])
 
         if (error.value) {
-          return h('div', { class: 'office-viewer' }, [
+          return h('div', { class: 'fov-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
           ])
         }
 
-        return h('div', { class: 'office-viewer' }, [
+        return h('div', { class: 'fov-viewer' }, [
           bar,
           pdfUrl.value
             ? h('iframe', {
                 src: pdfUrl.value,
-                class: 'office-iframe',
+                class: 'fov-iframe',
                 style: { width: '100%', height: 'calc(100% - 42px)', border: 'none' },
               })
             : null,
-          h('div', { class: 'office-container', ref: containerRef, style: { display: pdfUrl.value ? 'none' : 'block' } }),
+          h('div', { class: 'fov-container', ref: containerRef, style: { display: pdfUrl.value ? 'none' : 'block' } }),
         ])
       }
     },
@@ -191,13 +191,14 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'file-office-viewer-style'
   style.textContent = `
-.office-viewer { height: 100%; display: flex; flex-direction: column; }
-.office-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-.office-loading { color: var(--app-text-dim); font-size: 12px; }
-.office-container { overflow: auto; height: 100%; background: #fff; color: #333; padding: 12px; border-radius: 6px; }
-.office-container table { border-collapse: collapse; }
-.office-container td, .office-container th { border: 1px solid #ccc; padding: 2px 8px; }
-.office-iframe { border-radius: 6px; background: #525659; }
+.fov-viewer { height: 100%; display: flex; flex-direction: column; }
+.fov-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.fov-loading { color: var(--app-text-dim); font-size: 12px; }
+/* 文档正文区跟随主题令牌（fallback 保证令牌缺失时仍可读） */
+.fov-container { overflow: auto; height: 100%; background: var(--app-panel-solid, #fff); color: var(--app-text, #333); padding: 12px; border-radius: 6px; }
+.fov-container table { border-collapse: collapse; }
+.fov-container td, .fov-container th { border: 1px solid var(--app-border, #ccc); padding: 2px 8px; }
+.fov-iframe { border-radius: 6px; background: var(--app-panel-solid, #525659); }
 `
   document.head.appendChild(style)
 }

@@ -183,7 +183,7 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
       }
 
       return () => {
-        const bar = h('div', { class: 'code-bar' }, [
+        const bar = h('div', { class: 'fcv-bar' }, [
           h(ElTag as never, { size: 'small', type: 'info' }, () =>
             `${extOf(props.file.name).toUpperCase()} · ${ctx.utils.formatSize(props.file.size)}`
           ),
@@ -201,14 +201,14 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
         ])
 
         if (error.value) {
-          return h('div', { class: 'code-viewer' }, [
+          return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
           ])
         }
         if (tooLarge.value) {
-          return h('div', { class: 'code-viewer' }, [
+          return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert as never, {
@@ -220,7 +220,7 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
           ])
         }
         if (binary.value) {
-          return h('div', { class: 'code-viewer' }, [
+          return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert as never, {
@@ -232,10 +232,10 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
           ])
         }
 
-        return h('div', { class: 'code-viewer' }, [
+        return h('div', { class: 'fcv-viewer' }, [
           bar,
-          loading.value ? h('div', { class: 'code-loading' }, '加载 Monaco 编辑器中…') : null,
-          h('div', { class: 'code-editor', ref: containerRef, style: { height: 'calc(100% - 42px)' } }),
+          loading.value ? h('div', { class: 'fcv-loading' }, '加载 Monaco 编辑器中…') : null,
+          h('div', { class: 'fcv-editor', ref: containerRef, style: { height: 'calc(100% - 42px)' } }),
         ])
       }
     },
@@ -247,10 +247,10 @@ function injectStyles(): void {
   const style = document.createElement('style')
   style.id = 'file-code-viewer-style'
   style.textContent = `
-.code-viewer { height: 100%; display: flex; flex-direction: column; }
-.code-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-.code-loading { color: var(--app-text-dim); padding: 24px; }
-.code-editor { border: 1px solid var(--app-border); border-radius: 6px; overflow: hidden; }
+.fcv-viewer { height: 100%; display: flex; flex-direction: column; }
+.fcv-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.fcv-loading { color: var(--app-text-dim); padding: 24px; }
+.fcv-editor { border: 1px solid var(--app-border); border-radius: 6px; overflow: hidden; }
 `
   document.head.appendChild(style)
 }
