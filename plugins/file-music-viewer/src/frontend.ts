@@ -84,6 +84,9 @@ function createAudioViewer(ctx: FrontendPluginContext): unknown {
             autoplay: true,
             preload: 'metadata',
             style: { width: '100%', maxWidth: '720px' },
+            onError: () => {
+              error.value = '音频加载失败：该文件可能不是有效的音频或已损坏'
+            },
           }),
           h('div', { style: { height: '8px' } }),
           h(ElButton as never, { size: 'small', onClick: download }, () => '下载音频'),

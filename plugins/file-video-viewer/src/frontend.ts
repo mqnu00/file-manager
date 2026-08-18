@@ -84,6 +84,9 @@ function createVideoViewer(ctx: FrontendPluginContext): unknown {
             autoplay: true,
             preload: 'metadata',
             style: { width: '100%', maxWidth: '960px', maxHeight: '70vh', background: '#000' },
+            onError: () => {
+              error.value = '视频加载失败：该文件可能不是有效的视频或已损坏'
+            },
           }),
           h('div', { style: { height: '8px' } }),
           h(ElButton as never, { size: 'small', onClick: download }, () => '下载视频'),

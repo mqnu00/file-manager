@@ -90,8 +90,8 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
 
       const currentExt = computed(() => (file.value ? extOf(file.value) : ''))
 
-      // 当前文件可用的查看模块（扩展名命中 + 兜底模块）
-      const applicable = computed(() => registry.getApplicable(currentExt.value))
+      // 全部已注册查看模块：用户可自由选择，不限于扩展名匹配（如用十六进制/图片查看器打开任意文件）
+      const allModules = computed(() => registry.modules())
 
       const activeModule = computed(() => (mode.value ? registry.get(mode.value) : null))
 
@@ -131,9 +131,9 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
               },
               () => '查看器设置'
             ),
-            applicable.value.length > 0
+            allModules.value.length > 0
               ? h(ElSelect as never, { modelValue: mode.value, size: 'small', class: 'fv-mode-select', onChange: onModeChange }, () =>
-                  applicable.value.map((m) =>
+                  allModules.value.map((m) =>
                     h(ElOption as never, { key: m.id, label: m.label, value: m.id })
                   )
                 )
@@ -146,7 +146,7 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
           body = h('div', { class: 'fv-loading' }, '加载中…')
         } else if (!file.value) {
           body = h(ElEmpty as never, { description: '未找到文件（缺少 path 参数）' })
-        } else if (applicable.value.length === 0) {
+        } else if (allModules.value.length === 0) {
           body = h(ElEmpty as never, { description: '未安装任何查看插件（如 file-code-viewer/file-music-viewer 等）' })
         } else if (activeModule.value) {
           // 注意：函数的 children 只会作用于组件（default slot）；对原生元素

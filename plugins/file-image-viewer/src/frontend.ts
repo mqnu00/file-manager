@@ -171,6 +171,9 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
               alt: props.file.name,
               draggable: false,
               style: { transform },
+              onError: () => {
+                error.value = '图片加载失败：该文件可能不是有效的图片'
+              },
             }),
           ]),
         ])
