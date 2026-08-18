@@ -23,7 +23,9 @@ beforeEach(() => {
 
 describe('api/plugins', () => {
   it('getPlugins 调用 GET /plugins 并返回 data', async () => {
-    const plugins = [{ name: 'test', enabled: true, local: true, source: 'local', frontendPath: null }]
+    const plugins = [
+      { name: 'test', enabled: true, local: true, source: 'local', frontendPath: null, frontendPage: null },
+    ]
     mockedApi.get.mockResolvedValue({ data: plugins })
     const res = await getPlugins()
     expect(mockedApi.get).toHaveBeenCalledWith('/plugins')

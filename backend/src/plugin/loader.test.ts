@@ -18,7 +18,14 @@ describe('resolvePluginRoot（插件根目录解析）', () => {
 
 describe('getPluginManifestConfig', () => {
   it('无 fileManagerPlugin 字段返回空对象', () => {
-    expect(getPluginManifestConfig(path.join(projectRoot, 'plugins', 'test'))).toEqual({})
+    const dir = path.join(TEST_ROOT, 'no-manifest-config')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'file-manager-plugin-bare' }),
+      'utf-8'
+    )
+    expect(getPluginManifestConfig(dir)).toEqual({})
   })
 
   it('读取 fileManagerPlugin 清单配置', () => {
@@ -34,6 +41,7 @@ describe('getPluginManifestConfig', () => {
             port: { default: 445 },
           },
           dependsOn: ['smb'],
+          frontendPage: '/plugin/demo',
         },
       }),
       'utf-8'
@@ -42,6 +50,7 @@ describe('getPluginManifestConfig', () => {
     expect(manifest).toEqual({
       config: { host: { default: 'localhost', description: '监听地址' }, port: { default: 445 } },
       dependsOn: ['smb'],
+      frontendPage: '/plugin/demo',
     })
   })
 

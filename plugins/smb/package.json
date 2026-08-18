@@ -16,6 +16,9 @@
     "dev": "tsc --watch",
     "build:frontend": "node build.mjs"
   },
+  "fileManagerPlugin": {
+    "frontendPage": "/plugin/smb"
+  },
   "peerDependencies": {
     "@mqn00/file-manager": ">=2.8.0"
   },

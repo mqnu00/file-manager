@@ -36,6 +36,8 @@ interface PluginInstance {
   name: string
   rootDir: string
   frontendPath: string | null
+  /** fileManagerPlugin.frontendPage 值：插件声明的前端配置页路由路径 */
+  frontendPage: string | null
   /** 是否来自 plugins/ 目录（本地开发），支持热重载 */
   local: boolean
   /** 插件来源，持久化到 config.yml */
@@ -342,9 +344,12 @@ async function loadSinglePlugin(
   try {
     // 读取 package.json 获取入口文件路径
     /* eslint-disable @typescript-eslint/no-var-requires */
-    const pkg: { main?: string; exports?: Record<string, string>; type?: string } = require(
-      path.join(rootDir, 'package.json')
-    )
+    const pkg: {
+      main?: string
+      exports?: Record<string, string>
+      type?: string
+      fileManagerPlugin?: { frontendPage?: string }
+    } = require(path.join(rootDir, 'package.json'))
     const entryRel = pkg.main || 'dist/backend.js'
     const entryAbs = path.resolve(rootDir, entryRel)
 
@@ -435,10 +440,14 @@ async function loadSinglePlugin(
       frontendPath = pkg.exports['./frontend']
     }
 
+    // 解析前端配置页入口声明（fileManagerPlugin.frontendPage）
+    const frontendPage = pkg.fileManagerPlugin?.frontendPage ?? null
+
     const instance: PluginInstance = {
       name,
       rootDir,
       frontendPath,
+      frontendPage,
       local: isLocalPlugin(rootDir),
       source: isLocalPlugin(rootDir) ? 'local' : 'npm',
       layers,
@@ -953,6 +962,7 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
     local: instance.local,
     source: instance.source,
     frontendPath: instance.frontendPath,
+    frontendPage: instance.frontendPage,
   }
 }
 
@@ -1023,12 +1033,13 @@ export function getPluginManifestConfig(rootDir: string): PluginManifestConfig {
 
 /** 获取已加载的插件列表（供路由使用） */
 export function getLoadedPlugins(): LoadedPlugin[] {
-  return loadedPlugins.map(({ name, rootDir, local, source, frontendPath }) => ({
+  return loadedPlugins.map(({ name, rootDir, local, source, frontendPath, frontendPage }) => ({
     name,
     rootDir,
     local,
     source,
     frontendPath,
+    frontendPage,
   }))
 }
 
@@ -1071,6 +1082,7 @@ export function getAllPluginInfos(): PluginInfo[] {
         local,
         source,
         frontendPath: instance?.frontendPath ?? null,
+        frontendPage: instance?.frontendPage ?? null,
         version: readPluginVersion(rootDir),
       }
     })

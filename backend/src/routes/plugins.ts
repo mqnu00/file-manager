@@ -53,6 +53,7 @@ router.get('/', async (_req: Request, res: Response) => {
       frontendPath: p.frontendPath
         ? `/plugins-assets/${p.name}/${p.frontendPath.replace(/^\.\//, '')}`
         : null,
+      frontendPage: p.frontendPage ?? null,
       version: p.version,
     }))
   res.json(plugins)
@@ -82,6 +83,7 @@ router.post('/load', authMiddleware, async (req: Request, res: Response) => {
     frontendPath: plugin.frontendPath
       ? `/plugins-assets/${plugin.name}/${plugin.frontendPath.replace(/^\.\//, '')}`
       : null,
+    frontendPage: plugin.frontendPage ?? null,
   })
 })
 
@@ -333,6 +335,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
         frontendPath: instance?.frontendPath
           ? `/plugins-assets/${instance.name}/${instance.frontendPath.replace(/^\.\//, '')}`
           : null,
+        frontendPage: instance?.frontendPage ?? null,
       })
       return
     }
@@ -369,6 +372,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
         local: false,
         source: 'npm' as const,
         frontendPath: null,
+        frontendPage: null,
       })
       return
     }
@@ -381,6 +385,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
       frontendPath: instance.frontendPath
         ? `/plugins-assets/${instance.name}/${instance.frontendPath.replace(/^\.\//, '')}`
         : null,
+      frontendPage: instance.frontendPage ?? null,
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)

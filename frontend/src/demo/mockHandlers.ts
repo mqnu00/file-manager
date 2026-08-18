@@ -28,6 +28,7 @@ function demoPluginToInfo(p: DemoPluginConfig): PluginInfo {
     local: true,
     source: 'local',
     frontendPath: `${base}${p.entry}`,
+    frontendPage: p.frontendPage ?? null,
     version: p.version,
   }
 }

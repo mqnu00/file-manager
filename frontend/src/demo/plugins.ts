@@ -12,6 +12,8 @@ export interface DemoPluginConfig {
   version: string
   /** 静态前端入口，相对 demo base（/file-manager/） */
   entry: string
+  /** 插件声明的前端配置页路由路径（无独立页面不声明） */
+  frontendPage?: string
 }
 
 export const DEMO_PLUGINS: DemoPluginConfig[] = [
@@ -19,6 +21,7 @@ export const DEMO_PLUGINS: DemoPluginConfig[] = [
     name: 'hatsune-miku-theme',
     version: '0.1.0',
     entry: 'plugins/hatsune-miku-theme/frontend.js',
+    frontendPage: '/plugin/hatsune-miku-theme',
   },
 ]
 

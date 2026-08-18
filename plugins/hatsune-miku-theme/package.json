@@ -47,5 +47,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "fileManagerPlugin": {
+    "frontendPage": "/plugin/hatsune-miku-theme"
   }
 }

@@ -42,15 +42,15 @@
               <el-table-column label="前端入口" min-width="160">
                 <template #default="{ row }">
                   <el-button
-                    v-if="row.frontendPath"
+                    v-if="row.frontendPage"
                     size="small"
                     text
                     type="primary"
                     @click="openPluginPage(row)"
                   >
-                    打开页面
+                    进入前端
                   </el-button>
-                  <el-tag v-else size="small" type="warning">无前端</el-tag>
+                  <el-tag v-else size="small" type="warning">无配置页</el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="280" align="center">
@@ -319,7 +319,8 @@ async function confirmDelete(plugin: PluginInfo) {
 }
 
 function openPluginPage(plugin: PluginInfo) {
-  router.push(`/plugin/${plugin.name}`)
+  // frontendPage 由插件声明，非空才显示按钮
+  if (plugin.frontendPage) router.push(plugin.frontendPage)
 }
 
 // ---- 发现插件操作 ----

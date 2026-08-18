@@ -170,6 +170,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 - **不得直接 `import vue` / `import element-plus`** —— 所有依赖通过 ctx 获取。前端产物是零外部依赖的独立 JS 文件（esbuild 打包时 `external: ['@mqn00/file-manager/plugin/frontend']`，该导入仅为类型，无运行时依赖）
 - 页面用 `h()` 渲染函数 + `defineComponent` 编写（插件不走 SFC/模板编译）
 - 页面路由用 `ctx.router.addRoute({ path, component })` 注册，建议路径 `plugin/<短名>` 或 `/plugin/<短名>`
+- **注册了页面路由的插件，必须在 package.json 的 `fileManagerPlugin` 中声明 `frontendPage`（路由路径）**，否则插件管理页不显示「进入前端」按钮
 - 页面需要登录时在 `addRoute` 中声明 `meta: { requiresAuth: true }`：未登录访问该页面会被主项目路由守卫重定向到登录页（登录后自动跳回原页面）；纯主题/公开页面不声明即默认放行。插件前端资源（JS/静态图）的加载不受影响，是否拦截由插件自行声明决定
 
 ### ctx 能力
@@ -221,6 +222,7 @@ html.midnight {
 {
   "fileManagerPlugin": {
     "dependsOn": ["smb"],                      // 可选：依赖的其他插件短名
+    "frontendPage": "/plugin/smb",             // 可选：前端配置页路由路径（见下）
     "config": {                                // 可选：自定义配置 schema
       "servicePort": {
         "type": "number",
@@ -235,6 +237,7 @@ html.midnight {
 
 - `config` 字段类型：`string` / `number` / `boolean` / `array` / `object`；安装 npm 插件时默认值自动写入 config.yml（仅补充缺失字段，不覆盖已有配置值）
 - `dependsOn` 对应 config.yml 的插件键：加载时做 Kahn 分层拓扑排序，同一层互不依赖可并行加载；缺失依赖/循环依赖会报错，依赖未加载时拒绝加载
+- `frontendPage`：插件声明的前端配置页路由路径（如 `/plugin/smb`）。插件用 `ctx.router.addRoute` 注册了独立页面路由后须声明此字段，插件管理页才会显示「进入前端」按钮并跳转到该路径；**未声明的插件（即使有 `exports["./frontend"]` 前端模块）不显示按钮**。子插件（如 file-viewer 系查看器）无独立页面，无需声明
 
 ### config.yml 中的插件配置
 

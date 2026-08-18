@@ -43,9 +43,9 @@ const mockedLoadFrontend = vi.mocked(loadPluginFrontend)
 const mockedConfirm = vi.mocked(ElMessageBox.confirm)
 
 const installedPlugins: PluginInfo[] = [
-  { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: null, version: '1.2.0' },
-  { name: 'test', enabled: false, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', version: '0.3.0' },
-  { name: 'abc', enabled: false, local: false, source: 'npm', frontendPath: null, version: '2.1.0' },
+  { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: null, frontendPage: null, version: '1.2.0' },
+  { name: 'test', enabled: false, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', frontendPage: null, version: '0.3.0' },
+  { name: 'abc', enabled: false, local: false, source: 'npm', frontendPath: null, frontendPage: null, version: '2.1.0' },
 ]
 
 beforeEach(() => {
@@ -93,7 +93,7 @@ describe('PluginView.vue', () => {
   })
 
   it('加载插件 → loadPlugin 调用 + 成功提示 + 有 frontendPath 时加载前端', async () => {
-    const loaded: PluginInfo = { name: 'test', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', version: '0.3.0' }
+    const loaded: PluginInfo = { name: 'test', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/test/frontend/index.js', frontendPage: null, version: '0.3.0' }
     mockedLoadPlugin.mockResolvedValue(loaded)
     const wrapper = await mountView()
     await rowButton(wrapper, 'test', '加载').trigger('click')

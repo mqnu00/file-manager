@@ -12,6 +12,8 @@ export interface PluginInfo {
   /** 插件来源：local=本地开发目录，npm=node_modules */
   source: 'local' | 'npm'
   frontendPath: string | null
+  /** 插件声明的前端配置页路由路径（无独立页面为 null） */
+  frontendPage: string | null
   /** package.json 中的版本号（读取失败为 null） */
   version: string | null
 }

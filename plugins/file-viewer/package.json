@@ -18,6 +18,7 @@
     "test": "vitest run"
   },
   "fileManagerPlugin": {
+    "frontendPage": "/plugin/file-viewer",
     "config": {
       "extensionMappings": {
         "type": "object",

@@ -34,6 +34,7 @@ describe('mockHandlers 插件接口（demo）', () => {
         local: true,
         source: 'local',
         frontendPath: '/plugins/hatsune-miku-theme/frontend.js',
+        frontendPage: '/plugin/hatsune-miku-theme',
         version: '0.1.0',
       },
     ])

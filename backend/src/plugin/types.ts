@@ -26,6 +26,8 @@ export interface LoadedPlugin {
   source: 'local' | 'npm'
   /** exports["./frontend"] 值，相对于 rootDir */
   frontendPath: string | null
+  /** fileManagerPlugin.frontendPage 值：插件声明的前端配置页路由路径 */
+  frontendPage: string | null
 }
 
 /** 前端插件列表项（含启用状态） */
@@ -37,6 +39,8 @@ export interface PluginInfo {
   /** 插件来源：local=本地开发目录，npm=node_modules */
   source: 'local' | 'npm'
   frontendPath: string | null
+  /** fileManagerPlugin.frontendPage 值：插件声明的前端配置页路由路径 */
+  frontendPage: string | null
   /** package.json 中的版本号（读取失败为 null） */
   version: string | null
 }
@@ -57,6 +61,9 @@ export interface PluginManifestConfig {
   dependsOn?: string[]
   /** 插件自定义配置 schema，安装时默认值自动写入 config.yml */
   config?: Record<string, PluginConfigField>
+  /** 插件声明的前端配置页路由路径（如 "/plugin/file-viewer"）。
+   * 仅当插件注册了独立页面路由时声明；未声明则插件管理页不显示「进入前端」按钮 */
+  frontendPage?: string
 }
 
 // ==================== 托管服务 ====================

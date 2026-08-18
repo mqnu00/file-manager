@@ -640,13 +640,15 @@
       "name": "smb",
       "enabled": true,
       "local": true,
-      "frontendPath": "/plugins-assets/smb/dist/frontend.js"
+      "frontendPath": "/plugins-assets/smb/dist/frontend.js",
+      "frontendPage": "/plugin/smb"
     },
     {
       "name": "my-plugin",
       "enabled": false,
       "local": false,
-      "frontendPath": null
+      "frontendPath": null,
+      "frontendPage": null
     }
   ]
   ```
@@ -659,6 +661,7 @@
   | `enabled` | boolean | 是否启用（`config.yml` 中 `enabled !== false`） |
   | `local` | boolean | 是否来自 `plugins/` 本地开发目录（否则来自 `node_modules`） |
   | `frontendPath` | string/null | 前端入口 URL，无前端时为 `null` |
+  | `frontendPage` | string/null | 插件声明的前端配置页路由路径，未声明（无独立页面）时为 `null` |
 
 ### 2. 运行时加载插件
 
@@ -681,7 +684,8 @@
     "name": "smb",
     "enabled": true,
     "local": true,
-    "frontendPath": "/plugins-assets/smb/dist/frontend.js"
+    "frontendPath": "/plugins-assets/smb/dist/frontend.js",
+    "frontendPage": "/plugin/smb"
   }
   ```
 
