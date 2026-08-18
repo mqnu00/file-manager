@@ -21,8 +21,8 @@ File Manager 文件查看**核心插件**：劫持文件列表单击打开文件
 npm install @mqn00/file-manager-plugin-file-viewer
 # 同时安装子插件（按需）：
 npm install @mqn00/file-manager-plugin-file-code-viewer @mqn00/file-manager-plugin-file-music-viewer \
-  @mqn00/file-manager-plugin-file-video-viewer @mqn00/file-manager-plugin-file-office-viewer \
-  @mqn00/file-manager-plugin-file-binary-viewer
+  @mqn00/file-manager-plugin-file-video-viewer @mqn00/file-manager-plugin-file-image-viewer \
+  @mqn00/file-manager-plugin-file-office-viewer @mqn00/file-manager-plugin-file-binary-viewer
 ```
 
 在 `config.yml` 中启用（子插件通过 `fileManagerPlugin.dependsOn: ["file-viewer"]` 保证在核心之后加载，无需手动排序）：
@@ -51,6 +51,7 @@ plugins:
 | 代码/文本后缀（ts/js/vue/json/md/txt/py 等） | 代码编辑器（file-code-viewer） | 十六进制 |
 | mp3/wav/flac/ogg/m4a/aac/opus | 音乐播放器（file-music-viewer） | 十六进制 |
 | mp4/webm/mkv/avi/mov/flv/m4v/wmv | 视频播放器（file-video-viewer） | 十六进制 |
+| png/jpg/jpeg/gif/webp/svg/bmp/ico/avif/tiff/heic 等 | 图片查看器（file-image-viewer） | 十六进制 |
 | pdf/docx/doc/xlsx/xls/pptx/ppt | 办公文档查看器（file-office-viewer） | 十六进制 |
 | 其他全部（未知扩展名） | 十六进制查看器（file-binary-viewer，兜底） | — |
 
