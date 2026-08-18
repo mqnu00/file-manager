@@ -1,9 +1,9 @@
 /**
  * file-binary-viewer：十六进制查看/编辑（兜底模块）
  *
- * 通过 file-viewer 核心后端分页读写：
- *   GET  /api/file-viewer/bytes       读一页
- *   POST /api/file-viewer/write-range 保存一页（定位写入）
+ * 通过平台 I/O 分页读写：
+ *   GET  /api/files/read（offset/length）       读一页
+ *   POST /api/files/write（offset 定位写入）     保存一页
  *
  * 功能：offset | 16 字节 hex | ASCII 栅格视图；页导航（上一页/下一页/跳转/跳到底）；
  * 单元格编辑（hex 两位/ASCII 单字符，校验输入）；脏页整页提交保存；>512MB 只读。
@@ -15,7 +15,6 @@ import type {
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
-import { createViewerApi, base64ToBytes, type ViewerApi } from './api'
 
 const PAGE_SIZE = 256 * 1024
 const EDIT_LIMIT = 512 * 1024 * 1024
@@ -90,7 +89,8 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
     ElMessage: { success: (m: string) => void; error: (m: string) => void; warning: (m: string) => void }
   }).ElMessage
 
-  const api: ViewerApi = createViewerApi(ctx.api.instance)
+  // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
+  const api = ctx.api.fileIO
 
   return ctx.Vue.defineComponent({
     name: 'FileBinaryViewer',
@@ -113,11 +113,11 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
       const loadPage = async (offset: number) => {
         loading.value = true
         try {
-          const res = await api.readBytes(props.file.path, offset, PAGE_SIZE)
+          const res = await api.read(props.file.path, offset, PAGE_SIZE)
           fileSize.value = res.size
           readOnly.value = res.size > EDIT_LIMIT
           pageOffset.value = offset
-          pageBytes.value = base64ToBytes(res.data)
+          pageBytes.value = api.base64ToBytes(res.data)
           cells.value = toCells(pageBytes.value)
         } catch (e) {
           ElMessage.error(`读取失败: ${e instanceof Error ? e.message : '未知错误'}`)
@@ -141,7 +141,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
       const savePage = async () => {
         try {
           const next = applyDrafts(pageBytes.value, cells.value)
-          await api.writeRange(props.file.path, pageOffset.value, next)
+          await api.write(props.file.path, next, pageOffset.value)
           pageBytes.value = next
           cells.value = toCells(next)
           ElMessage.success('保存成功')

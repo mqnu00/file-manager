@@ -2,9 +2,9 @@
  * file-office-viewer：Office 文档只读预览
  *
  * 各格式处理策略：
- *   pdf           浏览器原生 iframe（file-viewer 核心流）
- *   docx          docx-preview 前端渲染（核心流拉取字节）
- *   xlsx / xls    SheetJS 渲染为表格（核心流拉取字节）
+ *   pdf           浏览器原生 iframe（平台 /api/files/stream 流）
+ *   docx          docx-preview 前端渲染（平台流拉取字节）
+ *   xlsx / xls    SheetJS 渲染为表格（平台流拉取字节）
  *   doc/ppt/pptx  本插件后端 soffice 转 PDF 后 iframe 预览（无 soffice 提示下载）
  *
  * 均为只读预览（需求明确不支持编辑）。
@@ -47,6 +47,9 @@ function createOfficeViewer(ctx: FrontendPluginContext): unknown {
     ElMessage: { error: (m: string) => void }
   }).ElMessage
 
+  // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO）：pdf/docx/xlsx/xls 原始字节拉取
+  const io = ctx.api.fileIO
+  // 本插件后端（/api/file-office-viewer/*）：soffice 转换 + 转换产物流
   const api: ViewerApi = createViewerApi(ctx.api.instance)
 
   return ctx.Vue.defineComponent({
@@ -101,19 +104,19 @@ function createOfficeViewer(ctx: FrontendPluginContext): unknown {
         error.value = ''
         try {
           if (ext === 'pdf') {
-            const token = await api.createCoreToken(props.file.path)
-            pdfUrl.value = api.coreStreamUrl(token)
+            const token = await io.createToken(props.file.path)
+            pdfUrl.value = io.streamUrl(token)
           } else if (ext === 'docx') {
-            const token = await api.createCoreToken(props.file.path)
-            const resp = await fetch(api.coreStreamUrl(token))
+            const token = await io.createToken(props.file.path)
+            const resp = await fetch(io.streamUrl(token))
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
             const blob = await resp.blob()
             const container = containerRef.value
             if (disposed || !container) return
             await renderAsync(blob, container, undefined, { inWrapper: false })
           } else if (ext === 'xlsx' || ext === 'xls') {
-            const token = await api.createCoreToken(props.file.path)
-            const resp = await fetch(api.coreStreamUrl(token))
+            const token = await io.createToken(props.file.path)
+            const resp = await fetch(io.streamUrl(token))
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
             const buffer = await resp.arrayBuffer()
             wb = XLSX.read(buffer, { type: 'array' })

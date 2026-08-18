@@ -12,7 +12,7 @@ pdf、docx、doc、xlsx、xls、pptx、ppt
 
 | 格式 | 策略 | 前置要求 |
 |---|---|---|
-| pdf | 浏览器原生 iframe（核心流） | 无 |
+| pdf | 浏览器原生 iframe（平台流） | 无 |
 | docx | `docx-preview` 前端渲染 | 无 |
 | xlsx / xls | SheetJS 渲染为表格（可切换工作表） | 无 |
 | ppt / pptx / doc | 后端 LibreOffice 转 PDF 后 iframe 预览 | 服务器安装 `soffice`/`libreoffice` |
@@ -41,7 +41,7 @@ npm install @mqn00/file-manager-plugin-file-viewer @mqn00/file-manager-plugin-fi
 
 ## 架构说明
 
-- 前端渲染类（pdf/docx/xlsx/xls）复用核心插件 `POST /api/file-viewer/token` + `GET /api/file-viewer/stream` 拉取原文件字节
+- 前端渲染类（pdf/docx/xlsx/xls）复用平台 I/O `POST /api/files/token` + `GET /api/files/stream` 拉取原文件字节（`ctx.api.fileIO`）
 - 转换类（ppt/pptx/doc）走本插件后端 `POST /api/file-office-viewer/convert`（Bearer）→ 先检测 soffice → 转换（缓存）→ 签发令牌 → `GET /api/file-office-viewer/stream?token=` iframe 预览
 - 注册表接入：前端 `install()` 时向 `globalThis.__fm_file_viewer_registry__` 注册 `{ id: 'office', editable: false }` 模块（契约见 file-viewer README）
 

@@ -1,5 +1,9 @@
 /**
- * file-office-viewer 前后端 API 客户端（自包含实现）。
+ * file-office-viewer 本插件后端 API 客户端（自包含实现）。
+ *
+ * 注意：原始文件字节拉取（pdf/docx/xlsx/xls 前端渲染）已改用平台 I/O
+ * `ctx.api.fileIO`（/api/files/token + /api/files/stream），本文件只保留
+ * 本插件后端的能力：soffice 转换 + 转换产物令牌流。
  */
 
 export interface ViewerHttp {
@@ -15,10 +19,6 @@ export interface ConvertResult {
 }
 
 export interface ViewerApi {
-  /** 换取 file-viewer 核心流令牌（服务存储根内的原始文件） */
-  createCoreToken(path: string): Promise<string>
-  /** file-viewer 核心流 URL */
-  coreStreamUrl(token: string): string
   /** 调用本插件后端转换 Office 文件为 PDF 并换取流令牌 */
   convert(path: string): Promise<ConvertResult>
   /** 本插件后端流 URL（服务转换产物） */
@@ -27,13 +27,6 @@ export interface ViewerApi {
 
 export function createViewerApi(http: ViewerHttp): ViewerApi {
   return {
-    async createCoreToken(path) {
-      const r = await http.post<{ token: string }>('/file-viewer/token', { path })
-      return r.data.token
-    },
-    coreStreamUrl(token) {
-      return `/api/file-viewer/stream?token=${encodeURIComponent(token)}`
-    },
     async convert(path) {
       const r = await http.post<ConvertResult>('/file-office-viewer/convert', { path })
       return r.data

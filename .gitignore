@@ -50,6 +50,8 @@ Thumbs.db
 tmp/
 temp/
 file-manager.tar.gz
+# 插件热重载临时副本（loader.ts mkdtempSync(.reload-)）
+**/.reload-*/
 
 # 文件管理目录（可选，如果需要忽略管理的文件）
 backend/files/

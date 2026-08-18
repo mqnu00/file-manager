@@ -14,7 +14,7 @@ png、jpg、jpeg、gif、webp、svg、bmp、ico、avif、apng、jfif、tif、tif
 - **缩放**：放大/缩小按钮 + 滑块（10% ~ 400%）
 - **旋转**：每次 90°（0/90/180/270）
 - **下载**：工具栏"下载图片"按钮（走主应用带认证的下载接口）
-- **大图无损**：经核心后端 Range 流式加载，无文件大小限制
+- **大图无损**：经平台 `/api/files/stream` Range 流式加载，无文件大小限制
 
 ## 前置要求
 
@@ -31,7 +31,7 @@ npm install @mqn00/file-manager-plugin-file-viewer @mqn00/file-manager-plugin-fi
 
 ## 架构说明
 
-- 图片链路：`POST /api/file-viewer/token`（携带 Bearer 换令牌）→ `GET /api/file-viewer/stream?token=`（公开 Range 流）→ `<img src>`
+- 图片链路：`POST /api/files/token`（携带 Bearer 换令牌）→ `GET /api/files/stream?token=`（公开 Range 流）→ `<img src>`（平台 I/O，`ctx.api.fileIO`）
 - 流令牌绑定安全校验后的绝对路径，30 分钟有效，访问时惰性清理；切换文件自动重取令牌并重置视图
 - 注册表接入：前端 `install()` 时向 `globalThis.__fm_file_viewer_registry__` 注册 `{ id: 'image', editable: false }` 模块（契约见 file-viewer README）
 

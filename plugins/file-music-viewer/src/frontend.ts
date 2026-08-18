@@ -1,9 +1,9 @@
 /**
  * file-music-viewer：音频播放
  *
- * 通过 file-viewer 核心后端换取流令牌：
- *   POST /api/file-viewer/token  → 30 分钟令牌
- *   GET  /api/file-viewer/stream（Range 流式）→ <audio>
+ * 通过平台 I/O 换取流令牌：
+ *   POST /api/files/token  → 30 分钟令牌
+ *   GET  /api/files/stream（Range 流式）→ <audio>
  */
 
 import type {
@@ -12,7 +12,6 @@ import type {
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
-import { createViewerApi, type ViewerApi } from './api'
 
 const MIME_EXTENSIONS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
 
@@ -28,7 +27,8 @@ function createAudioViewer(ctx: FrontendPluginContext): unknown {
     ElMessage: { error: (m: string) => void }
   }).ElMessage
 
-  const api: ViewerApi = createViewerApi(ctx.api.instance)
+  // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
+  const api = ctx.api.fileIO
 
   return ctx.Vue.defineComponent({
     name: 'FileAudioViewer',

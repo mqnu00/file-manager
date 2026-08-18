@@ -10,7 +10,7 @@ mp3、wav、flac、ogg、m4a、aac、opus
 
 ## 功能
 
-- **流式播放**：经核心插件换取 30 分钟流令牌，`<audio>` 直接播放（Range 支持拖进度）
+- **流式播放**：经平台 I/O 换取 30 分钟流令牌，`<audio>` 直接播放（Range 支持拖进度）
 - **下载**：播放器下方提供"下载音频"按钮（走主应用带认证的下载接口）
 
 ## 前置要求
@@ -28,7 +28,7 @@ npm install @mqn00/file-manager-plugin-file-viewer @mqn00/file-manager-plugin-fi
 
 ## 架构说明
 
-- 播放链路：`POST /api/file-viewer/token`（携带 Bearer 换令牌）→ `GET /api/file-viewer/stream?token=`（公开 Range 流）
+- 播放链路：`POST /api/files/token`（携带 Bearer 换令牌）→ `GET /api/files/stream?token=`（公开 Range 流）（平台 I/O，`ctx.api.fileIO`）
 - 流令牌绑定安全校验后的绝对路径，30 分钟有效，访问时惰性清理
 - 注册表接入：前端 `install()` 时向 `globalThis.__fm_file_viewer_registry__` 注册 `{ id: 'music', editable: false }` 模块（契约见 file-viewer README）
 
