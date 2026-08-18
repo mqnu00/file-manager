@@ -20,6 +20,7 @@ import type {
   Router,
   RouterHistory,
   RouteRecordRaw,
+  RouteLocationNormalizedLoaded,
 } from 'vue-router'
 import type { Ref } from 'vue'
 
@@ -300,6 +301,8 @@ export interface FrontendPluginContext {
      * 未登录访问会被重定向到登录页（登录后跳回原页面）。
      */
     addRoute(route: PluginRouteRecord): () => void
+    /** 当前路由信息（Ref，读取 .value.query 等；与 frontend/src/context.ts 一致） */
+    currentRoute: Ref<RouteLocationNormalizedLoaded>
   }
 }
 

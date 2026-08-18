@@ -1,0 +1,4 @@
+node_modules/
+dist/
+assets/vs/
+*.tsbuildinfo
