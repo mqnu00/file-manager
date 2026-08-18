@@ -147,34 +147,43 @@ export interface ConfigApi {
   update(updates: Record<string, unknown>): Promise<void>
 }
 
-/** 通用文件 I/O 读取结果（同步自 frontend/src/api/fileIO.ts） */
-export interface FileReadResult {
-  name: string
-  path: string
-  size: number
-  isText: boolean
-  reason?: 'too-large' | 'binary'
-  content?: string | null
-  encoding?: string | null
-}
-
-/** 通用文件 I/O 字节分页结果（同步自 frontend/src/api/fileIO.ts） */
-export interface FileBytesResult {
+/**
+ * 通用文件 I/O 读取结果（同步自 frontend/src/api/fileIO.ts）
+ *
+ * 平台只做二进制透传：返回原始字节（base64）+ 文件总大小。
+ * 是否文本、是否超限、如何解码，由消费方插件自行判断。
+ */
+export interface FileIOReadResult {
+  /** 本次返回的起始偏移 */
   offset: number
+  /** 实际返回字节数（≤ 8MB） */
   length: number
+  /** 文件总大小（应用据此自行判断"太大"） */
   size: number
-  /** base64 编码的字节数据 */
+  /** base64 编码的原始字节 */
   data: string
 }
 
 /** 通用文件 I/O API（查看器等插件使用；由 file-viewer 插件后端上收的平台能力） */
 export interface FileIOApi {
-  read(path: string): Promise<FileReadResult>
-  write(path: string, content: string, encoding?: string): Promise<void>
-  readBytes(path: string, offset: number, length: number): Promise<FileBytesResult>
-  writeRange(path: string, offset: number, bytes: Uint8Array): Promise<void>
+  /**
+   * 读取文件二进制。省略 offset/length = 整文件读取（截断到 8MB，size 返回真实大小）；
+   * 传 offset/length = 分页读取
+   */
+  read(path: string, offset?: number, length?: number): Promise<FileIOReadResult>
+  /**
+   * 写回文件二进制。省略 offset = 整文件覆盖（允许空内容清空文件）；
+   * 传 offset = 定位写入
+   */
+  write(path: string, data: Uint8Array, offset?: number): Promise<void>
+  /** 签发流令牌（有效期内可多次使用，供 <video>/<audio>/<iframe> 等无法带 header 的场景） */
   createToken(path: string): Promise<string>
+  /** 构造流式 URL（需携带令牌） */
   streamUrl(token: string): string
+  /** 将 base64 解码为 Uint8Array（兼容大块数据分批处理） */
+  base64ToBytes(base64: string): Uint8Array
+  /** 将 Uint8Array 编码为 base64 */
+  bytesToBase64(bytes: Uint8Array): string
 }
 
 /** 任务 API */

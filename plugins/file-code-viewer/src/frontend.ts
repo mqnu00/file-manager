@@ -1,8 +1,9 @@
 /**
  * file-code-viewer：代码/纯文本查看与编辑（Monaco Editor）
  *
- * 流程：/read 载入文本 → 懒加载 Monaco → 按扩展名设语言/主题 → 编辑
- *       Ctrl+S 或保存按钮 → /write 写回。二进制/超限文件提示改用十六进制查看。
+ * 流程：read 拉取二进制 → 应用侧判文本/大小 → TextDecoder 解码 → 懒加载
+ *       Monaco → 按扩展名设语言/主题 → 编辑；Ctrl+S 或保存按钮 →
+ *       TextEncoder 编码后 write 写回。二进制/超限文件提示改用十六进制查看。
  */
 
 import type {
@@ -24,6 +25,9 @@ const EXTENSIONS = [
 ]
 
 const VS_BASE = '/plugins-assets/file-code-viewer/assets/vs'
+
+/** 编辑器可打开的最大字节数（应用侧自判；平台只做二进制透传，不替应用判断） */
+const CODE_LIMIT = 8 * 1024 * 1024
 
 interface MonacoEditorHandle {
   getValue(): string
@@ -88,7 +92,7 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
       const save = async () => {
         if (!editor || !booted) return
         try {
-          await api.write(props.file.path, editor.getValue())
+          await api.write(props.file.path, new TextEncoder().encode(editor.getValue()))
           dirty.value = false
           ElMessage.success('保存成功')
         } catch (e) {
@@ -98,12 +102,18 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
 
       const boot = async () => {
         try {
-          const read = await api.read(props.file.path)
-          if (!read.isText) {
-            if (read.reason === 'too-large') tooLarge.value = true
-            else binary.value = true
+          // 平台只透传二进制；是否超限、是否文本由本应用自行判断
+          const r = await api.read(props.file.path)
+          if (r.size > CODE_LIMIT) {
+            tooLarge.value = true
             return
           }
+          const bytes = api.base64ToBytes(r.data)
+          if (bytes.subarray(0, 8192).includes(0)) {
+            binary.value = true
+            return
+          }
+          const text = new TextDecoder('utf-8').decode(bytes)
           // 等待编辑器容器挂载完成
           await new Promise<void>((resolve) => {
             const tick = () => {
@@ -117,7 +127,7 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
           if (!el) return
           setTheme()
           const handle = monaco.editor.create(el, {
-            value: read.content ?? '',
+            value: text,
             language: resolveLanguage(monaco, extOf(props.file.name)),
             readOnly: readOnly.value,
             automaticLayout: true,

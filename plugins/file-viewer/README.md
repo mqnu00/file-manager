@@ -90,19 +90,27 @@ file-viewer 后端只提供配置 API（`/api/file-viewer/config`），**不提�
 
 | 路由 | 鉴权 | 说明 |
 |---|---|---|
-| `GET /api/files/read?path=` | Bearer | 文本探测（前 8KB 含 NUL 判二进制）；≤8MB 返回 `{name,size,isText,content,encoding}`；二进制/超限返回 `{isText:false,reason}` |
-| `POST /api/files/write` | Bearer | `{path, content, encoding}` 写回文本（≤8MB） |
-| `GET /api/files/bytes?path=&offset=&length=` | Bearer | 分页读字节，`{data: base64}`，length ≤512KB |
-| `POST /api/files/write-range` | Bearer | `{path, offset, data(base64)}` 定位写入（hex 保存） |
+| `GET /api/files/read?path=&offset=&length=` | Bearer | 二进制透传读取，返回 `{offset,length,size,data:base64}`；省略 offset/length = 整文件读取（截断到 8MB，`size` 返回真实大小）；传 offset/length = 分页读取。平台不判文本/二进制 |
+| `POST /api/files/write` | Bearer | `{path, data(base64), offset?}` 二进制写回；省略 offset = 整文件覆盖（允许空内容清空文件），传 offset = 定位写入 |
 | `POST /api/files/token` | Bearer | `{path}` → 30 分钟流令牌（绑定安全路径校验后的绝对路径） |
 | `GET /api/files/stream?token=` | 公开（令牌） | Range 流式输出（206/200、Accept-Ranges、按扩展名 mime），供 `<audio>/<video>/<iframe>` 使用 |
 
-子插件前端在 `install()` 中直接用 `ctx.api.fileIO`（`read` / `write` / `readBytes` / `writeRange` / `createToken` / `streamUrl`），子插件后端可用 `ctx.services.fileIO`：
+子插件前端在 `install()` 中直接用 `ctx.api.fileIO`（`read` / `write` / `createToken` / `streamUrl` / `base64ToBytes` / `bytesToBase64`），子插件后端可用 `ctx.services.fileIO`：
 
 ```ts
 const api = ctx.api.fileIO
-const r = await api.read(props.file.path)   // { isText, content, ... }
-await api.write(props.file.path, newContent)
+// 文本应用（如代码编辑器）：平台只透传二进制，判断与解码由应用完成
+const r = await api.read(props.file.path)            // { offset, length, size, data: base64 }
+if (r.size > MY_LIMIT) { /* 应用自行判断"太大" */ }
+const bytes = api.base64ToBytes(r.data)
+if (bytes.subarray(0, 8192).includes(0)) { /* 应用自行判断二进制 */ }
+const text = new TextDecoder('utf-8').decode(bytes)
+// 保存：应用自行编码为字节后写回
+await api.write(props.file.path, new TextEncoder().encode(text))
+// 二进制应用（如 hex 编辑器）：分页读取 + 定位写入
+await api.read(props.file.path, offset, 256 * 1024)
+await api.write(props.file.path, nextBytes, pageOffset)
+// 媒体/PDF：流式输出（无法携带 Bearer header）
 const token = await api.createToken(props.file.path)
 const src = api.streamUrl(token)            // <audio src>
 ```

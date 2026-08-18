@@ -1,18 +1,19 @@
 /**
  * 通用文件 I/O 服务（平台能力，供查看器子插件与主项目路由共享）
  *
- * 由 file-viewer 插件后端迁移上收：文本读取/写回、二进制分页读/定位写、
- * 短期流令牌 + Range 流式输出所需的纯函数。所有路径均在调用方
- * （路由层）经 utils.safePath 校验后传入全路径。
+ * 由 file-viewer 插件后端迁移上收：二进制读/写（分页或定位）、
+ * 短期流令牌 + Range 流式输出所需的纯函数。
+ *
+ * 平台只做二进制透传，不做任何文本/二进制/大小判断——区分文本还是
+ * 二进制、是否超限、如何解码，均由具体查看器插件自行解决。
+ * 所有路径均在调用方（路由层）经 utils.safePath 校验后传入全路径。
  */
 
 import fs from 'fs'
 import crypto from 'crypto'
 
-/** 文本读取/写回大小上限 */
-export const TEXT_LIMIT = 8 * 1024 * 1024
-/** 单次字节读取上限（hex 分页） */
-export const BYTES_LIMIT = 512 * 1024
+/** 单次 read/write 传输上限（内存保护，非语义判断；应用自行决定"太大"的标准） */
+export const IO_LIMIT = 8 * 1024 * 1024
 /** 流令牌有效期 */
 export const STREAM_TTL_MS = 30 * 60 * 1000
 
@@ -82,12 +83,7 @@ export function parseRange(rangeHeader: string, size: number): [number, number] 
   return [start, Math.min(end, size - 1)]
 }
 
-/** 文本探测：前 8KB 含 NUL 字节判定为二进制 */
-export function isTextBuffer(buf: Buffer): boolean {
-  return !buf.subarray(0, 8192).includes(0)
-}
-
-/** 从指定偏移读取至多 length 字节（不越界） */
+/** 从指定偏移读取至多 length 字节（不越界，返回文件总大小） */
 export function readBytesAt(
   fullPath: string,
   offset: number,
@@ -119,19 +115,4 @@ export function writeRangeAt(fullPath: string, offset: number, data: Buffer): vo
   } finally {
     fs.closeSync(fd)
   }
-}
-
-/** 文本读取：≤TEXT_LIMIT 且前 8KB 无 NUL 时返回文本内容，否则返回原因 */
-export function readText(
-  fullPath: string,
-  size: number
-): { isText: true; content: string; encoding: string } | { isText: false; reason: 'too-large' | 'binary' } {
-  if (size > TEXT_LIMIT) {
-    return { isText: false, reason: 'too-large' }
-  }
-  const buf = fs.readFileSync(fullPath)
-  if (!isTextBuffer(buf)) {
-    return { isText: false, reason: 'binary' }
-  }
-  return { isText: true, content: buf.toString('utf8'), encoding: 'utf8' }
 }

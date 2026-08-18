@@ -81,7 +81,7 @@ export interface ScriptContext {
     instance: typeof api
     auth: typeof authApi
     file: typeof fileApi
-    /** 通用文件 I/O（文本读/写、字节分页、流令牌），供查看器类插件共用 */
+    /** 通用文件 I/O（纯二进制透传 read/write + 流令牌），文本/二进制/大小判断由查看器插件自行完成 */
     fileIO: typeof fileIOApi
     config: typeof configApi
     task: typeof taskApi

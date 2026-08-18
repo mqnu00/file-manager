@@ -1,47 +1,44 @@
 /**
  * 通用文件 I/O API（平台能力，由 file-viewer 插件后端上收）
  *
- * 供查看器类插件使用：read/write 给代码编辑器，bytes/write-range 给 hex
- * 编辑器，token/stream 给音频/视频/PDF 预览。HTTP 层复用默认 axios 实例
- * （已配置认证拦截器）。
+ * 平台只做二进制透传：read 返回原始字节（base64 传输）、write 接收原始字节，
+ * 不做文本/二进制/大小判断——区分文本还是二进制、是否超限、如何解码，
+ * 均由消费方查看器插件自行解决。token/stream 供无法携带 Bearer header
+ * 的 <video>/<audio>/<iframe> 场景使用。
  */
 
 import api from './index'
 
-export interface ReadResult {
-  name: string
-  path: string
-  size: number
-  isText: boolean
-  reason?: 'too-large' | 'binary'
-  content?: string | null
-  encoding?: string | null
-}
-
-export interface BytesResult {
+export interface FileIOReadResult {
+  /** 本次返回的起始偏移 */
   offset: number
+  /** 实际返回字节数（≤ 8MB） */
   length: number
+  /** 文件总大小（应用据此自行判断"太大"） */
   size: number
-  /** base64 编码的字节数据 */
+  /** base64 编码的原始字节 */
   data: string
 }
 
-/** 读取文本内容（≤8MB；二进制/超限时 isText=false 并带 reason） */
-export const read = (path: string): Promise<ReadResult> =>
-  api.get('/files/read', { params: { path } }).then((r) => r.data)
+/** 读取文件二进制。省略 offset/length = 整文件读取（截断到 8MB，size 返回真实大小）；传 offset/length = 分页读取 */
+export const read = (path: string, offset?: number, length?: number): Promise<FileIOReadResult> =>
+  api
+    .get('/files/read', {
+      params: {
+        path,
+        ...(offset !== undefined && { offset }),
+        ...(length !== undefined && { length }),
+      },
+    })
+    .then((r) => r.data)
 
-/** 写回文本内容 */
-export const write = async (path: string, content: string, encoding = 'utf8'): Promise<void> => {
-  await api.post('/files/write', { path, content, encoding })
-}
-
-/** 分页读取二进制字节（offset/length） */
-export const readBytes = (path: string, offset: number, length: number): Promise<BytesResult> =>
-  api.get('/files/bytes', { params: { path, offset, length } }).then((r) => r.data)
-
-/** 在指定偏移写入字节 */
-export const writeRange = async (path: string, offset: number, bytes: Uint8Array): Promise<void> => {
-  await api.post('/files/write-range', { path, offset, data: bytesToBase64(bytes) })
+/** 写回文件二进制。省略 offset = 整文件覆盖（允许空内容清空文件）；传 offset = 定位写入 */
+export const write = async (path: string, data: Uint8Array, offset?: number): Promise<void> => {
+  await api.post('/files/write', {
+    path,
+    data: bytesToBase64(data),
+    ...(offset !== undefined && { offset }),
+  })
 }
 
 /** 签发流令牌（有效期内可多次使用） */

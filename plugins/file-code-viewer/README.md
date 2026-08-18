@@ -31,7 +31,7 @@ npm install @mqn00/file-manager-plugin-file-viewer @mqn00/file-manager-plugin-fi
 ## 架构说明
 
 - **Monaco 运行时资源**：构建时将 `node_modules/monaco-editor/min/vs` 整体拷贝到本包 `assets/vs/`（.gitignore 排除、npm 发布 `files` 含 `assets/`），经主应用静态资源 `/plugins-assets/file-code-viewer/assets/vs/` 提供；运行时 AMD `loader.js` 懒加载 `editor.main`，worker 经 `MonacoEnvironment.getWorkerUrl` 以 importScripts 方式加载
-- **文件读写**：使用主项目平台 API `ctx.api.fileIO`（`GET /api/files/read` 载入、`POST /api/files/write` 保存），路径安全校验由主项目 `safePath` 完成，与 file-viewer 无耦合
+- **文件读写**：使用主项目平台 API `ctx.api.fileIO`（`read` 拉取二进制、`write` 写回二进制），文本/二进制/大小判断由本插件自行完成（NUL 探测 + TextDecoder 解码），路径安全校验由主项目 `safePath` 完成，与 file-viewer 无耦合
 - **注册表接入**：前端 `install()` 时向 `globalThis.__fm_file_viewer_registry__` 注册 `{ id: 'code', editable: true }` 模块（契约见 file-viewer README）
 
 ## 构建与发布
