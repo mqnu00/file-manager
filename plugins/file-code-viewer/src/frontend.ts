@@ -11,7 +11,6 @@ import type {
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
-import { createViewerApi, type ViewerApi } from './api'
 import { loadMonaco, resolveLanguage, type MonacoLike } from './monaco-loader'
 
 /** 支持查看/编辑的后缀 */
@@ -56,7 +55,8 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
     ElMessage: { success: (m: string) => void; error: (m: string) => void }
   }).ElMessage
 
-  const api: ViewerApi = createViewerApi(ctx.api.instance)
+  // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
+  const api = ctx.api.fileIO
   const theme = ctx.composables.useTheme()
 
   return ctx.Vue.defineComponent({

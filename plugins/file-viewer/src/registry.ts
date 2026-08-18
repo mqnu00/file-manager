@@ -33,8 +33,12 @@ export interface FileViewerRegistry {
   modules(): FileViewerModule[]
   /** 指定扩展名可用的模块：extensions 命中 或 兜底模块（extensions 为空） */
   getApplicable(ext: string): FileViewerModule[]
-  /** 指定扩展名的默认模块：首个 extensions 命中的模块；无命中则兜底模块（extensions 为空）；再无则 null */
+  /** 指定扩展名的默认模块：config.yml 全局映射命中 > 首个 extensions 命中的模块 > 兜底模块；再无则 null */
   getDefault(ext: string): FileViewerModule | null
+  /** 设置 config.yml 全局映射（完整映射表，ext→viewerId；配置页保存成功后调用） */
+  setConfigMappings(map: Record<string, string>): void
+  /** 读取当前 config.yml 全局映射 */
+  getConfigMappings(): Record<string, string>
 }
 
 /** globalThis 上的注册表键（便于多插件共享与调试） */
@@ -43,6 +47,8 @@ export const GLOBAL_REGISTRY_KEY = '__fm_file_viewer_registry__'
 /** 创建独立注册表（纯逻辑，可单测） */
 export function createRegistry(): FileViewerRegistry {
   const list: FileViewerModule[] = []
+  /** config.yml 全局映射（完整映射表 ext→viewerId），优先级高于注册表默认 */
+  let configMappings: Record<string, string> = {}
 
   const isFallback = (m: FileViewerModule) => m.extensions.length === 0
 
@@ -82,9 +88,24 @@ export function createRegistry(): FileViewerRegistry {
 
     getDefault(ext) {
       const key = (ext || '').toLowerCase().replace(/^\./, '')
+      // 优先级：config.yml 全局映射（仅当目标查看器已注册）> 注册表扩展名命中 > 兜底
+      const mapped = configMappings[key]
+      if (mapped) {
+        const m = list.find((x) => x.id === mapped)
+        if (m) return m
+        // config 引用了未注册的查看器 → 回退注册表默认
+      }
       const hit = list.find((m) => m.extensions.includes(key))
       if (hit) return hit
       return list.find(isFallback) ?? null
+    },
+
+    setConfigMappings(map) {
+      configMappings = { ...map }
+    },
+
+    getConfigMappings() {
+      return { ...configMappings }
     },
   }
 }

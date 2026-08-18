@@ -147,6 +147,36 @@ export interface ConfigApi {
   update(updates: Record<string, unknown>): Promise<void>
 }
 
+/** 通用文件 I/O 读取结果（同步自 frontend/src/api/fileIO.ts） */
+export interface FileReadResult {
+  name: string
+  path: string
+  size: number
+  isText: boolean
+  reason?: 'too-large' | 'binary'
+  content?: string | null
+  encoding?: string | null
+}
+
+/** 通用文件 I/O 字节分页结果（同步自 frontend/src/api/fileIO.ts） */
+export interface FileBytesResult {
+  offset: number
+  length: number
+  size: number
+  /** base64 编码的字节数据 */
+  data: string
+}
+
+/** 通用文件 I/O API（查看器等插件使用；由 file-viewer 插件后端上收的平台能力） */
+export interface FileIOApi {
+  read(path: string): Promise<FileReadResult>
+  write(path: string, content: string, encoding?: string): Promise<void>
+  readBytes(path: string, offset: number, length: number): Promise<FileBytesResult>
+  writeRange(path: string, offset: number, bytes: Uint8Array): Promise<void>
+  createToken(path: string): Promise<string>
+  streamUrl(token: string): string
+}
+
 /** 任务 API */
 export interface TaskApi {
   getTasks(): Promise<{ tasks: TaskInfo[] }>
@@ -174,6 +204,7 @@ export interface FrontendApi {
   instance: AxiosInstance
   auth: AuthApi
   file: FileApi
+  fileIO: FileIOApi
   config: ConfigApi
   task: TaskApi
   system: SystemApi

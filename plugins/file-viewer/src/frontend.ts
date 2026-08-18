@@ -19,6 +19,8 @@ import type {
 import { initRegistry, getRegistry } from './registry'
 import { loadModeOverride } from './overrides'
 import { createViewerPage } from './page'
+import { createConfigPage } from './config-page'
+import { getMappings } from './config-api'
 
 /** 全局安装标记：热重载时先移除旧劫持监听，避免重复触发 */
 const INSTALL_KEY = '__fm_file_viewer_installed__'
@@ -61,22 +63,33 @@ function injectStyles(): void {
 function openFile(ctx: FrontendPluginContext, file: FileItem): void {
   const reg = getRegistry()
   const ext = extOf(file.name)
-  // 优先级：用户覆盖（localStorage） > 注册表默认
+  // 优先级：用户覆盖（localStorage） > config.yml 映射 > 注册表默认
   const override = loadModeOverride(ext)
   const def = reg?.getDefault(ext)?.id ?? null
   const mode = override && reg?.get(override) ? override : def
-  const url = `/plugin/file-viewer?path=${encodeURIComponent(file.path)}${
+  const url = `/plugin/file-viewer/view?path=${encodeURIComponent(file.path)}${
     mode ? `&mode=${encodeURIComponent(mode)}` : ''
   }`
   spaNavigate(url)
 }
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
-  initRegistry()
+  const registry = initRegistry()
+  // 拉取 config.yml 映射到注册表（失败静默，保持注册表默认）
+  getMappings(ctx.api.instance)
+    .then((map) => registry.setConfigMappings(map))
+    .catch(() => {})
   injectStyles()
 
+  // 插件主页：查看器设置（扩展名→查看器映射）
   ctx.router.addRoute({
     path: '/plugin/file-viewer',
+    component: createConfigPage(ctx) as never,
+    meta: { requiresAuth: true },
+  })
+  // 查看页：单击文件打开
+  ctx.router.addRoute({
+    path: '/plugin/file-viewer/view',
     component: createViewerPage(ctx) as never,
     meta: { requiresAuth: true },
   })
@@ -109,6 +122,6 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   ;(globalThis as Record<string, unknown>)[INSTALL_KEY] = teardown
 
   console.log(
-    '[file-viewer] 核心前端已加载：单击劫持已启用，查看页 /plugin/file-viewer 已注册'
+    '[file-viewer] 核心前端已加载：单击劫持已启用，查看页 /plugin/file-viewer/view 与配置页 /plugin/file-viewer 已注册'
   )
 }

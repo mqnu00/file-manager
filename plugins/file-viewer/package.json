@@ -17,16 +17,21 @@
     "build:frontend": "node build.mjs",
     "test": "vitest run"
   },
+  "fileManagerPlugin": {
+    "config": {
+      "extensionMappings": {
+        "type": "object",
+        "default": {},
+        "description": "扩展名→查看器完整映射表（小写后缀、不带点；缺省时使用各查看器注册的默认后缀）"
+      }
+    }
+  },
   "peerDependencies": {
     "@mqn00/file-manager": "^3.0.0-beta7"
-  },
-  "dependencies": {
-    "mime-types": "^2.1.35"
   },
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",
     "@types/express": "^5.0.6",
-    "@types/mime-types": "^2.1.4",
     "@types/node": "^22.0.0",
     "@types/supertest": "^7.2.1",
     "esbuild": "^0.28.1",

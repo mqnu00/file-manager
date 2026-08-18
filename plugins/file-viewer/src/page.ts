@@ -118,6 +118,19 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
               ])
             : null,
           h('div', { class: 'fv-actions' }, [
+            h(
+              ElButton as never,
+              {
+                text: true,
+                size: 'small',
+                onClick: () => {
+                  // SPA 导航到配置主页（与 frontend.ts 的 spaNavigate 一致）
+                  history.pushState(history.state ?? null, '', '/plugin/file-viewer')
+                  window.dispatchEvent(new PopStateEvent('popstate'))
+                },
+              },
+              () => '查看器设置'
+            ),
             applicable.value.length > 0
               ? h(ElSelect as never, { modelValue: mode.value, size: 'small', class: 'fv-mode-select', onChange: onModeChange }, () =>
                   applicable.value.map((m) =>

@@ -8,6 +8,7 @@ import path from 'path'
 import {
   getAllPluginInfos,
   getLoadedPlugins,
+  loadEnabledPlugins,
   loadPlugin,
   unloadPluginByName,
   resolvePluginRoot,
@@ -28,32 +29,32 @@ const router = Router()
 // ==================== 查询已配置插件 ====================
 
 // 查询所有已配置插件及启用状态（无需认证）
-// 自动加载 config.yml 中 enabled=true 但尚未加载的插件
+// 自动加载 config.yml 中 enabled=true 但尚未加载的插件（拓扑顺序，与键序无关）
 router.get('/', async (_req: Request, res: Response) => {
-  const config = getConfig()
+  await loadEnabledPlugins()
+
+  const infoMap = new Map(getAllPluginInfos().map((p) => [p.name, p]))
   const loadedNames = new Set(getLoadedPlugins().map((p) => p.name))
 
-  for (const [name, cfg] of Object.entries(config.plugins || {})) {
-    if (typeof cfg !== 'object' || cfg === null) continue
-    if ((cfg as Record<string, unknown>).enabled === false) continue
-    if (loadedNames.has(name)) continue
-    try {
-      await loadPlugin(name)
-    } catch {
-      // 单个插件加载失败不影响其他插件和列表返回
-    }
-  }
+  // 已加载插件按拓扑加载序在前（前端 install 顺序即与后端拓扑一致，
+  // dependsOn 可保证核心先于子插件加载）；未加载的（含已禁用）按配置序排后，
+  // 保持插件管理页可展示/重新启用
+  const loaded = getLoadedPlugins()
+    .map((p) => infoMap.get(p.name))
+  const rest = getAllPluginInfos().filter((p) => !loadedNames.has(p.name))
 
-  const plugins = getAllPluginInfos().map((p) => ({
-    name: p.name,
-    enabled: p.enabled,
-    local: p.local,
-    source: p.source,
-    frontendPath: p.frontendPath
-      ? `/plugins-assets/${p.name}/${p.frontendPath.replace(/^\.\//, '')}`
-      : null,
-    version: p.version,
-  }))
+  const plugins = [...loaded, ...rest]
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .map((p) => ({
+      name: p.name,
+      enabled: p.enabled,
+      local: p.local,
+      source: p.source,
+      frontendPath: p.frontendPath
+        ? `/plugins-assets/${p.name}/${p.frontendPath.replace(/^\.\//, '')}`
+        : null,
+      version: p.version,
+    }))
   res.json(plugins)
 })
 

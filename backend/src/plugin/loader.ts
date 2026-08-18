@@ -713,7 +713,16 @@ function toposort(manifests: PluginManifest[]): {
 
 // ==================== 全量加载 ====================
 
-export async function loadPlugins(): Promise<void> {
+/** 防止并发加载同一插件（运行时 GET /api/plugins 与启动路径可能重叠） */
+const loadingPlugins = new Set<string>()
+
+/**
+ * 加载 config.yml 中全部 enabled 插件（跳过已加载者），按拓扑批次并行。
+ * 用于启动（loadedPlugins 为空，等价于全量加载）与运行时 GET /api/plugins
+ * 自动补载 —— 不再按 config.yml 键序逐个 loadPlugin，避免依赖未先加载的
+ * 顺序问题，并保证返回时插件已按拓扑顺序就绪。
+ */
+export async function loadEnabledPlugins(): Promise<void> {
   const manifests = collectManifests()
   if (manifests.length === 0) return
 
@@ -722,15 +731,31 @@ export async function loadPlugins(): Promise<void> {
     log('ERROR', 'Plugin', err)
   }
 
+  const loadedNames = new Set(loadedPlugins.map((p) => p.name))
   for (const batch of order) {
-    // 同一批次内插件互不依赖，可并行加载
-    const results = await Promise.all(batch.map((m) => loadSinglePlugin(m.name, m.rootDir)))
+    // 同一批次内插件互不依赖，可并行加载；跳过已加载/正在加载者
+    const pending = batch.filter((m) => !loadedNames.has(m.name) && !loadingPlugins.has(m.name))
+    if (pending.length === 0) continue
+    pending.forEach((m) => loadingPlugins.add(m.name))
+
+    let results: (PluginInstance | null)[]
+    try {
+      results = await Promise.all(pending.map((m) => loadSinglePlugin(m.name, m.rootDir)))
+    } finally {
+      pending.forEach((m) => loadingPlugins.delete(m.name))
+    }
+
     for (const instance of results) {
       if (instance) {
         loadedPlugins.push(instance)
+        loadedNames.add(instance.name)
       }
     }
   }
+}
+
+export async function loadPlugins(): Promise<void> {
+  await loadEnabledPlugins()
 }
 
 // ==================== 托管服务自动启动 ====================

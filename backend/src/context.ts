@@ -13,7 +13,14 @@ import type { Express } from 'express'
 import { Router } from 'express'
 
 import app from './app'
-import { getConfig, reloadConfig, updateConfig, getSanitizedConfig, isDefaultToken } from './config'
+import {
+  getConfig,
+  reloadConfig,
+  updateConfig,
+  updatePluginConfig,
+  getSanitizedConfig,
+  isDefaultToken,
+} from './config'
 
 import {
   authMiddleware,
@@ -27,6 +34,7 @@ import { errorHandler } from './middleware/errorHandler'
 import { asyncHandler } from './middleware/asyncHandler'
 
 import * as fileService from './services/fileService'
+import * as fileIO from './services/fileIO'
 import {
   createMoveTask,
   createCompressTask,
@@ -87,6 +95,8 @@ export interface ScriptContext {
     get: typeof getConfig
     reload: typeof reloadConfig
     update: typeof updateConfig
+    /** 更新指定插件的 config 段（仅合并该插件键，不整段替换 plugins） */
+    updatePlugin: typeof updatePluginConfig
     getSanitized: typeof getSanitizedConfig
     isDefaultToken: typeof isDefaultToken
   }
@@ -94,6 +104,8 @@ export interface ScriptContext {
   /** 服务层 */
   services: {
     file: typeof fileService
+    /** 通用文件 I/O 原语（文本读/写、字节分页读/定位写、流令牌 + Range），供查看器插件共享 */
+    fileIO: typeof fileIO
     task: {
       createMove: typeof createMoveTask
       createCompress: typeof createCompressTask
@@ -169,12 +181,14 @@ export function createScriptContext(): ScriptContext {
       get: getConfig,
       reload: reloadConfig,
       update: updateConfig,
+      updatePlugin: updatePluginConfig,
       getSanitized: getSanitizedConfig,
       isDefaultToken,
     },
 
     services: {
       file: fileService,
+      fileIO,
       task: {
         createMove: createMoveTask,
         createCompress: createCompressTask,

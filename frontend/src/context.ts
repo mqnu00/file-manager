@@ -14,6 +14,7 @@ import * as ElementPlusAll from 'element-plus'
 import api from '@/api'
 import * as authApi from '@/api/auth'
 import * as fileApi from '@/api/file'
+import * as fileIOApi from '@/api/fileIO'
 import * as configApi from '@/api/config'
 import * as taskApi from '@/api/task'
 import * as systemApi from '@/api/system'
@@ -80,6 +81,8 @@ export interface ScriptContext {
     instance: typeof api
     auth: typeof authApi
     file: typeof fileApi
+    /** 通用文件 I/O（文本读/写、字节分页、流令牌），供查看器类插件共用 */
+    fileIO: typeof fileIOApi
     config: typeof configApi
     task: typeof taskApi
     system: typeof systemApi
@@ -146,6 +149,7 @@ export function createScriptContext(): ScriptContext {
       instance: api,
       auth: authApi,
       file: fileApi,
+      fileIO: fileIOApi,
       config: configApi,
       task: taskApi,
       system: systemApi,

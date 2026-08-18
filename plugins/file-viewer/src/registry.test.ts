@@ -77,3 +77,35 @@ describe('file-viewer registry', () => {
     delete (globalThis as Record<string, unknown>)['__fm_file_viewer_registry__']
   })
 })
+
+describe('config.yml 全局映射（setConfigMappings）', () => {
+  let reg: ReturnType<typeof createRegistry>
+
+  beforeEach(() => {
+    reg = createRegistry()
+    reg.register(module({ id: 'code', label: '代码', extensions: ['ts', 'md'] }))
+    reg.register(module({ id: 'hex', label: '二进制', extensions: [] }))
+  })
+
+  it('config 映射命中时优先于注册表默认', () => {
+    reg.setConfigMappings({ md: 'hex' }) // .md 注册表默认为 code，config 覆盖为 hex
+    expect(reg.getDefault('md')?.id).toBe('hex')
+    expect(reg.getDefault('ts')?.id).toBe('code') // 无配置项时走注册表
+  })
+
+  it('config 引用未注册查看器时回退注册表默认', () => {
+    reg.setConfigMappings({ md: 'ghost' })
+    expect(reg.getDefault('md')?.id).toBe('code')
+  })
+
+  it('setConfigMappings 覆盖式保存完整映射', () => {
+    reg.setConfigMappings({ a: 'code', b: 'hex' })
+    reg.setConfigMappings({ c: 'code' })
+    expect(reg.getConfigMappings()).toEqual({ c: 'code' })
+  })
+
+  it('getDefault 对未知扩展名仍回退兜底模块', () => {
+    reg.setConfigMappings({ md: 'hex' })
+    expect(reg.getDefault('xyz')?.id).toBe('hex')
+  })
+})

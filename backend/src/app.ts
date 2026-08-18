@@ -7,6 +7,7 @@ import fs from 'fs'
 import { WebSocketServer, WebSocket } from 'ws'
 import { URL } from 'url'
 import fileRoutes from './routes/files'
+import fileStreamRoutes from './routes/fileStream'
 import folderRoutes from './routes/folders'
 import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
@@ -54,6 +55,8 @@ app.use(express.json({ limit: '10mb' }))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/config', configRoutes)
+// 文件流式输出（公开，令牌鉴权）— 必须先于 /api/files 鉴权路由注册
+app.use('/api/files/stream', fileStreamRoutes)
 app.use('/api/files', authMiddleware, fileRoutes)
 app.use('/api/folders', authMiddleware, folderRoutes)
 app.use('/api/system', authMiddleware, systemRoutes)
