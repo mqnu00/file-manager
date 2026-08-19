@@ -12,6 +12,7 @@ import type {
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
+import { parseImageMetadata, type ImageMetadata } from './metadata'
 
 const IMAGE_EXTENSIONS = [
   'png',
@@ -71,6 +72,11 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
       const offsetY = ref(0)
       /** 图片适配窗口时的真实缩放比（百分比），进入适应状态时 scale = fitScale / 100 */
       const fitScale = ref(100)
+      /** 解析出的图片元数据（分辨率/DPI/位深度），空对象表示未知 */
+      const meta = ref<ImageMetadata>({})
+      /** 图片真实尺寸兜底（img 加载后可得，解析失败时使用） */
+      let naturalW = 0
+      let naturalH = 0
 
       // 拖拽状态（不用 ref，避免触发渲染）
       let dragging = false
@@ -87,10 +93,30 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
         offsetX.value = 0
         offsetY.value = 0
         fitScale.value = 100
+        meta.value = {}
+        naturalW = 0
+        naturalH = 0
         try {
           token.value = await api.createToken(props.file.path)
         } catch (e) {
           error.value = `获取图片地址失败: ${e instanceof Error ? e.message : '未知错误'}`
+        }
+        void loadMetadata()
+      }
+
+      /** 读取文件头解析元数据（分辨率/DPI/位深度）；失败静默，仅分辨率可用 natural 尺寸兜底 */
+      const loadMetadata = async () => {
+        try {
+          const dot = props.file.name.lastIndexOf('.')
+          const ext =
+            dot >= 0 && dot < props.file.name.length - 1
+              ? props.file.name.slice(dot + 1).toLowerCase()
+              : ''
+          const res = await api.read(props.file.path, 0, 64 * 1024)
+          const bytes = api.base64ToBytes(res.data)
+          meta.value = parseImageMetadata(bytes, ext)
+        } catch {
+          /* 解析失败不影响查看 */
         }
       }
 
@@ -175,6 +201,8 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
       const onImgLoad = (e: Event) => {
         const img = e.target as HTMLImageElement
         if (img.naturalWidth <= 0 || !stageEl) return
+        naturalW = img.naturalWidth
+        naturalH = img.naturalHeight
         const contentW = stageEl.clientWidth - 24 // 减去 12px padding * 2
         const contentH = stageEl.clientHeight - 24
         const f = Math.min(contentW / img.naturalWidth, contentH / img.naturalHeight)
@@ -237,6 +265,17 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
 
       const fmtSize = () => ctx.utils.formatSize(props.file.size)
 
+      /** 元数据文本：分辨率 · DPI · 位深度（未知项省略） */
+      const metaText = () => {
+        const w = meta.value.width ?? naturalW
+        const h = meta.value.height ?? naturalH
+        const parts: string[] = []
+        if (w && h) parts.push(`${w} × ${h}`)
+        if (meta.value.dpi) parts.push(`${meta.value.dpi} DPI`)
+        if (meta.value.bitDepth) parts.push(`${meta.value.bitDepth}-bit`)
+        return parts.join(' · ')
+      }
+
       const getTransformStyle = () => {
         const parts: string[] = []
         if (offsetX.value || offsetY.value) {
@@ -258,6 +297,7 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
             { size: 'small', type: 'info' },
             () => `${props.file.name.toUpperCase()} · ${fmtSize()}`
           ),
+          metaText() ? h('span', { class: 'fiv-meta' }, metaText()) : null,
           h('span', { style: { flex: 1 } }),
           h(
             ElButton as never,
@@ -358,6 +398,7 @@ function injectStyles(): void {
 .fiv-viewer { height: 100%; display: flex; flex-direction: column; }
 .fiv-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .fiv-zoom-info { color: var(--app-text-dim); font-size: 12px; min-width: 70px; text-align: center; }
+.fiv-meta { color: var(--app-text-dim); font-size: 12px; white-space: nowrap; }
 .fiv-loading { color: var(--app-text-dim); }
 .fiv-stage {
   flex: 1; min-height: 0; overflow: hidden; display: flex;
