@@ -16,7 +16,7 @@ import type {
   FrontendPluginInstallFunction,
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
-import { initRegistry, getRegistry } from './registry'
+import { initRegistry, getRegistry, type FileViewerRegistry } from './registry'
 import { loadModeOverride } from './overrides'
 import { createViewerPage } from './page'
 import { createConfigPage } from './config-page'
@@ -56,8 +56,31 @@ function injectStyles(): void {
 .fv-content { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .fv-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .fv-loading { color: var(--app-text-dim); padding: 48px; text-align: center; }
+.file-name-text:not(.is-folder) { cursor: pointer !important; transition: all 0.2s; }
+.file-name-text.has-viewer { color: var(--app-accent); text-shadow: var(--app-text-glow); }
+.file-name-text.has-viewer:hover { color: var(--app-accent); text-shadow: var(--app-text-glow-hover); text-decoration: underline; }
+
 `
   document.head.appendChild(style)
+}
+
+/**
+ * 扫描文件列表 DOM，为有已注册查看器的文件添加 .has-viewer class，
+ * 移除不再匹配的（如子插件卸载后）。
+ */
+function updateFileStyles(registry: FileViewerRegistry): void {
+  const exts = registry.registeredExtensions()
+  const elements = document.querySelectorAll('.file-name-text:not(.is-folder)')
+  for (const el of elements) {
+    const name = el.textContent?.trim() ?? ''
+    const dot = name.lastIndexOf('.')
+    const ext = dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
+    if (ext && exts.has(ext)) {
+      el.classList.add('has-viewer')
+    } else {
+      el.classList.remove('has-viewer')
+    }
+  }
 }
 
 function openFile(ctx: FrontendPluginContext, file: FileItem): void {
@@ -121,7 +144,38 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   }
 
   document.addEventListener('click', handler, true)
-  const teardown = () => document.removeEventListener('click', handler, true)
+
+  // --- 文件列表样式增强：有查看器的文件显示可点击样式 ---
+  // 初始扫描 + 注册表变更时重新扫描
+  updateFileStyles(registry)
+  const offChange = registry.onChange(() => updateFileStyles(registry))
+
+  // MutationObserver 监听文件列表 DOM 变化（Vue 渲染/分页切换等）
+  const observer = new MutationObserver(() => updateFileStyles(registry))
+  // 等待文件列表容器出现后挂载 observer（可能尚不存在）
+  const observeTable = () => {
+    const table =
+      document.querySelector('.file-list') ??
+      document.querySelector('.el-table') ??
+      document.querySelector('table')
+    if (table) {
+      observer.observe(table, { childList: true, subtree: true })
+      return true
+    }
+    return false
+  }
+  if (!observeTable()) {
+    const bodyObs = new MutationObserver(() => {
+      if (observeTable()) bodyObs.disconnect()
+    })
+    bodyObs.observe(document.body, { childList: true, subtree: true })
+  }
+
+  const teardown = () => {
+    document.removeEventListener('click', handler, true)
+    offChange()
+    observer.disconnect()
+  }
   ;(globalThis as Record<string, unknown>)[INSTALL_KEY] = teardown
 
   console.log(

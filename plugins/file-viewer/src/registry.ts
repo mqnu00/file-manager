@@ -23,6 +23,9 @@ export interface FileViewerModule {
   component: unknown
 }
 
+/** 注册表变更回调 */
+type RegistryChangeCallback = () => void
+
 /** 注册表 API */
 export interface FileViewerRegistry {
   /** 注册模块；重复 id 覆盖；返回取消注册函数 */
@@ -43,6 +46,10 @@ export interface FileViewerRegistry {
   setDefaultViewer(id: string): void
   /** 读取用户配置的默认查看器 id（空串表示未设置） */
   getDefaultViewer(): string
+  /** 返回所有已注册的扩展名集合（不含兜底模块的空 extensions） */
+  registeredExtensions(): Set<string>
+  /** 注册表变更监听（模块注册/注销时触发），返回取消监听函数 */
+  onChange(callback: RegistryChangeCallback): () => void
 }
 
 /** globalThis 上的注册表键（便于多插件共享与调试） */
@@ -55,6 +62,11 @@ export function createRegistry(): FileViewerRegistry {
   let configMappings: Record<string, string> = {}
   /** 用户配置的默认查看器 id（兜底），空串表示未设置 */
   let defaultViewerId = ''
+  /** 变更监听器列表 */
+  const changeListeners: RegistryChangeCallback[] = []
+  const notifyChange = () => {
+    for (const cb of changeListeners) cb()
+  }
 
   const isFallback = (m: FileViewerModule) => m.extensions.length === 0
 
@@ -73,9 +85,13 @@ export function createRegistry(): FileViewerRegistry {
       } else {
         list.push(normalized)
       }
+      notifyChange()
       return () => {
         const i = list.findIndex((m) => m.id === normalized.id)
-        if (i >= 0) list.splice(i, 1)
+        if (i >= 0) {
+          list.splice(i, 1)
+          notifyChange()
+        }
       }
     },
 
@@ -125,6 +141,24 @@ export function createRegistry(): FileViewerRegistry {
 
     getDefaultViewer() {
       return defaultViewerId
+    },
+
+    registeredExtensions() {
+      const exts = new Set<string>()
+      for (const m of list) {
+        if (!isFallback(m)) {
+          for (const e of m.extensions) exts.add(e)
+        }
+      }
+      return exts
+    },
+
+    onChange(callback) {
+      changeListeners.push(callback)
+      return () => {
+        const i = changeListeners.indexOf(callback)
+        if (i >= 0) changeListeners.splice(i, 1)
+      }
     },
   }
 }
