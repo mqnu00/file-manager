@@ -12,15 +12,23 @@ export interface ViewerHttp {
 }
 
 /** 读取当前 extensionMappings（缺省返回 {}） */
-export async function getMappings(http: ViewerHttp): Promise<Record<string, string>> {
-  const r = await http.get<{ extensionMappings: Record<string, string> }>('/file-viewer/config')
-  return r.data.extensionMappings ?? {}
+export async function getMappings(
+  http: ViewerHttp
+): Promise<{ extensionMappings: Record<string, string>; defaultViewer: string }> {
+  const r = await http.get<{
+    extensionMappings: Record<string, string>
+    defaultViewer: string
+  }>('/file-viewer/config')
+  return {
+    extensionMappings: r.data.extensionMappings ?? {},
+    defaultViewer: r.data.defaultViewer ?? '',
+  }
 }
 
-/** 保存完整映射表 */
+/** 保存完整映射表与默认查看器 */
 export async function saveMappings(
   http: ViewerHttp,
-  map: Record<string, string>
+  payload: { extensionMappings: Record<string, string>; defaultViewer: string }
 ): Promise<void> {
-  await http.put('/file-viewer/config', { extensionMappings: map })
+  await http.put('/file-viewer/config', payload)
 }

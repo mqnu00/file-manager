@@ -63,7 +63,7 @@ function injectStyles(): void {
 export function createConfigPage(ctx: FrontendPluginContext): unknown {
   const { h, ref, onMounted, defineComponent } = ctx.Vue as unknown as VueApp
   const ep = ctx.ElementPlus as unknown as EP
-  const { ElButton, ElTag, ElInput, ElAlert, ElEmpty, ElIcon } = ep
+  const { ElButton, ElTag, ElInput, ElSelect, ElOption, ElAlert, ElEmpty, ElIcon } = ep
   const ElMessage = (ctx.ElementPlus as unknown as {
     ElMessage: { success(m: string): void; warning(m: string): void; error(m: string): void }
   }).ElMessage
@@ -79,14 +79,16 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
       const saving = ref(false)
       const groups = ref<Group[]>([])
       const orphans = ref<Array<{ ext: string; viewerId: string }>>([])
+      const defaultViewer = ref('')
 
       const load = async () => {
         loading.value = true
         loadingError.value = ''
         try {
           const saved = await getMappings(http)
+          defaultViewer.value = saved.defaultViewer
           const mods: FileViewerModule[] = registry.modules()
-          if (Object.keys(saved).length === 0) {
+          if (Object.keys(saved.extensionMappings).length === 0) {
             groups.value = mods.map((m) => ({
               id: m.id,
               label: m.label,
@@ -96,10 +98,10 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
             }))
             orphans.value = []
           } else {
-            const byViewer = new Map<string, string[]>()
+            const byViewer: Map<string, string[]> = new Map()
             const orphanList: Array<{ ext: string; viewerId: string }> = []
             const registered = new Set(mods.map((m) => m.id))
-            for (const [ext, vid] of Object.entries(saved)) {
+            for (const [ext, vid] of Object.entries(saved.extensionMappings)) {
               if (!registered.has(vid)) {
                 orphanList.push({ ext, viewerId: vid })
                 continue
@@ -170,8 +172,9 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
         }
         saving.value = true
         try {
-          await saveMappings(http, map)
+          await saveMappings(http, { extensionMappings: map, defaultViewer: defaultViewer.value })
           registry.setConfigMappings(map)
+          registry.setDefaultViewer(defaultViewer.value)
           ElMessage.success('已保存，打开文件时按新映射解析')
         } catch (e) {
           ElMessage.error(`保存失败: ${e instanceof Error ? e.message : '未知错误'}`)
@@ -192,7 +195,7 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
             h(
               'div',
               { class: 'fv-config-tip' },
-              '每个查看器一行，编辑其打开的后缀列表。保存后写入 config.yml 并立即生效；未列出的后缀在打开文件时自动匹配首个声明它的查看器（否则回退十六进制）。'
+              '每个查看器一行，编辑其打开的后缀列表。保存后写入 config.yml 并立即生效；未列出的后缀优先用下方设置的「默认查看器」打开，未设置则不打开。'
             ),
           ]),
           h('div', { class: 'fv-config-save' }, [
@@ -232,6 +235,32 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
               ])
             )
           }
+          // 默认查看器选择
+          children.push(
+            h('div', { class: 'fv-config-group', style: { marginBottom: '14px' } }, [
+              h('div', { class: 'fv-config-group-head' }, [
+                h('span', { class: 'fv-config-group-name' }, '默认查看器'),
+                h(
+                  'span',
+                  { style: { color: 'var(--app-text-dim)', fontSize: '12px', marginRight: '12px' } },
+                  '未列出的扩展名使用此查看器打开（如不设置则不打开）'
+                ),
+                h(ElSelect as never, {
+                  modelValue: defaultViewer.value,
+                  size: 'small',
+                  clearable: true,
+                  style: { width: '200px' },
+                  'onUpdate:modelValue': (v: string) => {
+                    defaultViewer.value = v ?? ''
+                  },
+                }, () =>
+                  registry.modules().map((m) =>
+                    h(ElOption as never, { key: m.id, label: m.label, value: m.id })
+                  )
+                ),
+              ]),
+            ])
+          )
           for (const g of groups.value) {
             children.push(
               h('div', { class: 'fv-config-group' }, [

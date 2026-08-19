@@ -54,11 +54,15 @@ describe('file-viewer registry', () => {
     expect(reg.getDefault('xyz')).toBeNull()
   })
 
-  it('getDefault 无命中时回退兜底模块', () => {
+  it('getDefault 无命中时回退用户配置的默认查看器', () => {
     reg.register(module({ id: 'code', label: '代码', extensions: ['ts'] }))
-    reg.register(module({ id: 'hex', label: '二进制', extensions: [] }))
+    reg.register(module({ id: 'hex', label: '二进制', extensions: ['bin'] }))
+    // 无默认查看器时返回 null
+    expect(reg.getDefault('xyz')).toBeNull()
+    // 设置默认查看器后回退
+    reg.setDefaultViewer('hex')
     expect(reg.getDefault('xyz')?.id).toBe('hex')
-    expect(reg.getDefault('ts')?.id).toBe('code')
+    expect(reg.getDefault('ts')?.id).toBe('code') // 扩展名命中优先于兜底
   })
 
   it('扩展名归一化：忽略大小写与前置点', () => {
@@ -104,8 +108,10 @@ describe('config.yml 全局映射（setConfigMappings）', () => {
     expect(reg.getConfigMappings()).toEqual({ c: 'code' })
   })
 
-  it('getDefault 对未知扩展名仍回退兜底模块', () => {
+  it('getDefault 对未知扩展名回退默认查看器', () => {
+    reg.register(module({ id: 'hex', label: '二进制', extensions: ['bin'] }))
     reg.setConfigMappings({ md: 'hex' })
+    reg.setDefaultViewer('hex')
     expect(reg.getDefault('xyz')?.id).toBe('hex')
   })
 })

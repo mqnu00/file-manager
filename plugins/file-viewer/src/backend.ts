@@ -14,15 +14,19 @@ import type {
   Response,
 } from '@mqn00/file-manager/plugin'
 
-/** 读取 config.yml 中本插件的 extensionMappings（完整映射表 ext→viewerId） */
-function getMappings(ctx: BackendPluginContext): Record<string, string> {
+/** 读取 config.yml 中本插件的配置（extensionMappings + defaultViewer） */
+function getViewerConfig(ctx: BackendPluginContext): {
+  extensionMappings: Record<string, string>
+  defaultViewer: string
+} {
   const cfg = ctx.config.get()
   const pluginCfg = (cfg.plugins || {})['file-viewer'] as Record<string, unknown> | undefined
   const raw = pluginCfg?.extensionMappings
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw as Record<string, string>
-  }
-  return {}
+  const extMap =
+    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, string>) : {}
+  const dv =
+    typeof pluginCfg?.defaultViewer === 'string' ? (pluginCfg.defaultViewer as string) : ''
+  return { extensionMappings: extMap, defaultViewer: dv }
 }
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
@@ -31,25 +35,34 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   auth.use(ctx.middleware.auth)
 
   auth.get('/config', (_req: Request, res: Response) => {
-    res.json({ extensionMappings: getMappings(ctx) })
+    res.json(getViewerConfig(ctx))
   })
 
   auth.put('/config', (req: Request, res: Response) => {
-    const raw = (req.body as { extensionMappings?: unknown })?.extensionMappings
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    const { extensionMappings, defaultViewer } = req.body as {
+      extensionMappings?: unknown
+      defaultViewer?: unknown
+    }
+
+    // 校验 extensionMappings
+    if (!extensionMappings || typeof extensionMappings !== 'object' || Array.isArray(extensionMappings)) {
       return res.status(400).json({ message: 'extensionMappings 必须是对象' })
     }
     const map: Record<string, string> = {}
-    for (const [ext, viewerId] of Object.entries(raw as Record<string, unknown>)) {
+    for (const [ext, viewerId] of Object.entries(extensionMappings as Record<string, unknown>)) {
       if (typeof viewerId !== 'string') {
         return res.status(400).json({ message: `扩展名 ${ext} 的映射值必须是字符串` })
       }
       const key = ext.trim().toLowerCase().replace(/^\./, '')
       if (key) map[key] = viewerId
     }
-    ctx.config.updatePlugin('file-viewer', { extensionMappings: map })
-    ctx.utils.logger.log('INFO', 'file-viewer', `已保存 extensionMappings（${Object.keys(map).length} 项）`)
-    res.json({ success: true, extensionMappings: map })
+
+    // 校验 defaultViewer（可选，字符串）
+    const dv = typeof defaultViewer === 'string' ? defaultViewer.trim() : ''
+
+    ctx.config.updatePlugin('file-viewer', { extensionMappings: map, defaultViewer: dv })
+    ctx.utils.logger.log('INFO', 'file-viewer', `已保存配置（${Object.keys(map).length} 项映射，默认查看器：${dv || '未设置'}）`)
+    res.json({ success: true, extensionMappings: map, defaultViewer: dv })
   })
 
   router.use(auth)

@@ -328,7 +328,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const module: FileViewerModule = {
     id: 'hex',
     label: '十六进制查看器',
-    extensions: [], // 兜底：未知扩展名默认走二进制
+    extensions: ['bin', 'dat', 'hex'],
     editable: true,
     component: createHexViewer(ctx),
   }

@@ -77,7 +77,10 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const registry = initRegistry()
   // 拉取 config.yml 映射到注册表（失败静默，保持注册表默认）
   getMappings(ctx.api.instance)
-    .then((map) => registry.setConfigMappings(map))
+    .then(({ extensionMappings, defaultViewer }) => {
+      registry.setConfigMappings(extensionMappings)
+      registry.setDefaultViewer(defaultViewer)
+    })
     .catch(() => {})
   injectStyles()
 

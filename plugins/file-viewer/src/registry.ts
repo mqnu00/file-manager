@@ -33,12 +33,16 @@ export interface FileViewerRegistry {
   modules(): FileViewerModule[]
   /** 指定扩展名可用的模块：extensions 命中 或 兜底模块（extensions 为空） */
   getApplicable(ext: string): FileViewerModule[]
-  /** 指定扩展名的默认模块：config.yml 全局映射命中 > 首个 extensions 命中的模块 > 兜底模块；再无则 null */
+  /** 指定扩展名的默认模块：config.yml 全局映射命中 > 首个 extensions 命中的模块 > 用户设置的默认查看器；再无则 null */
   getDefault(ext: string): FileViewerModule | null
   /** 设置 config.yml 全局映射（完整映射表，ext→viewerId；配置页保存成功后调用） */
   setConfigMappings(map: Record<string, string>): void
   /** 读取当前 config.yml 全局映射 */
   getConfigMappings(): Record<string, string>
+  /** 设置用户配置的默认查看器（兜底），id 为空表示未设置 */
+  setDefaultViewer(id: string): void
+  /** 读取用户配置的默认查看器 id（空串表示未设置） */
+  getDefaultViewer(): string
 }
 
 /** globalThis 上的注册表键（便于多插件共享与调试） */
@@ -49,6 +53,8 @@ export function createRegistry(): FileViewerRegistry {
   const list: FileViewerModule[] = []
   /** config.yml 全局映射（完整映射表 ext→viewerId），优先级高于注册表默认 */
   let configMappings: Record<string, string> = {}
+  /** 用户配置的默认查看器 id（兜底），空串表示未设置 */
+  let defaultViewerId = ''
 
   const isFallback = (m: FileViewerModule) => m.extensions.length === 0
 
@@ -88,7 +94,7 @@ export function createRegistry(): FileViewerRegistry {
 
     getDefault(ext) {
       const key = (ext || '').toLowerCase().replace(/^\./, '')
-      // 优先级：config.yml 全局映射（仅当目标查看器已注册）> 注册表扩展名命中 > 兜底
+      // 优先级：config.yml 全局映射（仅当目标查看器已注册）> 注册表扩展名命中 > 用户设置的默认查看器
       const mapped = configMappings[key]
       if (mapped) {
         const m = list.find((x) => x.id === mapped)
@@ -97,7 +103,12 @@ export function createRegistry(): FileViewerRegistry {
       }
       const hit = list.find((m) => m.extensions.includes(key))
       if (hit) return hit
-      return list.find(isFallback) ?? null
+      // 用用户配置的默认查看器兜底（无则 null）
+      if (defaultViewerId) {
+        const dv = list.find((m) => m.id === defaultViewerId)
+        if (dv) return dv
+      }
+      return null
     },
 
     setConfigMappings(map) {
@@ -106,6 +117,14 @@ export function createRegistry(): FileViewerRegistry {
 
     getConfigMappings() {
       return { ...configMappings }
+    },
+
+    setDefaultViewer(id) {
+      defaultViewerId = id
+    },
+
+    getDefaultViewer() {
+      return defaultViewerId
     },
   }
 }
