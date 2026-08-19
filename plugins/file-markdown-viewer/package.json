@@ -1,0 +1,45 @@
+{
+  "name": "@mqn00/file-manager-plugin-file-markdown-viewer",
+  "version": "0.1.0",
+  "description": "Markdown 文件只读预览查看器",
+  "main": "dist/backend.js",
+  "exports": {
+    ".": "./dist/backend.js",
+    "./frontend": "./dist/frontend.js"
+  },
+  "scripts": {
+    "build": "tsc && node build.mjs",
+    "build:frontend": "node build.mjs"
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "fileManagerPlugin": {
+    "dependsOn": [
+      "file-viewer"
+    ]
+  },
+  "dependencies": {
+    "marked": "^16.0.0",
+    "marked-highlight": "^2.2.1",
+    "highlight.js": "^11.11.0"
+  },
+  "peerDependencies": {
+    "@mqn00/file-manager": "^3.0.0-beta7"
+  },
+  "devDependencies": {
+    "@mqn00/file-manager": "file:../../backend",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "file-manager",
+    "file-manager-plugin",
+    "viewer",
+    "markdown"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
