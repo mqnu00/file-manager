@@ -71,6 +71,22 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
             size: 0,
             modified: '',
           }
+        // 直接刷新/直达 URL 时文件列表 store 为空，无法命中真实元数据；
+        // 向后端请求父目录列表补全真实 size（与文件列表页展示一致）
+        if (!existing) {
+          const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : ''
+          ctx.api.instance
+            .get('/files', { params: { path: parent } })
+            .then((res) => {
+              const found = (res.data?.files ?? []).find(
+                (f: { path: string }) => f.path === p
+              )
+              if (found && file.value?.path === p) {
+                file.value = found
+              }
+            })
+            .catch(() => {})
+        }
         const ext = extOf(file.value)
         const qMode = typeof query.mode === 'string' ? query.mode : ''
         const override = loadModeOverride(ext)
