@@ -171,8 +171,14 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     bodyObs.observe(document.body, { childList: true, subtree: true })
   }
 
+  // SPA 导航返回时文件列表会重新渲染，MutationObserver 可能丢失对旧 DOM 的监听，
+  // 因此在 popstate 后延迟重新扫描，确保新渲染的文件列表也被标记样式。
+  const onPopState = () => setTimeout(() => updateFileStyles(registry), 0)
+  window.addEventListener('popstate', onPopState)
+
   const teardown = () => {
     document.removeEventListener('click', handler, true)
+    window.removeEventListener('popstate', onPopState)
     offChange()
     observer.disconnect()
   }
