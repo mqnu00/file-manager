@@ -279,11 +279,14 @@ function createHexViewer(ctx: FrontendPluginContext) {
             ),
             h(ElInput, {
               modelValue: goToOffsetRaw.value,
-              placeholder: '跳转偏移',
+              placeholder: '跳转偏移(十进制, 如 1024，单位字节)',
               size: 'small',
               class: 'fbv-offset-input',
-              onUpdate: (v: string) => {
+              'onUpdate:modelValue': (v: string) => {
                 goToOffsetRaw.value = v
+              },
+              onKeydown: (e: Event | KeyboardEvent) => {
+                if ((e as KeyboardEvent).key === 'Enter') goToOffset()
               },
             }),
             h(
@@ -351,7 +354,7 @@ function injectStyles(): void {
 .fbv-void { min-width: 14px; }
 .fbv-page-info { color: var(--app-text-dim); font-size: 12px; }
 .fbv-empty { color: var(--app-text-dim); padding: 24px; }
-.fbv-offset-input { width: 140px; }
+.fbv-offset-input { width: 290px; }
 `
   document.head.appendChild(style)
 }
