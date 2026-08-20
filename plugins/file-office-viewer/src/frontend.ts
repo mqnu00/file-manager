@@ -27,7 +27,7 @@ function extOf(name: string): string {
   return dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
 }
 
-function createOfficeViewer(ctx: FrontendPluginContext): unknown {
+function createOfficeViewer(ctx: FrontendPluginContext) {
   const { h, ref, computed, watch, onMounted, onBeforeUnmount } = ctx.Vue
   const { ElButton, ElAlert, ElSelect, ElOption, ElTag, ElMessage } = ctx.ElementPlus
 

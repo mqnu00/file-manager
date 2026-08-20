@@ -42,7 +42,7 @@ function extOf(name: string): string {
   return dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
 }
 
-function createCodeViewer(ctx: FrontendPluginContext): unknown {
+function createCodeViewer(ctx: FrontendPluginContext) {
   const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue
   const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
 

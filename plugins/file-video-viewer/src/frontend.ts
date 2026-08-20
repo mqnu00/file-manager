@@ -15,7 +15,7 @@ import { getRegistry, type FileViewerModule } from './registry'
 
 const MIME_EXTENSIONS = ['mp4', 'webm', 'mkv', 'avi', 'mov', 'flv', 'm4v', 'wmv']
 
-function createVideoViewer(ctx: FrontendPluginContext): unknown {
+function createVideoViewer(ctx: FrontendPluginContext) {
   const { h, ref, onMounted } = ctx.Vue
   const { ElButton, ElAlert, ElMessage } = ctx.ElementPlus
 

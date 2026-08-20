@@ -37,7 +37,7 @@ const ZOOM_STEP = 0.25
 /** 滚轮缩放步进 */
 const WHEEL_ZOOM_STEP = 0.1
 
-function createImageViewer(ctx: FrontendPluginContext): unknown {
+function createImageViewer(ctx: FrontendPluginContext) {
   const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue
   const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
 

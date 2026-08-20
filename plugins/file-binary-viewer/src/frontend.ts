@@ -72,7 +72,7 @@ function printableChar(byte: number): string {
 
 // ==================== 查看组件 ====================
 
-function createHexViewer(ctx: FrontendPluginContext): unknown {
+function createHexViewer(ctx: FrontendPluginContext) {
   const { h, ref, computed, onMounted } = ctx.Vue
   const { ElButton, ElInput, ElTag, ElAlert, ElMessage } = ctx.ElementPlus
 

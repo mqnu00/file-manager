@@ -40,7 +40,7 @@ function extOf(name: string): string {
 
 // ==================== Vue 组件 ====================
 
-function createMarkdownViewer(ctx: FrontendPluginContext): unknown {
+function createMarkdownViewer(ctx: FrontendPluginContext) {
   const { h, ref, onMounted } = ctx.Vue
   const { ElTag, ElAlert, ElMessage } = ctx.ElementPlus
 

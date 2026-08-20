@@ -15,7 +15,7 @@ import { getRegistry, type FileViewerModule } from './registry'
 
 const MIME_EXTENSIONS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
 
-function createAudioViewer(ctx: FrontendPluginContext): unknown {
+function createAudioViewer(ctx: FrontendPluginContext) {
   const { h, ref, onMounted } = ctx.Vue
   const { ElButton, ElAlert, ElMessage } = ctx.ElementPlus
 
