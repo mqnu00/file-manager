@@ -90,3 +90,12 @@ plugins/hatsune-miku-theme/
 | 文本 | `#ffffff` / `#dcddde` |
 
 > logo 与背景图版权归原作者所有，仅作主题装饰用途。
+
+## 主题适配
+
+- 主题根节点 `html.hatsune-miku` 声明 `color-scheme: dark`，使浏览器原生控件（音频/视频播放条、表单元素、Chromium PDF 查看器等）在暗色主题下自动渲染为暗色，避免出现亮色突兀；与主项目《插件样式与主题适配规范》（`plugin-design.md`）保持一致
+- 主题样式作用域限定在 `html.hatsune-miku`，使用自身 `--miku-*` CSS 变量（见上文「主题配色」），不依赖、也不污染主项目或其它主题的配色变量
+
+## 前端页面
+
+插件在 `package.json` 的 `fileManagerPlugin.frontendPage` 中声明为 `/plugin/hatsune-miku-theme`，插件管理页据此显示「进入前端」（打开页面）按钮，点击即打开主题设置页（背景图 / 面板效果配置），无需手动拼接 URL。

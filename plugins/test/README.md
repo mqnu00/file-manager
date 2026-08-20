@@ -97,6 +97,10 @@ npm run publish:npm -- 0.3.0  # 指定版本发布
 
 脚本会：校验/更新 `package.json` 版本号 → 构建 → `npm publish --access public`。
 
+## 前端页面
+
+插件在 `package.json` 的 `fileManagerPlugin.frontendPage` 中声明为 `/plugin/test`，插件管理页据此显示「进入前端」按钮，点击即打开该测试页面（无需手动拼接 URL）。
+
 ## 生产环境版本切换验证
 
 前提：主应用版本 ≥ v3.0.0-beta4（支持插件版本下拉选择），已发布 ≥ 2 个插件版本（如 `0.1.0`、`0.2.0`）。

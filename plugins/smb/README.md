@@ -79,6 +79,10 @@ users:
 3. （可选）添加用户以启用密码认证
 4. 点击"启动"，局域网内设备即可通过 `smb://<本机IP>:1445` 访问
 
+## 前端页面
+
+插件在 `package.json` 的 `fileManagerPlugin.frontendPage` 中声明为 `/plugin/smb`，插件管理页据此显示「进入前端」按钮，点击即打开 SMB 管理页（无需手动拼接 URL）。
+
 ## 许可证
 
 MIT
