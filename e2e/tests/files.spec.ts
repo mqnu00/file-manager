@@ -27,7 +27,9 @@ test.describe('文件浏览与操作', () => {
 
   test('新建文件夹并出现在列表', async ({ page }) => {
     await openHome(page)
-    await page.getByRole('button', { name: /新建文件夹/ }).click()
+    // 工具栏「新增」下拉按钮 → 选择「新增文件夹」
+    await page.getByRole('button', { name: '新增' }).click()
+    await page.getByText('新增文件夹').click()
     await page.getByPlaceholder('请输入文件夹名称').fill('e2e-folder')
     await page.getByRole('button', { name: '确定', exact: true }).click()
     await expect(page.locator('.file-name-text').filter({ hasText: 'e2e-folder' })).toBeVisible()
