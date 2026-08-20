@@ -18,6 +18,10 @@ import { getRegistry, type FileViewerModule } from './registry'
 
 const PAGE_SIZE = 256 * 1024
 const EDIT_LIMIT = 512 * 1024 * 1024
+/** 固定行高（CSS 锁定），虚拟滚动依赖此值 */
+const ROW_H = 24
+/** 可视区上下额外渲染行数，防止快速滚动白屏 */
+const OVERSCAN = 10
 
 // ==================== 纯逻辑 ====================
 
@@ -73,8 +77,8 @@ function printableChar(byte: number): string {
 // ==================== 查看组件 ====================
 
 function createHexViewer(ctx: FrontendPluginContext) {
-  const { h, ref, computed, onMounted } = ctx.Vue
-  const { ElButton, ElInput, ElTag, ElAlert, ElMessage } = ctx.ElementPlus
+  const { h, ref, computed, onMounted, onBeforeUnmount } = ctx.Vue
+  const { ElButton, ElInput, ElAlert, ElMessage } = ctx.ElementPlus
 
   // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
   const api = ctx.api.fileIO
@@ -93,6 +97,36 @@ function createHexViewer(ctx: FrontendPluginContext) {
       const readOnly = ref(false)
       const goToOffsetRaw = ref('')
 
+      // 虚拟滚动状态
+      const scrollTop = ref(0)
+      const gridHeight = ref(0)
+      let gridEl: HTMLElement | null = null
+      let gridRO: ResizeObserver | null = null
+      const onGridScroll = (e: Event) => {
+        const el = e.currentTarget as HTMLElement
+        requestAnimationFrame(() => {
+          scrollTop.value = el.scrollTop
+          gridHeight.value = el.clientHeight
+        })
+      }
+      const setGridRef = (el: any) => {
+        gridEl = el
+        if (el) {
+          gridHeight.value = el.clientHeight
+          gridRO?.disconnect()
+          gridRO = new ResizeObserver(() => {
+            gridHeight.value = el.clientHeight
+          })
+          gridRO.observe(el)
+        } else if (gridRO) {
+          gridRO.disconnect()
+          gridRO = null
+        }
+      }
+      onBeforeUnmount(() => {
+        gridRO?.disconnect()
+      })
+
       const totalPages = computed(() => Math.max(1, Math.ceil(fileSize.value / PAGE_SIZE)))
       const currentPage = computed(() => Math.floor(pageOffset.value / PAGE_SIZE) + 1)
       const dirty = computed(() => hasDrafts(cells.value))
@@ -106,6 +140,9 @@ function createHexViewer(ctx: FrontendPluginContext) {
           pageOffset.value = offset
           pageBytes.value = api.base64ToBytes(res.data)
           cells.value = toCells(pageBytes.value)
+          // 翻页后回到顶部（虚拟滚动依赖 scrollTop）
+          if (gridEl) gridEl.scrollTop = 0
+          scrollTop.value = 0
         } catch (e) {
           ElMessage.error(`读取失败: ${e instanceof Error ? e.message : '未知错误'}`)
         } finally {
@@ -158,62 +195,54 @@ function createHexViewer(ctx: FrontendPluginContext) {
       onMounted(() => loadPage(0))
 
       return () => {
+        const cellsArr = cells.value
+        const totalRows = Math.ceil(cellsArr.length / 16)
+        const startRow = Math.max(0, Math.floor(scrollTop.value / ROW_H) - OVERSCAN)
+        const visibleCount = Math.ceil(gridHeight.value / ROW_H) + OVERSCAN * 2
+        const endRow = Math.min(totalRows, startRow + visibleCount)
+
         const rows: any[] = []
-        const count = cells.value.length
-        for (let i = 0; i < count; i += 16) {
-          const rowCells = cells.value.slice(i, i + 16)
+        for (let r = startRow; r < endRow; r++) {
+          const i = r * 16
+          const rowCells = cellsArr.slice(i, i + 16)
           rows.push(
-            h('div', { class: 'fbv-row', key: pageOffset.value + i }, [
-              h(
-                'span',
-                { class: 'fbv-offset' },
-                (pageOffset.value + i).toString(16).padStart(8, '0')
-              ),
-              ...rowCells.map((cell, j) => {
-                const index = i + j
-                return h(
-                  ElTag,
-                  {
-                    size: 'small',
-                    type: cell.hex !== null ? 'warning' : 'info',
-                    class: 'fbv-cell',
-                  },
-                  () =>
-                    h('input', {
-                      class: 'fbv-input',
-                      value: cell.hex ?? cell.byte.toString(16).padStart(2, '0').toUpperCase(),
-                      maxlength: 2,
-                      spellcheck: false,
-                      onInput: (e: Event) =>
-                        applyDraft(index, 'hex', (e.target as HTMLInputElement).value),
-                    })
-                )
-              }),
-              ...Array.from({ length: 16 - rowCells.length }, () =>
-                h('span', { class: 'fbv-void' }, '')
-              ),
-              '  ',
-              ...rowCells.map((cell, j) => {
-                const index = i + j
-                return h(
-                  ElTag,
-                  {
-                    size: 'small',
-                    type: cell.ascii !== null ? 'warning' : 'info',
-                    class: 'fbv-ascii-cell',
-                  },
-                  () =>
-                    h('input', {
-                      class: 'fbv-input ascii',
-                      value: cell.ascii ?? printableChar(cell.byte),
-                      maxlength: 1,
-                      spellcheck: false,
-                      onInput: (e: Event) =>
-                        applyDraft(index, 'ascii', (e.target as HTMLInputElement).value),
-                    })
-                )
-              }),
-            ])
+            h(
+              'div',
+              { class: 'fbv-row', key: pageOffset.value + i, style: { top: r * ROW_H + 'px' } },
+              [
+                h(
+                  'span',
+                  { class: 'fbv-offset' },
+                  (pageOffset.value + i).toString(16).padStart(8, '0')
+                ),
+                ...rowCells.map((cell, j) => {
+                  const index = i + j
+                  return h('input', {
+                    class: cell.hex !== null ? 'fbv-input is-draft' : 'fbv-input',
+                    value: cell.hex ?? cell.byte.toString(16).padStart(2, '0').toUpperCase(),
+                    maxlength: 2,
+                    spellcheck: false,
+                    onInput: (e: Event) =>
+                      applyDraft(index, 'hex', (e.target as HTMLInputElement).value),
+                  })
+                }),
+                ...Array.from({ length: 16 - rowCells.length }, () =>
+                  h('span', { class: 'fbv-void' }, '')
+                ),
+                '  ',
+                ...rowCells.map((cell, j) => {
+                  const index = i + j
+                  return h('input', {
+                    class: cell.ascii !== null ? 'fbv-input ascii is-draft' : 'fbv-input ascii',
+                    value: cell.ascii ?? printableChar(cell.byte),
+                    maxlength: 1,
+                    spellcheck: false,
+                    onInput: (e: Event) =>
+                      applyDraft(index, 'ascii', (e.target as HTMLInputElement).value),
+                  })
+                }),
+              ]
+            )
           )
         }
 
@@ -237,11 +266,16 @@ function createHexViewer(ctx: FrontendPluginContext) {
               },
               () => '下一页'
             ),
-            h(ElButton, { size: 'small', disabled: loading.value, onClick: jumpToEnd }, () =>
-              '跳到底'
+            h(
+              ElButton,
+              { size: 'small', disabled: loading.value, onClick: jumpToEnd },
+              () => '跳到底'
             ),
-            h('span', { class: 'fbv-page-info' }, () =>
-              `第 ${currentPage.value} / ${totalPages.value} 页 · ${ctx.utils.formatSize(fileSize.value)}`
+            h(
+              'span',
+              { class: 'fbv-page-info' },
+              () =>
+                `第 ${currentPage.value} / ${totalPages.value} 页 · ${ctx.utils.formatSize(fileSize.value)}`
             ),
             h(ElInput, {
               modelValue: goToOffsetRaw.value,
@@ -252,8 +286,10 @@ function createHexViewer(ctx: FrontendPluginContext) {
                 goToOffsetRaw.value = v
               },
             }),
-            h(ElButton, { size: 'small', disabled: loading.value, onClick: goToOffset }, () =>
-              '跳转'
+            h(
+              ElButton,
+              { size: 'small', disabled: loading.value, onClick: goToOffset },
+              () => '跳转'
             ),
             h(
               ElButton,
@@ -274,9 +310,22 @@ function createHexViewer(ctx: FrontendPluginContext) {
                 closable: false,
               })
             : null,
-          h('div', { class: 'fbv-grid', style: { opacity: loading.value ? 0.5 : 1 } }, [
-            ...(rows.length > 0 ? rows : [h('div', { class: 'fbv-empty' }, '（空文件）')]),
-          ]),
+          h(
+            'div',
+            {
+              class: 'fbv-grid',
+              ref: setGridRef,
+              onScroll: onGridScroll,
+              style: { opacity: loading.value ? 0.5 : 1 },
+            },
+            [
+              h(
+                'div',
+                { class: 'fbv-canvas', style: { height: totalRows * ROW_H + 'px' } },
+                rows.length > 0 ? rows : [h('div', { class: 'fbv-empty' }, '（空文件）')]
+              ),
+            ]
+          ),
         ])
       }
     },
@@ -292,11 +341,13 @@ function injectStyles(): void {
   style.textContent = `
 .fbv-viewer { height: 100%; display: flex; flex-direction: column; }
 .fbv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.fbv-grid { flex: 1; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 12px; line-height: 2; overflow: auto; }
-.fbv-row { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.fbv-grid { flex: 1; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 12px; line-height: 24px; overflow: auto; position: relative; }
+.fbv-canvas { position: relative; }
+.fbv-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 3px; white-space: nowrap; height: 24px; box-sizing: border-box; }
 .fbv-offset { color: var(--app-text-dim); min-width: 74px; user-select: none; }
 .fbv-input { width: 24px; border: none; outline: none; background: transparent; color: var(--app-text); font: inherit; text-align: center; padding: 0; }
 .fbv-input.ascii { width: 12px; }
+.fbv-input.is-draft { background: rgba(230, 162, 60, 0.25); border-radius: 3px; }
 .fbv-void { min-width: 14px; }
 .fbv-page-info { color: var(--app-text-dim); font-size: 12px; }
 .fbv-empty { color: var(--app-text-dim); padding: 24px; }
