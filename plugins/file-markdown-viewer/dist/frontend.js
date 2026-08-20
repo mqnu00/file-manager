@@ -53812,8 +53812,7 @@ function extOf(name) {
 }
 function createMarkdownViewer(ctx) {
   const { h, ref, onMounted } = ctx.Vue;
-  const { ElTag, ElAlert } = ctx.ElementPlus;
-  const ElMessage = ctx.ElementPlus.ElMessage;
+  const { ElTag, ElAlert, ElMessage } = ctx.ElementPlus;
   const io = ctx.api.fileIO;
   return ctx.Vue.defineComponent({
     name: "FileMarkdownViewer",

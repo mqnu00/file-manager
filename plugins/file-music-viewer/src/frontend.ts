@@ -16,16 +16,8 @@ import { getRegistry, type FileViewerModule } from './registry'
 const MIME_EXTENSIONS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
 
 function createAudioViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, onMounted } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T) => { value: T }
-    onMounted: (cb: () => void) => void
-  }
-  const ElButton = (ctx.ElementPlus as unknown as { ElButton: never }).ElButton
-  const ElAlert = (ctx.ElementPlus as unknown as { ElAlert: never }).ElAlert
-  const ElMessage = (ctx.ElementPlus as unknown as {
-    ElMessage: { error: (m: string) => void }
-  }).ElMessage
+  const { h, ref, onMounted } = ctx.Vue
+  const { ElButton, ElAlert, ElMessage } = ctx.ElementPlus
 
   // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
   const api = ctx.api.fileIO
@@ -69,9 +61,9 @@ function createAudioViewer(ctx: FrontendPluginContext): unknown {
       return () => {
         if (error.value) {
           return h('div', { class: 'fmu-viewer' }, [
-            h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
+            h(ElAlert, { type: 'error', showIcon: false, title: error.value, closable: false }),
             h('div', { style: { height: '12px' } }),
-            h(ElButton as never, { size: 'small', onClick: download }, () => '下载文件'),
+            h(ElButton, { size: 'small', onClick: download }, () => '下载文件'),
           ])
         }
         if (!token.value) {
@@ -89,7 +81,7 @@ function createAudioViewer(ctx: FrontendPluginContext): unknown {
             },
           }),
           h('div', { style: { height: '8px' } }),
-          h(ElButton as never, { size: 'small', onClick: download }, () => '下载音频'),
+          h(ElButton, { size: 'small', onClick: download }, () => '下载音频'),
         ])
       }
     },

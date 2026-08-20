@@ -43,21 +43,8 @@ function extOf(name: string): string {
 }
 
 function createCodeViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T | null) => { value: T | null }
-    watch: (src: unknown, cb: () => void) => unknown
-    onMounted: (cb: () => void) => void
-    onBeforeUnmount: (cb: () => void) => void
-  }
-  const { ElButton, ElAlert, ElTag } = ctx.ElementPlus as unknown as {
-    ElButton: never
-    ElAlert: never
-    ElTag: never
-  }
-  const ElMessage = (ctx.ElementPlus as unknown as {
-    ElMessage: { success: (m: string) => void; error: (m: string) => void }
-  }).ElMessage
+  const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue
+  const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
 
   // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
   const api = ctx.api.fileIO
@@ -184,34 +171,34 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
 
       return () => {
         const bar = h('div', { class: 'fcv-bar' }, [
-          h(ElTag as never, { size: 'small', type: 'info' }, () =>
+          h(ElTag, { size: 'small', type: 'info' }, () =>
             `${extOf(props.file.name).toUpperCase()} · ${ctx.utils.formatSize(props.file.size)}`
           ),
           dirty.value
-            ? h(ElTag as never, { size: 'small', type: 'warning' }, () => '未保存')
-            : h(ElTag as never, { size: 'small', type: 'success' }, () => '已保存'),
+            ? h(ElTag, { size: 'small', type: 'warning' }, () => '未保存')
+            : h(ElTag, { size: 'small', type: 'success' }, () => '已保存'),
           h('span', { style: { flex: 1 } }),
-          h(ElButton as never, {
+          h(ElButton, {
             size: 'small',
             type: 'primary',
             disabled: !booted || readOnly.value,
             onClick: save,
           }, () => '保存 (Ctrl+S)'),
-          h(ElButton as never, { size: 'small', onClick: download }, () => '下载文件'),
+          h(ElButton, { size: 'small', onClick: download }, () => '下载文件'),
         ])
 
         if (error.value) {
           return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
+            h(ElAlert, { type: 'error', showIcon: false, title: error.value, closable: false }),
           ])
         }
         if (tooLarge.value) {
           return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, {
+            h(ElAlert, {
               type: 'warning',
               showIcon: false,
               title: '文件超过 8MB，不适合编辑器直接打开，请改用十六进制查看或下载',
@@ -223,7 +210,7 @@ function createCodeViewer(ctx: FrontendPluginContext): unknown {
           return h('div', { class: 'fcv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, {
+            h(ElAlert, {
               type: 'warning',
               showIcon: false,
               title: '该文件为二进制内容，请改用十六进制查看器',

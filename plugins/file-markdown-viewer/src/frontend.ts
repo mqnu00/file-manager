@@ -41,18 +41,8 @@ function extOf(name: string): string {
 // ==================== Vue 组件 ====================
 
 function createMarkdownViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, onMounted } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T) => { value: T }
-    onMounted: (cb: () => void) => void
-  }
-  const { ElTag, ElAlert } = ctx.ElementPlus as unknown as {
-    ElTag: never
-    ElAlert: never
-  }
-  const ElMessage = (ctx.ElementPlus as unknown as {
-    ElMessage: { error: (m: string) => void }
-  }).ElMessage
+  const { h, ref, onMounted } = ctx.Vue
+  const { ElTag, ElAlert, ElMessage } = ctx.ElementPlus
 
   const io = ctx.api.fileIO
 
@@ -89,7 +79,7 @@ function createMarkdownViewer(ctx: FrontendPluginContext): unknown {
 
       return () => {
         const bar = h('div', { class: 'fmv-bar' }, [
-          h(ElTag as never, { size: 'small', type: 'info' }, () => `Markdown 预览（只读）`),
+          h(ElTag, { size: 'small', type: 'info' }, () => `Markdown 预览（只读）`),
           loading.value ? h('span', { class: 'fmv-loading' }, '加载中…') : null,
           h('span', { style: { flex: '1' } }),
         ])
@@ -98,7 +88,7 @@ function createMarkdownViewer(ctx: FrontendPluginContext): unknown {
           return h('div', { class: 'fmv-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
+            h(ElAlert, { type: 'error', showIcon: false, title: error.value, closable: false }),
           ])
         }
 

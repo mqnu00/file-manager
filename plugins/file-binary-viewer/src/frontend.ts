@@ -73,21 +73,8 @@ function printableChar(byte: number): string {
 // ==================== 查看组件 ====================
 
 function createHexViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, computed, onMounted } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T) => { value: T }
-    computed: <T>(fn: () => T) => { value: T }
-    onMounted: (cb: () => void) => void
-  }
-  const { ElButton, ElInput, ElTag, ElAlert } = ctx.ElementPlus as unknown as {
-    ElButton: never
-    ElInput: never
-    ElTag: never
-    ElAlert: never
-  }
-  const ElMessage = (ctx.ElementPlus as unknown as {
-    ElMessage: { success: (m: string) => void; error: (m: string) => void; warning: (m: string) => void }
-  }).ElMessage
+  const { h, ref, computed, onMounted } = ctx.Vue
+  const { ElButton, ElInput, ElTag, ElAlert, ElMessage } = ctx.ElementPlus
 
   // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO），与 file-viewer 解耦
   const api = ctx.api.fileIO
@@ -171,7 +158,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
       onMounted(() => loadPage(0))
 
       return () => {
-        const rows: unknown[] = []
+        const rows: any[] = []
         const count = cells.value.length
         for (let i = 0; i < count; i += 16) {
           const rowCells = cells.value.slice(i, i + 16)
@@ -185,10 +172,10 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
               ...rowCells.map((cell, j) => {
                 const index = i + j
                 return h(
-                  ElTag as never,
+                  ElTag,
                   {
                     size: 'small',
-                    effect: cell.hex !== null ? 'warning' : 'plain',
+                    type: cell.hex !== null ? 'warning' : 'info',
                     class: 'fbv-cell',
                   },
                   () =>
@@ -209,10 +196,10 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
               ...rowCells.map((cell, j) => {
                 const index = i + j
                 return h(
-                  ElTag as never,
+                  ElTag,
                   {
                     size: 'small',
-                    effect: cell.ascii !== null ? 'warning' : 'plain',
+                    type: cell.ascii !== null ? 'warning' : 'info',
                     class: 'fbv-ascii-cell',
                   },
                   () =>
@@ -233,7 +220,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
         return h('div', { class: 'fbv-viewer' }, [
           h('div', { class: 'fbv-bar' }, [
             h(
-              ElButton as never,
+              ElButton,
               {
                 size: 'small',
                 disabled: loading.value || currentPage.value <= 1,
@@ -242,7 +229,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
               () => '上一页'
             ),
             h(
-              ElButton as never,
+              ElButton,
               {
                 size: 'small',
                 disabled: loading.value || currentPage.value >= totalPages.value,
@@ -250,13 +237,13 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
               },
               () => '下一页'
             ),
-            h(ElButton as never, { size: 'small', disabled: loading.value, onClick: jumpToEnd }, () =>
+            h(ElButton, { size: 'small', disabled: loading.value, onClick: jumpToEnd }, () =>
               '跳到底'
             ),
             h('span', { class: 'fbv-page-info' }, () =>
               `第 ${currentPage.value} / ${totalPages.value} 页 · ${ctx.utils.formatSize(fileSize.value)}`
             ),
-            h(ElInput as never, {
+            h(ElInput, {
               modelValue: goToOffsetRaw.value,
               placeholder: '跳转偏移',
               size: 'small',
@@ -265,11 +252,11 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
                 goToOffsetRaw.value = v
               },
             }),
-            h(ElButton as never, { size: 'small', disabled: loading.value, onClick: goToOffset }, () =>
+            h(ElButton, { size: 'small', disabled: loading.value, onClick: goToOffset }, () =>
               '跳转'
             ),
             h(
-              ElButton as never,
+              ElButton,
               {
                 size: 'small',
                 type: 'primary',
@@ -280,7 +267,7 @@ function createHexViewer(ctx: FrontendPluginContext): unknown {
             ),
           ]),
           readOnly.value
-            ? h(ElAlert as never, {
+            ? h(ElAlert, {
                 type: 'warning',
                 showIcon: false,
                 title: '文件超过 512MB，仅可查看不可编辑',

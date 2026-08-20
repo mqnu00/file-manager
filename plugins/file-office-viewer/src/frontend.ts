@@ -28,24 +28,8 @@ function extOf(name: string): string {
 }
 
 function createOfficeViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, computed, watch, onMounted, onBeforeUnmount } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T) => { value: T }
-    computed: <T>(fn: () => T) => { value: T }
-    watch: (src: unknown, cb: () => void, opts?: { immediate?: boolean }) => unknown
-    onMounted: (cb: () => void) => void
-    onBeforeUnmount: (cb: () => void) => void
-  }
-  const { ElButton, ElAlert, ElSelect, ElOption, ElTag } = ctx.ElementPlus as unknown as {
-    ElButton: never
-    ElAlert: never
-    ElSelect: never
-    ElOption: never
-    ElTag: never
-  }
-  const ElMessage = (ctx.ElementPlus as unknown as {
-    ElMessage: { error: (m: string) => void }
-  }).ElMessage
+  const { h, ref, computed, watch, onMounted, onBeforeUnmount } = ctx.Vue
+  const { ElButton, ElAlert, ElSelect, ElOption, ElTag, ElMessage } = ctx.ElementPlus
 
   // 平台文件 I/O（主项目 /api/files/* + ctx.api.fileIO）：pdf/docx/xlsx/xls 原始字节拉取
   const io = ctx.api.fileIO
@@ -146,27 +130,27 @@ function createOfficeViewer(ctx: FrontendPluginContext): unknown {
       return () => {
         const isSheet = ext === 'xlsx' || ext === 'xls'
         const bar = h('div', { class: 'fov-bar' }, [
-          h(ElTag as never, { size: 'small', type: 'info' }, () => `${ext.toUpperCase()} 预览（只读）`),
+          h(ElTag, { size: 'small', type: 'info' }, () => `${ext.toUpperCase()} 预览（只读）`),
           loading.value ? h('span', { class: 'fov-loading' }, '加载中…') : null,
           isSheet && sheetNames.value.length > 1
-            ? h(ElSelect as never, {
+            ? h(ElSelect, {
                 modelValue: activeSheet.value,
                 size: 'small',
                 style: { width: '200px' },
                 onChange: (v: string) => {
                   activeSheet.value = v
                 },
-              }, () => sheetNames.value.map((name) => h(ElOption as never, { key: name, label: name, value: name })))
+              }, () => sheetNames.value.map((name) => h(ElOption, { key: name, label: name, value: name })))
             : null,
           h('span', { style: { flex: 1 } }),
-          h(ElButton as never, { size: 'small', onClick: download }, () => '下载文件'),
+          h(ElButton, { size: 'small', onClick: download }, () => '下载文件'),
         ])
 
         if (error.value) {
           return h('div', { class: 'fov-viewer' }, [
             bar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, { type: 'error', showIcon: false, title: error.value, closable: false }),
+            h(ElAlert, { type: 'error', showIcon: false, title: error.value, closable: false }),
           ])
         }
 

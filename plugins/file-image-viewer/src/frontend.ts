@@ -38,23 +38,8 @@ const ZOOM_STEP = 0.25
 const WHEEL_ZOOM_STEP = 0.1
 
 function createImageViewer(ctx: FrontendPluginContext): unknown {
-  const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue as unknown as {
-    h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
-    ref: <T>(v: T) => { value: T }
-    watch: (src: unknown, cb: (v: unknown) => void) => unknown
-    onMounted: (cb: () => void) => void
-    onBeforeUnmount: (cb: () => void) => void
-  }
-  const { ElButton, ElAlert, ElTag } = ctx.ElementPlus as unknown as {
-    ElButton: never
-    ElAlert: never
-    ElTag: never
-  }
-  const ElMessage = (
-    ctx.ElementPlus as unknown as {
-      ElMessage: { error: (m: string) => void }
-    }
-  ).ElMessage
+  const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue
+  const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
 
   const api = ctx.api.fileIO
 
@@ -184,7 +169,7 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
       /** 稳定的 ref 回调，挂载时绑定事件，卸载时重置标记 */
       let stageBound = false
       let stageEl: HTMLElement | null = null
-      const setupStageRef = (el: HTMLElement | null) => {
+      const setupStageRef = (el: any) => {
         stageEl = el
         if (el) {
           if (!stageBound) {
@@ -293,14 +278,14 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
       return () => {
         const toolbar = h('div', { class: 'fiv-bar' }, [
           h(
-            ElTag as never,
+            ElTag,
             { size: 'small', type: 'info' },
             () => `${props.file.name.toUpperCase()} · ${fmtSize()}`
           ),
           metaText() ? h('span', { class: 'fiv-meta' }, metaText()) : null,
           h('span', { style: { flex: 1 } }),
           h(
-            ElButton as never,
+            ElButton,
             {
               size: 'small',
               type: isFitActive() ? 'primary' : '',
@@ -309,17 +294,17 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
             () => '适应窗口'
           ),
           h(
-            ElButton as never,
+            ElButton,
             { size: 'small', onClick: () => applyZoom(-ZOOM_STEP) },
             () => '缩小'
           ),
           h(
-            ElButton as never,
+            ElButton,
             { size: 'small', onClick: () => applyZoom(ZOOM_STEP) },
             () => '放大'
           ),
           h(
-            ElButton as never,
+            ElButton,
             {
               size: 'small',
               onClick: () => {
@@ -335,21 +320,21 @@ function createImageViewer(ctx: FrontendPluginContext): unknown {
               ? `适应 ${fitScale.value}% · ${rotate.value}°`
               : `${Math.round(scale.value * 100)}% · ${rotate.value}°`
           ),
-          h(ElButton as never, { size: 'small', onClick: download }, () => '下载图片'),
+          h(ElButton, { size: 'small', onClick: download }, () => '下载图片'),
         ])
 
         if (error.value) {
           return h('div', { class: 'fiv-viewer' }, [
             toolbar,
             h('div', { style: { height: '12px' } }),
-            h(ElAlert as never, {
+            h(ElAlert, {
               type: 'error',
               showIcon: false,
               title: error.value,
               closable: false,
             }),
             h('div', { style: { height: '12px' } }),
-            h(ElButton as never, { size: 'small', onClick: download }, () => '下载文件'),
+            h(ElButton, { size: 'small', onClick: download }, () => '下载文件'),
           ])
         }
 
