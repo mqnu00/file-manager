@@ -23,7 +23,8 @@ npm install @mqn00/file-manager-plugin-file-viewer
 # 同时安装子插件（按需）：
 npm install @mqn00/file-manager-plugin-file-code-viewer @mqn00/file-manager-plugin-file-music-viewer \
   @mqn00/file-manager-plugin-file-video-viewer @mqn00/file-manager-plugin-file-image-viewer \
-  @mqn00/file-manager-plugin-file-office-viewer @mqn00/file-manager-plugin-file-binary-viewer
+  @mqn00/file-manager-plugin-file-office-viewer @mqn00/file-manager-plugin-file-binary-viewer \
+  @mqn00/file-manager-plugin-file-markdown-viewer
 ```
 
 在 `config.yml` 中启用（子插件通过 `fileManagerPlugin.dependsOn: ["file-viewer"]` 保证在核心之后加载，无需手动排序）：
@@ -58,12 +59,14 @@ URL 指定 mode > 页面内选择（localStorage） > config.yml 映射（extens
 
 | 扩展名 | 默认模块 | 页面内可切换 |
 |---|---|---|
-| 代码/文本后缀（ts/js/vue/json/md/txt/py 等） | 代码编辑器（file-code-viewer） | 十六进制 |
+| 代码/文本后缀（ts/js/vue/json/txt/py 等） | 代码编辑器（file-code-viewer） | 十六进制 |
 | mp3/wav/flac/ogg/m4a/aac/opus | 音乐播放器（file-music-viewer） | 十六进制 |
 | mp4/webm/mkv/avi/mov/flv/m4v/wmv | 视频播放器（file-video-viewer） | 十六进制 |
 | png/jpg/jpeg/gif/webp/svg/bmp/ico/avif/tiff/heic 等 | 图片查看器（file-image-viewer） | 十六进制 |
 | pdf/docx/doc/xlsx/xls/pptx/ppt | 办公文档查看器（file-office-viewer） | 十六进制 |
 | 其他全部（未知扩展名） | 十六进制查看器（file-binary-viewer，兜底） | — |
+
+> 注：`.md` 同时被 `file-code-viewer` 与 `file-markdown-viewer` 注册，默认打开方式取决于二者前端加载顺序；若需固定，可在配置主页（扩展名→查看器映射）显式指定，或在查看页「打开方式」中手动切换并记住选择。
 
 ## 查看器注册表契约（第三方接入点）
 
