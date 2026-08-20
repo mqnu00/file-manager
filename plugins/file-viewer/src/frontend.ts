@@ -150,29 +150,28 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   updateFileStyles(registry)
   const offChange = registry.onChange(() => updateFileStyles(registry))
 
-  // MutationObserver 监听文件列表 DOM 变化（Vue 渲染/分页切换等）
-  const observer = new MutationObserver(() => updateFileStyles(registry))
-  // 等待文件列表容器出现后挂载 observer（可能尚不存在）
-  const observeTable = () => {
-    const table =
-      document.querySelector('.file-list') ??
-      document.querySelector('.el-table') ??
-      document.querySelector('table')
-    if (table) {
-      observer.observe(table, { childList: true, subtree: true })
-      return true
-    }
-    return false
-  }
-  if (!observeTable()) {
-    const bodyObs = new MutationObserver(() => {
-      if (observeTable()) bodyObs.disconnect()
+  // MutationObserver 监听文件列表 DOM 变化（Vue 渲染/分页切换等）。
+  // 关键：HomeView 在 SPA 路由切换（打开/返回查看页）时会整体卸载并重建，
+  // el-table 根节点会被替换。若只监听某个具体的 table 节点，重建后的新
+  // table 不在监听范围内，导致后续在页内刷新文件列表（如点击 breadcrumb
+  // 根目录）时，新渲染的行丢失 has-viewer 样式、悬浮下划线消失。
+  // 因此改为监听 document.body 子树，用 rAF 合并多次回调，保证任何文件列表
+  // 的重建/重渲染都被扫描到；只监听 childList（不监听 attributes），避免
+  // 自身设置 class 触发的属性变更回调形成循环。
+  let scanScheduled = false
+  const scheduleScan = () => {
+    if (scanScheduled) return
+    scanScheduled = true
+    requestAnimationFrame(() => {
+      scanScheduled = false
+      updateFileStyles(registry)
     })
-    bodyObs.observe(document.body, { childList: true, subtree: true })
   }
+  const observer = new MutationObserver(() => scheduleScan())
+  observer.observe(document.body, { childList: true, subtree: true })
 
-  // SPA 导航返回时文件列表会重新渲染，MutationObserver 可能丢失对旧 DOM 的监听，
-  // 因此在 popstate 后延迟重新扫描，确保新渲染的文件列表也被标记样式。
+  // SPA 导航返回时文件列表会重新渲染，延时重新扫描兜底（body 子树监听已能覆盖，
+  // 这里保留以确保切换瞬间不被遗漏）。
   const onPopState = () => setTimeout(() => updateFileStyles(registry), 0)
   window.addEventListener('popstate', onPopState)
 
