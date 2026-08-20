@@ -1,4 +1,4 @@
-## v3.0.0-beta7 (2026-08-17)
+## v3.0.0-beta7 (2026-08-20)
 
 ### ✨ 新增功能
 
@@ -6,6 +6,34 @@
   - 类型定义同步：backend 插件类型（`backend/src/plugin/frontend-types.ts`）与前端 context（`frontend/src/context.ts`）新增 `PluginRouteRecord`，提供 `meta.requiresAuth` 类型提示与文档
   - hatsune-miku 主题插件页面落地声明（其自定义背景上传/删除接口已挂认证，页面随之需要登录）
   - 配套测试：路由守卫新增插件路由 requiresAuth 拦截/放行用例
+- 引入 file-viewer 查看插件体系（图片/代码/视频/音频/二进制/Office/Markdown 子插件），主应用零改动即可扩展文件查看能力
+- 新增 file-image-viewer 图片查看器：缩放 / 旋转 / 适应窗口 / 拖拽 / 滚轮缩放（以鼠标位置为锚点），工具栏展示分辨率、DPI、位深度（PNG/JPEG/GIF/BMP/WebP 解析文件头）
+- 新增 file-markdown-viewer：Markdown 只读预览（marked + highlight.js 语法高亮）
+- 配置页支持用户指定默认查看器（替代硬编码兜底）
+- 查看器支持自由选择全部已注册模块，并增加媒体加载错误提示
+- 插件需声明 `frontendPage` 才显示进入前端入口按钮
+- 文件列表所有文件悬浮可点击样式，已注册查看器的文件常驻高亮
+- 主页目录路径记忆改用 sessionStorage 临时记忆
+- 工具栏「新建」按钮改造为下拉菜单，新增创建文件功能（命名空文件）
+
+### 🐛 Bug 修复
+
+- 修复查看文件返回后 has-viewer 样式丢失
+- 修复直接刷新查看器 URL 时文件大小显示为 0B（store 为空时异步补全真实元数据）
+- 修复十六进制查看器跳转偏移输入框无法输入（ElInput 的 `onUpdate` 应为 `onUpdate:modelValue`），新增回车跳转与格式占位符提示
+
+### 🎨 样式与规范
+
+- 插件样式与主题适配规范：颜色只用 `--app-*` 主题令牌（带 fallback）、禁硬编码；暗色主题声明 `color-scheme: dark`；注入类名必须带插件前缀；Monaco/PDF 等第三方组件内部主题订阅 `useTheme()` 联动
+- file-viewer 系插件类名前缀化与令牌化整改（`fiv-`/`fcv-`/`fbv-`/`fvv-` 等）
+
+### 🔧 工程改进
+
+- 文件 I/O 上收主项目平台：file-viewer 新增查看器映射配置主页，5 个文件查看器插件 I/O 迁移至 `ctx.api.fileIO`
+- `fileIO` 降为纯二进制透传，文本/二进制/大小判断下沉到消费方插件
+- 修复插件热重载临时副本保留 node_modules 依赖解析链
+- 十六进制查看器虚拟滚动改造，解决大文件加载性能问题（渲染节点从约 52 万降至可视区数百）
+- 清理 file-viewer 系列插件的 ElementPlus/Vue 类型断言（`createXxxViewer` 返回类型改由推导，移除 `as unknown as` / `never`）
 
 ---
 
