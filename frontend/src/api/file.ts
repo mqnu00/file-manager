@@ -28,6 +28,11 @@ export const createFolder = (path: string, name: string): Promise<{ success: boo
   return api.post('/folders', { path, name }).then((res) => res.data)
 }
 
+// 创建文件（空文件）
+export const createFile = (path: string, name: string): Promise<{ success: boolean }> => {
+  return api.post('/files', { path, name }).then((res) => res.data)
+}
+
 // 移动文件/文件夹（Promise 版本 + 进度回调 — 给 composable 使用）
 export const moveFileAsync = (
   fromPath: string,

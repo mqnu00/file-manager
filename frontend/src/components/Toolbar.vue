@@ -29,10 +29,25 @@
           <el-option label="修改时间" value="modified" />
           <el-option label="大小" value="size" />
         </el-select>
-        <el-button type="primary" size="small" @click="$emit('create-folder')">
-          <el-icon><FolderAdd /></el-icon>
-          新建文件夹
-        </el-button>
+        <el-dropdown trigger="click" @command="handleCreateCommand">
+          <el-button type="primary" size="small">
+            <el-icon><Plus /></el-icon>
+            新增
+            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="file">
+                <el-icon><DocumentAdd /></el-icon>
+                新增文件
+              </el-dropdown-item>
+              <el-dropdown-item command="folder">
+                <el-icon><FolderAdd /></el-icon>
+                新增文件夹
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button size="small" @click="$emit('refresh')">
           <el-icon><Refresh /></el-icon>
           刷新
@@ -125,6 +140,7 @@
 import { useRouter } from 'vue-router'
 import {
   FolderAdd,
+  FolderChecked,
   Refresh,
   HomeFilled,
   ArrowUp,
@@ -132,7 +148,6 @@ import {
   Delete,
   Rank,
   Download,
-  FolderChecked,
   CircleClose,
   Moon,
   Sunny,
@@ -142,6 +157,8 @@ import {
   Edit,
   Document,
   Operation,
+  Plus,
+  DocumentAdd,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
@@ -157,11 +174,12 @@ defineProps<{
   isSingleFolderSelected: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   navigate: [index: number]
   'sort-change': [sortBy: string]
   'toggle-sort': []
   'create-folder': []
+  'create-file': []
   refresh: []
   'batch-delete': []
   'batch-move': []
@@ -170,6 +188,14 @@ defineEmits<{
   'batch-rename': []
   'cancel-selection': []
 }>()
+
+const handleCreateCommand = (command: string) => {
+  if (command === 'file') {
+    emit('create-file')
+  } else if (command === 'folder') {
+    emit('create-folder')
+  }
+}
 </script>
 
 <style scoped>

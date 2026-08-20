@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import Toolbar from './Toolbar.vue'
 
@@ -60,11 +61,29 @@ describe('Toolbar.vue', () => {
     expect(wrapper.emitted('navigate')?.[0]).toEqual([0])
   })
 
-  it('点击"新建文件夹"触发 create-folder', async () => {
+  it('渲染「新增」下拉触发按钮且菜单含两项', () => {
     const wrapper = mountToolbar()
-    const btn = wrapper.findAll('button').find((b) => b.text().includes('新建文件夹'))
-    await btn!.trigger('click')
+    const trigger = wrapper.findAll('button').find((b) => b.text().includes('新增'))
+    expect(trigger).toBeTruthy()
+    // el-dropdown 菜单通过 teleport 渲染到 body
+    expect(document.body.textContent).toContain('新增文件')
+    expect(document.body.textContent).toContain('新增文件夹')
+  })
+
+  it('下拉选择「新增文件夹」触发 create-folder', async () => {
+    const wrapper = mountToolbar()
+    const dropdown = wrapper.findComponent({ name: 'ElDropdown' })
+    dropdown.vm.$emit('command', 'folder')
+    await nextTick()
     expect(wrapper.emitted('create-folder')).toHaveLength(1)
+  })
+
+  it('下拉选择「新增文件」触发 create-file', async () => {
+    const wrapper = mountToolbar()
+    const dropdown = wrapper.findComponent({ name: 'ElDropdown' })
+    dropdown.vm.$emit('command', 'file')
+    await nextTick()
+    expect(wrapper.emitted('create-file')).toHaveLength(1)
   })
 
   it('点击"刷新"触发 refresh', async () => {

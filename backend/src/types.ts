@@ -56,6 +56,11 @@ export interface CreateFolderRequest {
   name: string
 }
 
+export interface CreateFileRequest {
+  path?: string
+  name: string
+}
+
 /**
  * Express app.locals 类型
  */

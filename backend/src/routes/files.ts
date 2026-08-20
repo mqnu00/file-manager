@@ -8,6 +8,7 @@ import {
   DeleteRequest,
   BatchDeleteRequest,
   ZipCancelRequest,
+  CreateFileRequest,
 } from '../types';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { safePath, calculateDirSize } from '../utils/safePath';
@@ -256,6 +257,23 @@ router.post(
 
     const result = fileService.deleteFiles(paths);
     res.json(result);
+  })
+);
+
+/**
+ * 创建文件（空文件）
+ */
+router.post(
+  '/',
+  asyncHandler((req: Request, res: Response) => {
+    const { path: parentPath, name } = req.body as CreateFileRequest;
+
+    if (!name) {
+      return res.status(400).json({ message: '缺少文件名称' });
+    }
+
+    fileService.createFile(parentPath, name);
+    res.json({ success: true });
   })
 );
 

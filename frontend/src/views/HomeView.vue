@@ -12,6 +12,7 @@
         @sort-change="handleSortChange"
         @toggle-sort="toggleSortOrder"
         @create-folder="showCreateFolderDialog"
+        @create-file="showCreateFileDialog"
         @refresh="refresh"
         @batch-delete="handleBatchDelete"
         @batch-move="handleBatchMove"
@@ -71,6 +72,15 @@
       @confirm="createFolder"
     />
 
+    <!-- 新增文件对话框 -->
+    <CreateFileDialog
+      :model-value="createFileVisible"
+      :file-name="newFileName"
+      @update:model-value="createFileVisible = $event"
+      @update:file-name="newFileName = $event"
+      @confirm="createFile"
+    />
+
     <!-- 移动文件对话框 -->
     <MoveFileDialog
       :model-value="progress.moveState.visible"
@@ -107,7 +117,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useFileStore } from '@/stores/file'
-import { getFiles, createFolder as createFolderApi, batchDeleteFiles, renameFile, getDirSize, downloadFile } from '@/api/file'
+import { getFiles, createFolder as createFolderApi, createFile as createFileApi, batchDeleteFiles, renameFile, getDirSize, downloadFile } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
@@ -117,6 +127,7 @@ import { useContextMenu } from '@/composables/useContextMenu'
 import Toolbar from '../components/Toolbar.vue'
 import FileTable from '../components/FileTable.vue'
 import CreateFolderDialog from '../components/dialogs/CreateFolderDialog.vue'
+import CreateFileDialog from '../components/dialogs/CreateFileDialog.vue'
 import MoveFileDialog from '../components/dialogs/MoveFileDialog.vue'
 import RenameDialog from '../components/dialogs/RenameDialog.vue'
 import ContextMenu from '../components/ContextMenu.vue'
@@ -152,6 +163,10 @@ function removeSelectedFile(file: FileItem) {
 // 新建文件夹对话框
 const createFolderVisible = ref(false)
 const newFolderName = ref('')
+
+// 新增文件对话框
+const createFileVisible = ref(false)
+const newFileName = ref('')
 
 // 文件夹大小计算
 const dirSizeCache = ref<Record<string, number>>({})
@@ -232,6 +247,27 @@ const createFolder = async () => {
     await createFolderApi(fileStore.currentPath, newFolderName.value)
     ElMessage.success('创建成功')
     createFolderVisible.value = false
+    refresh()
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '创建失败')
+  }
+}
+
+const showCreateFileDialog = () => {
+  newFileName.value = ''
+  createFileVisible.value = true
+  closeContextMenu()
+}
+
+const createFile = async () => {
+  if (!newFileName.value.trim()) {
+    ElMessage.warning('请输入文件名称')
+    return
+  }
+  try {
+    await createFileApi(fileStore.currentPath, newFileName.value)
+    ElMessage.success('创建成功')
+    createFileVisible.value = false
     refresh()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '创建失败')

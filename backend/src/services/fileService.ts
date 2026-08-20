@@ -778,3 +778,22 @@ export const createFolder = (parentPath: string | undefined, name: string): void
   fs.mkdirSync(newFolderPath, { recursive: true })
   log('INFO', 'createFolder', `${parentPath || '/'}/${name}`)
 }
+
+/**
+ * 创建文件（空文件）
+ */
+export const createFile = (parentPath: string | undefined, name: string): void => {
+  if (name.includes('/') || name.includes('\\') || name === '..' || name === '.') {
+    throw new AppError('非法文件名称')
+  }
+
+  const parentFullPath = safePath(parentPath || '')
+  const newFilePath = path.join(parentFullPath, name)
+
+  if (fs.existsSync(newFilePath)) {
+    throw new AppError('文件已存在')
+  }
+
+  fs.writeFileSync(newFilePath, '')
+  log('INFO', 'createFile', `${parentPath || '/'}/${name}`)
+}

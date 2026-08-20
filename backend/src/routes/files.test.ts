@@ -200,3 +200,64 @@ describe('文件操作 API（集成）', () => {
     await settled
   })
 })
+
+describe('创建文件 API（集成）', () => {
+  it('未认证创建 → 401', async () => {
+    const res = await request(app).post('/api/files').send({ name: 'x.txt' })
+    expect(res.status).toBe(401)
+  })
+
+  it('创建文件成功（磁盘生成空文件）', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: '', name: 'newfile.txt' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    const fp = path.join(STORAGE_ROOT, 'newfile.txt')
+    expect(fs.existsSync(fp)).toBe(true)
+    expect(fs.statSync(fp).size).toBe(0)
+  })
+
+  it('嵌套路径创建', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: 'dir', name: 'nested.txt' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(200)
+    expect(fs.existsSync(path.join(STORAGE_ROOT, 'dir', 'nested.txt'))).toBe(true)
+  })
+
+  it('创建已存在文件 → 400', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: '', name: 'newfile.txt' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(400)
+    expect(res.body.message).toBe('文件已存在')
+  })
+
+  it('非法名称（..）→ 400', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: '', name: '..' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(400)
+  })
+
+  it('非法名称（含 /）→ 400', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: '', name: 'a/b.txt' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(400)
+  })
+
+  it('缺少名称 → 400', async () => {
+    const res = await request(app)
+      .post('/api/files')
+      .send({ path: '' })
+      .set('Authorization', authHeader)
+    expect(res.status).toBe(400)
+  })
+})
