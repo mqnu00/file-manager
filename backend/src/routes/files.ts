@@ -151,7 +151,8 @@ router.get(
       }
     }
 
-    const { data } = fileIO.readBytesAt(fullPath, offset, length);
+    // 无读权限时自动以 sudo 提权读取
+    const data = fileService.readFileBytes(fullPath, offset, length);
     res.json({ offset, length: data.length, size, data: data.toString('base64') });
   })
 );
@@ -179,8 +180,8 @@ router.post(
     if (fs.statSync(fullPath).isDirectory()) throw new AppError('不能写入文件夹', 400);
 
     if (offset === undefined) {
-      // 整文件覆盖（允许空内容清空文件）
-      fs.writeFileSync(fullPath, buf);
+      // 整文件覆盖（允许空内容清空文件）；无写权限时自动以 sudo 提权
+      fileService.writeFileContent(fullPath, buf);
     } else {
       if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0) {
         throw new AppError('offset 非法', 400);

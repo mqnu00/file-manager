@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { getConfig } from '../config'
-import { createSession, validateSession, destroySession, getTokenFromHeader } from '../middleware/auth'
+import { createSession, validateSession, destroySession, getTokenFromHeader, authMiddleware } from '../middleware/auth'
+import * as sudoService from '../services/sudoService'
 import { log } from '../utils/logger'
 
 const router = Router()
@@ -55,6 +56,32 @@ router.get('/check', (req: Request, res: Response) => {
     return
   }
   res.json({ valid: true })
+})
+
+// ===== sudo 提权：校验并缓存凭据（限时） =====
+router.post('/elevate', authMiddleware, (req: Request, res: Response) => {
+  if (!sudoService.isEnabled()) {
+    return res.status(403).json({ error: '提权功能未启用' })
+  }
+  const { username, password, chownBack } = req.body as {
+    username?: string
+    password?: string
+    chownBack?: boolean
+  }
+  if (!username || !password) {
+    return res.status(400).json({ error: '缺少用户名或密码' })
+  }
+  const ok = sudoService.setCredentials(username, password, chownBack !== false)
+  if (!ok) {
+    return res.status(401).json({ error: '用户名或密码错误 / 系统不支持 sudo' })
+  }
+  log('INFO', 'auth', `sudo 提权凭据已缓存 - ${req.ip}`)
+  res.json({ success: true })
+})
+
+router.post('/elevate-clear', authMiddleware, (req: Request, res: Response) => {
+  sudoService.clearCredentials()
+  res.json({ success: true })
 })
 
 export default router

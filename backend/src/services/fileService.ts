@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 import { pipeline } from 'stream/promises'
 import { PassThrough } from 'stream'
@@ -8,8 +9,10 @@ import { Response } from 'express'
 import { FileInfo, SSEProgressMessage } from '../types'
 import { safePath, calculateDirSize, getStorageRoot, isVirtualFs } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
-import { AppError } from '../utils/AppError'
+import { AppError, ElevationRequiredError } from '../utils/AppError'
 import { log } from '../utils/logger'
+import * as sudoService from './sudoService'
+import * as fileIO from './fileIO'
 
 /**
  * 获取安全的文件大小
@@ -33,7 +36,101 @@ const getSafeSize = (filePath: string, stats: fs.Stats): number => {
 }
 
 /**
- * 获取文件列表
+ * 包装一次文件操作：权限不足（EACCES / EPERM）时按「提权」策略处理。
+ * - 未启用提权，或非权限错误 → 原样抛出
+ * - 启用提权且无凭据 → 抛 ElevationRequiredError（前端据此弹窗）
+ * - 启用提权且有凭据 → 以 sudo 重试；sudo 失败则清凭据并抛 ElevationRequiredError
+ */
+function withElevation<T>(fsOp: () => T, elevated: () => T): T {
+  try {
+    return fsOp()
+  } catch (e: any) {
+    const isPerm = e?.code === 'EACCES' || e?.code === 'EPERM'
+    if (isPerm && sudoService.isEnabled() && sudoService.hasCredentials()) {
+      try {
+        return elevated()
+      } catch {
+        sudoService.clearCredentials()
+        throw new ElevationRequiredError()
+      }
+    } else if (isPerm && sudoService.isEnabled()) {
+      throw new ElevationRequiredError()
+    } else {
+      throw e
+    }
+  }
+}
+
+/** 排序：文件夹在前，文件在后 */
+function sortFileList(fileList: FileInfo[]): void {
+  fileList.sort((a, b) => {
+    if (a.isDirectory && !b.isDirectory) return -1
+    if (!a.isDirectory && b.isDirectory) return 1
+    return a.name.localeCompare(b.name)
+  })
+}
+
+/** stat 失败时的降级条目（用已成功的 lstat 信息；broken 标记符号链接目标不存在） */
+function degradedEntry(
+  file: fs.Dirent,
+  filePath: string,
+  lstat: fs.Stats,
+  broken = false
+): FileInfo {
+  return {
+    name: file.name,
+    path: path.relative(getStorageRoot(), filePath).replace(/\\/g, '/'),
+    isDirectory: file.isDirectory(),
+    size: lstat.size,
+    modified: lstat.mtime.toISOString(),
+    ...(broken ? { broken: true } : {}),
+  }
+}
+
+/**
+ * 以 sudo 列目录（目录本身不可读时，如 /root）。
+ * find -printf 输出「类型\t大小\t修改时间\t名称」并解析；名称在最后以兼容含 \t 的文件名。
+ */
+function elevatedListDir(fullPath: string): FileInfo[] {
+  const out = sudoService
+    .runElevatedCapture([
+      'find',
+      fullPath,
+      '-maxdepth',
+      '1',
+      '-mindepth',
+      '1',
+      '-printf',
+      '%y\t%s\t%T@\t%f\n',
+    ])
+    .toString()
+  const fileList: FileInfo[] = []
+  for (const line of out.split('\n')) {
+    if (!line) continue
+    const i1 = line.indexOf('\t')
+    const i2 = line.indexOf('\t', i1 + 1)
+    const i3 = line.indexOf('\t', i2 + 1)
+    if (i1 < 0 || i2 < 0 || i3 < 0) continue
+    const type = line.slice(0, i1)
+    const size = parseInt(line.slice(i1 + 1, i2), 10) || 0
+    const mtime = parseFloat(line.slice(i2 + 1, i3))
+    const name = line.slice(i3 + 1)
+    const filePath = path.join(fullPath, name)
+    fileList.push({
+      name,
+      path: path.relative(getStorageRoot(), filePath).replace(/\\/g, '/'),
+      isDirectory: type === 'd',
+      size,
+      modified: new Date(mtime * 1000).toISOString(),
+    })
+  }
+  return fileList
+}
+
+/**
+ * 获取文件列表。
+ * - 单个条目不可 stat（如受限符号链接指向无权限目标）→ 用 lstat 信息降级展示，不影响整页
+ * - 目录本身不可读（EACCES/EPERM）→ 走提权：有凭据用 sudo 列目录，无凭据抛 ElevationRequiredError
  */
 export const getFileList = (queryPath: string | undefined): { path: string; files: FileInfo[] } => {
   const userPath = queryPath || ''
@@ -43,7 +140,27 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
     throw new AppError('路径不存在')
   }
 
-  const files = fs.readdirSync(targetPath, { withFileTypes: true })
+  let files: fs.Dirent[]
+  try {
+    files = fs.readdirSync(targetPath, { withFileTypes: true })
+  } catch (e: any) {
+    const isPerm = e?.code === 'EACCES' || e?.code === 'EPERM'
+    if (isPerm && sudoService.isEnabled() && sudoService.hasCredentials()) {
+      try {
+        const fileList = elevatedListDir(targetPath)
+        sortFileList(fileList)
+        return { path: userPath || '', files: fileList }
+      } catch {
+        sudoService.clearCredentials()
+        throw new ElevationRequiredError()
+      }
+    }
+    if (isPerm && sudoService.isEnabled()) {
+      throw new ElevationRequiredError()
+    }
+    throw e
+  }
+
   const fileList: FileInfo[] = files.map((file) => {
     const filePath = path.join(targetPath, file.name)
     const relativePath = path.relative(getStorageRoot(), filePath)
@@ -60,25 +177,16 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
       }
     } catch (e: any) {
       if (e.code === 'ENOENT') {
-        return {
-          name: file.name,
-          path: relativePath.replace(/\\/g, '/'),
-          isDirectory: file.isDirectory(),
-          size: lstat.size,
-          modified: lstat.mtime.toISOString(),
-          broken: true,
-        }
+        return degradedEntry(file, filePath, lstat, true)
+      }
+      if (e.code === 'EACCES' || e.code === 'EPERM') {
+        return degradedEntry(file, filePath, lstat)
       }
       throw e
     }
   })
 
-  // 排序：文件夹在前，文件在后
-  fileList.sort((a, b) => {
-    if (a.isDirectory && !b.isDirectory) return -1
-    if (!a.isDirectory && b.isDirectory) return 1
-    return a.name.localeCompare(b.name)
-  })
+  sortFileList(fileList)
 
   return {
     path: userPath || '',
@@ -712,7 +820,13 @@ export const renameFile = (filePath: string, newName: string): void => {
     throw new AppError('文件不存在')
   }
 
-  fs.renameSync(oldFullPath, newFullPath)
+  withElevation(
+    () => fs.renameSync(oldFullPath, newFullPath),
+    () => {
+      sudoService.runElevated(['mv', '--', oldFullPath, newFullPath])
+      if (sudoService.shouldChownBack()) sudoService.runElevatedChown(newFullPath)
+    }
+  )
   log('INFO', 'rename', `${filePath} → ${newName}`)
 }
 
@@ -726,7 +840,10 @@ export const deleteFile = (filePath: string): void => {
     throw new AppError('文件不存在')
   }
 
-  fs.rmSync(fullPath, { recursive: true, force: true })
+  withElevation(
+    () => fs.rmSync(fullPath, { recursive: true, force: true }),
+    () => sudoService.runElevated(['rm', '-rf', '--', fullPath])
+  )
   log('INFO', 'delete', filePath)
 }
 
@@ -737,13 +854,16 @@ export const deleteFiles = (
   const failed: { path: string; message: string }[] = []
 
   for (const filePath of filePaths) {
+    const fullPath = safePath(filePath)
+    if (!fs.existsSync(fullPath)) {
+      failed.push({ path: filePath, message: '文件不存在' })
+      continue
+    }
     try {
-      const fullPath = safePath(filePath)
-      if (!fs.existsSync(fullPath)) {
-        failed.push({ path: filePath, message: '文件不存在' })
-        continue
-      }
-      fs.rmSync(fullPath, { recursive: true, force: true })
+      withElevation(
+        () => fs.rmSync(fullPath, { recursive: true, force: true }),
+        () => sudoService.runElevated(['rm', '-rf', '--', fullPath])
+      )
       success++
     } catch (e) {
       failed.push({ path: filePath, message: e instanceof Error ? e.message : '删除失败' })
@@ -775,7 +895,15 @@ export const createFolder = (parentPath: string | undefined, name: string): void
     throw new AppError('文件夹已存在')
   }
 
-  fs.mkdirSync(newFolderPath, { recursive: true })
+  withElevation(
+    () => {
+      fs.mkdirSync(newFolderPath, { recursive: true })
+    },
+    () => {
+      sudoService.runElevated(['mkdir', '-p', '--', newFolderPath])
+      if (sudoService.shouldChownBack()) sudoService.runElevatedChown(newFolderPath)
+    }
+  )
   log('INFO', 'createFolder', `${parentPath || '/'}/${name}`)
 }
 
@@ -794,6 +922,61 @@ export const createFile = (parentPath: string | undefined, name: string): void =
     throw new AppError('文件已存在')
   }
 
-  fs.writeFileSync(newFilePath, '')
+  withElevation(
+    () => fs.writeFileSync(newFilePath, ''),
+    () => {
+      sudoService.runElevated(['touch', '--', newFilePath])
+      if (sudoService.shouldChownBack()) sudoService.runElevatedChown(newFilePath)
+    }
+  )
   log('INFO', 'createFile', `${parentPath || '/'}/${name}`)
+}
+
+/**
+ * 读取文件 [offset, offset+length) 字节。无读权限时以 sudo 提权：
+ * dd 按 4KB 块对齐读取（skip/count 换算）后裁剪到目标区间，避免整文件载入。
+ */
+export function readFileBytes(fullPath: string, offset: number, length: number): Buffer {
+  return withElevation(
+    () => fileIO.readBytesAt(fullPath, offset, length).data,
+    () => {
+      const BS = 4096
+      const skip = Math.floor(offset / BS)
+      const count = Math.ceil((offset % BS + length) / BS)
+      const raw = sudoService.runElevatedCapture([
+        'dd',
+        `if=${fullPath}`,
+        `bs=${BS}`,
+        `skip=${skip}`,
+        `count=${count}`,
+        'status=none',
+      ])
+      return raw.subarray(offset % BS, offset % BS + length)
+    }
+  )
+}
+
+/**
+ * 写入文件内容（整文件覆盖）。无写权限时以 sudo 提权：
+ * 先写用户可写的临时文件，再 sudo mv 到目标并归还属主。
+ */
+export const writeFileContent = (fullPath: string, buf: Buffer): void => {
+  withElevation(
+    () => fs.writeFileSync(fullPath, buf),
+    () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-elevate-'))
+      const tmpPath = path.join(tmpDir, 'content')
+      try {
+        fs.writeFileSync(tmpPath, buf)
+        sudoService.runElevated(['mv', '--', tmpPath, fullPath])
+        if (sudoService.shouldChownBack()) sudoService.runElevatedChown(fullPath)
+      } finally {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true })
+        } catch {
+          // 临时目录清理失败忽略
+        }
+      }
+    }
+  )
 }

@@ -6,11 +6,18 @@ import yaml from 'js-yaml'
 export interface AuthConfig {
   token: string
   tokenExpiryHours: number
+  /** sudo 提权凭据有效期（分钟），默认 5；缺省回退 5 */
+  elevationTtlMinutes?: number
 }
 
 export interface LogConfig {
   cleanupOnStartup: boolean
   retentionDays: number
+}
+
+export interface FeaturesConfig {
+  /** sudo 提权：文件操作因权限不足失败时，允许用户以指定用户 sudo 重试；默认启用 */
+  sudoElevation?: boolean
 }
 
 export interface AppConfig {
@@ -19,6 +26,7 @@ export interface AppConfig {
   log: LogConfig
   /** npm 插件安装目录，默认开发环境 {cwd}/node_modules，生产环境 ~/.file-manager/node_modules */
   pluginInstallDir?: string
+  features?: FeaturesConfig
   plugins?: Record<string, any>
 }
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as apiLogin, logout as apiLogout, checkAuth } from '@/api/auth'
+import { clearElevation } from '@/api/elevation'
 import { STORAGE_KEY_SESSION } from '@/constants'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -55,6 +56,12 @@ export const useAuthStore = defineStore('auth', () => {
       await apiLogout()
     } catch (e) {
       console.debug('登出请求失败（已忽略）:', e)
+    }
+    // 清除已缓存的 sudo 提权凭据，避免会话结束后残留
+    try {
+      await clearElevation()
+    } catch {
+      // 忽略（后端可能未启用提权或无凭据）
     }
     sessionToken.value = null
     localStorage.removeItem(STORAGE_KEY_SESSION)
