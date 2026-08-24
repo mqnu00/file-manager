@@ -48,3 +48,29 @@ export function makeViewerUrl(targetPath: string, mode?: string): string {
   if (mode) params.set('mode', mode)
   return `/plugin/file-viewer/view?${params.toString()}`
 }
+
+// ==================== 缩略图图库分页 ====================
+
+/**
+ * 按页切片（page 从 1 开始；越界/空返回 []）。
+ * 分页顺序沿用传入列表顺序（本插件为固定名称升序，与上一张/下一张一致）。
+ */
+export function paginate<T>(items: T[], page: number, pageSize: number): T[] {
+  const size = Math.max(1, pageSize)
+  if (page < 1 || items.length === 0) return []
+  const start = (page - 1) * size
+  if (start >= items.length) return []
+  return items.slice(start, start + size)
+}
+
+/** 总页数（至少 1 页，即使无条目） */
+export function pageCountOf(total: number, pageSize: number): number {
+  const size = Math.max(1, pageSize)
+  return Math.max(1, Math.ceil(total / size))
+}
+
+/** 条目下标所在页码（1-based）；index<0（未定位）返回 1 */
+export function pageOf(currentIndex: number, pageSize: number): number {
+  const size = Math.max(1, pageSize)
+  return Math.floor(Math.max(0, currentIndex) / size) + 1
+}

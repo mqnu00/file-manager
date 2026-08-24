@@ -1,5 +1,6 @@
 /**
- * file-image-viewer：图片查看（缩放/旋转/适应窗口 + 文件夹内上一张/下一张切换）
+ * file-image-viewer：图片查看（缩放/旋转/适应窗口 + 文件夹内上一张/下一张切换 +
+ * 缩略图图库：按名称排序分页展示当前文件夹图片缩略图，点击跳转）
  *
  * 通过平台 I/O 换取流令牌：
  *   POST /api/files/token  → 30 分钟令牌
@@ -7,6 +8,7 @@
  *
  * 文件夹切换：拉取父目录图片列表（按名称升序），用 history.pushState +
  * PopStateEvent 改写查看页 URL（保留 mode），由 file-viewer 查看页壳重渲染。
+ * 缩略图图库：复用同一名称升序列表，分页懒加载流令牌并以 CSS 缩放渲染缩略图。
  */
 
 import type {
@@ -16,7 +18,7 @@ import type {
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
 import { parseImageMetadata, type ImageMetadata } from './metadata'
-import { buildImageList, sortByName, currentIndex, parentOf, makeViewerUrl } from './navigation'
+import { buildImageList, sortByName, currentIndex, parentOf, makeViewerUrl, paginate, pageOf } from './navigation'
 
 const IMAGE_EXTENSIONS = [
   'png',
@@ -40,10 +42,12 @@ const IMAGE_EXTENSIONS = [
 const ZOOM_STEP = 0.25
 /** 滚轮缩放步进 */
 const WHEEL_ZOOM_STEP = 0.1
+/** 缩略图图库每页张数 */
+const GALLERY_PAGE_SIZE = 6
 
 function createImageViewer(ctx: FrontendPluginContext) {
   const { h, ref, computed, watch, onMounted, onBeforeUnmount } = ctx.Vue
-  const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
+  const { ElButton, ElAlert, ElTag, ElMessage, ElDialog, ElPagination } = ctx.ElementPlus
 
   const api = ctx.api.fileIO
 
@@ -145,6 +149,51 @@ function createImageViewer(ctx: FrontendPluginContext) {
       const canNext = computed(
         () => currentIndex_.value >= 0 && currentIndex_.value < images.value.length - 1
       )
+
+      // ─── 缩略图图库（分页展示当前文件夹图片缩略图，点击跳转） ───
+
+      const galleryOpen = ref(false)
+      const galleryPage = ref(1)
+      /** path → 流令牌缓存（避免翻页/开关对话框重复请求） */
+      const tokenMap = ref<Record<string, string>>({})
+      /** 已确认加载失败的 path（显示占位） */
+      const brokenPaths = ref<Set<string>>(new Set())
+
+      const galleryTotal = computed(() => images.value.length)
+      const galleryPageImages = computed(() =>
+        paginate(images.value, galleryPage.value, GALLERY_PAGE_SIZE)
+      )
+
+      /** 为一批图片惰性签发流令牌（未缓存且未失败才请求） */
+      const ensureTokens = async (items: FileItem[]) => {
+        const todo = items.filter(
+          (f) => !tokenMap.value[f.path] && !brokenPaths.value.has(f.path)
+        )
+        await Promise.all(
+          todo.map(async (f) => {
+            try {
+              const t = await api.createToken(f.path)
+              tokenMap.value = { ...tokenMap.value, [f.path]: t }
+            } catch {
+              brokenPaths.value = new Set(brokenPaths.value).add(f.path)
+            }
+          })
+        )
+      }
+
+      const openGallery = () => {
+        galleryPage.value = pageOf(currentIndex_.value, GALLERY_PAGE_SIZE)
+        galleryOpen.value = true
+        void ensureTokens(galleryPageImages.value)
+      }
+      const onGalleryPageChange = (p: number) => {
+        galleryPage.value = p
+        void ensureTokens(galleryPageImages.value)
+      }
+      const onPickThumb = (img: FileItem) => {
+        galleryOpen.value = false
+        goTo(img)
+      }
 
       // 键盘 ←/→ 切换（忽略修饰键组合，避免与全局快捷键冲突）
       const onKeydown = (e: KeyboardEvent) => {
@@ -369,6 +418,9 @@ function createImageViewer(ctx: FrontendPluginContext) {
             },
             () => '下一张 ›'
           ),
+          images.value.length > 0
+            ? h(ElButton, { size: 'small', onClick: openGallery }, () => '图库')
+            : null,
           h(
             ElButton,
             {
@@ -408,8 +460,9 @@ function createImageViewer(ctx: FrontendPluginContext) {
           h(ElButton, { size: 'small', onClick: download }, () => '下载图片'),
         ])
 
+        let viewerNode
         if (error.value) {
-          return h('div', { class: 'fiv-viewer' }, [
+          viewerNode = h('div', { class: 'fiv-viewer' }, [
             toolbar,
             h('div', { style: { height: '12px' } }),
             h(ElAlert, {
@@ -421,40 +474,97 @@ function createImageViewer(ctx: FrontendPluginContext) {
             h('div', { style: { height: '12px' } }),
             h(ElButton, { size: 'small', onClick: download }, () => '下载文件'),
           ])
-        }
-
-        if (!token.value) {
-          return h('div', { class: 'fiv-viewer' }, [
+        } else if (!token.value) {
+          viewerNode = h('div', { class: 'fiv-viewer' }, [
             toolbar,
             h('div', { class: 'fiv-loading' }, '加载图片地址中…'),
           ])
+        } else {
+          const transform = getTransformStyle()
+          viewerNode = h('div', { class: 'fiv-viewer' }, [
+            toolbar,
+            h(
+              'div',
+              {
+                ref: setupStageRef,
+                class: 'fiv-stage fiv-stage-draggable',
+              },
+              [
+                h('img', {
+                  class: 'fiv-zoom',
+                  src: api.streamUrl(token.value),
+                  alt: props.file.name,
+                  draggable: false,
+                  style: { transform },
+                  onLoad: onImgLoad,
+                  onError: () => {
+                    error.value = '图片加载失败：该文件可能不是有效的图片'
+                  },
+                }),
+              ]
+            ),
+          ])
         }
 
-        const transform = getTransformStyle()
-
-        return h('div', { class: 'fiv-viewer' }, [
-          toolbar,
-          h(
-            'div',
-            {
-              ref: setupStageRef,
-              class: 'fiv-stage fiv-stage-draggable',
+        const galleryDialog = h(
+          ElDialog,
+          {
+            modelValue: galleryOpen.value,
+            title: `缩略图（共 ${galleryTotal.value} 张）`,
+            width: '720px',
+            appendToBody: true,
+            'onUpdate:modelValue': (v: boolean) => {
+              if (!v) galleryOpen.value = false
             },
-            [
-              h('img', {
-                class: 'fiv-zoom',
-                src: api.streamUrl(token.value),
-                alt: props.file.name,
-                draggable: false,
-                style: { transform },
-                onLoad: onImgLoad,
-                onError: () => {
-                  error.value = '图片加载失败：该文件可能不是有效的图片'
-                },
+          },
+          [
+            galleryPageImages.value.length === 0
+              ? h('div', { class: 'fiv-gallery-empty' }, '文件夹内无图片')
+              : h('div', { class: 'fiv-gallery' }, [
+                  ...galleryPageImages.value.map((img) => {
+                    const t = tokenMap.value[img.path]
+                    const broken = brokenPaths.value.has(img.path)
+                    const isActive = img.path === props.file.path
+                    const thumbSrc = t && !broken ? api.streamUrl(t) : ''
+                    return h(
+                      'div',
+                      {
+                        key: img.path,
+                        class: 'fiv-thumb-wrap' + (isActive ? ' is-active' : ''),
+                        onClick: () => onPickThumb(img),
+                      },
+                      [
+                        broken || !thumbSrc
+                          ? h('div', { class: 'fiv-thumb fiv-thumb-broken' }, '无预览')
+                          : h('img', {
+                              class: 'fiv-thumb',
+                              src: thumbSrc,
+                              loading: 'lazy',
+                              alt: img.name,
+                              draggable: false,
+                              onError: () => {
+                                brokenPaths.value = new Set(brokenPaths.value).add(img.path)
+                              },
+                            }),
+                        h('span', { class: 'fiv-thumb-name' }, img.name),
+                      ]
+                    )
+                  }),
+                ]),
+            h('div', { class: 'fiv-gallery-footer' }, [
+              h(ElPagination, {
+                small: true,
+                layout: 'prev, pager, next',
+                total: galleryTotal.value,
+                currentPage: galleryPage.value,
+                pageSize: GALLERY_PAGE_SIZE,
+                onCurrentChange: onGalleryPageChange,
               }),
-            ]
-          ),
-        ])
+            ]),
+          ]
+        )
+
+        return [viewerNode, galleryOpen.value ? galleryDialog : null]
       }
     },
   })
@@ -489,6 +599,31 @@ function injectStyles(): void {
   object-fit: contain;
   will-change: transform;
 }
+.fiv-gallery {
+  display: flex; flex-wrap: wrap; gap: 12px; padding: 4px; justify-content: flex-start;
+}
+.fiv-thumb-wrap {
+  width: 96px; cursor: pointer; border: 2px solid transparent; border-radius: 6px;
+  padding: 4px; text-align: center; box-sizing: border-box;
+}
+.fiv-thumb-wrap:hover { border-color: var(--app-accent); }
+.fiv-thumb-wrap.is-active { border-color: var(--app-accent); background: var(--app-accent-bg); }
+.fiv-thumb {
+  width: 96px; height: 96px; object-fit: cover; border-radius: 4px; display: block; background: #000;
+}
+.fiv-thumb-broken {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--app-text-dim); background: var(--app-table-header-bg); font-size: 12px;
+}
+.fiv-thumb-name {
+  display: block; max-width: 96px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 12px; color: var(--app-text-dim); margin-top: 4px;
+}
+.fiv-gallery-footer {
+  display: flex; justify-content: center; margin-top: 12px;
+  padding-top: 10px; border-top: 1px solid var(--app-border);
+}
+.fiv-gallery-empty { color: var(--app-text-dim); padding: 24px; text-align: center; }
 `
   document.head.appendChild(style)
 }

@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { buildImageList, sortByName, currentIndex, parentOf, makeViewerUrl } from './navigation'
+import {
+  buildImageList,
+  sortByName,
+  currentIndex,
+  parentOf,
+  makeViewerUrl,
+  paginate,
+  pageCountOf,
+  pageOf,
+} from './navigation'
 import type { FileItem } from '@mqn00/file-manager/plugin/frontend'
 
 function item(name: string, path: string, isDirectory = false): FileItem {
@@ -73,5 +82,40 @@ describe('makeViewerUrl', () => {
   })
   it('无 mode 时不带 mode 参数', () => {
     expect(makeViewerUrl('a.png')).toBe('/plugin/file-viewer/view?path=a.png')
+  })
+})
+
+describe('paginate', () => {
+  const items = [1, 2, 3, 4, 5, 6, 7]
+  it('首页/中页/末页切分', () => {
+    expect(paginate(items, 1, 3)).toEqual([1, 2, 3])
+    expect(paginate(items, 2, 3)).toEqual([4, 5, 6])
+    expect(paginate(items, 3, 3)).toEqual([7])
+  })
+  it('越界页与空数据返回空数组', () => {
+    expect(paginate(items, 9, 3)).toEqual([])
+    expect(paginate([], 1, 3)).toEqual([])
+    expect(paginate(items, 0, 3)).toEqual([])
+  })
+  it('pageSize 非法时按 1 处理', () => {
+    expect(paginate(items, 1, 0)).toEqual([1])
+  })
+})
+
+describe('pageCountOf', () => {
+  it('整除/余数/0 的最小页数', () => {
+    expect(pageCountOf(6, 6)).toBe(1)
+    expect(pageCountOf(7, 6)).toBe(2)
+    expect(pageCountOf(0, 6)).toBe(1)
+    expect(pageCountOf(0, 0)).toBe(1)
+  })
+})
+
+describe('pageOf', () => {
+  it('定位所在页（1-based），未定位回 1', () => {
+    expect(pageOf(0, 6)).toBe(1)
+    expect(pageOf(5, 6)).toBe(1)
+    expect(pageOf(6, 6)).toBe(2)
+    expect(pageOf(-1, 6)).toBe(1)
   })
 })
