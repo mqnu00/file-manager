@@ -1,9 +1,12 @@
 /**
- * file-image-viewer：图片查看（缩放/旋转/适应窗口）
+ * file-image-viewer：图片查看（缩放/旋转/适应窗口 + 文件夹内上一张/下一张切换）
  *
  * 通过平台 I/O 换取流令牌：
  *   POST /api/files/token  → 30 分钟令牌
  *   GET  /api/files/stream（Range 流式）→ <img src>
+ *
+ * 文件夹切换：拉取父目录图片列表（按名称升序），用 history.pushState +
+ * PopStateEvent 改写查看页 URL（保留 mode），由 file-viewer 查看页壳重渲染。
  */
 
 import type {
@@ -13,6 +16,7 @@ import type {
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
 import { parseImageMetadata, type ImageMetadata } from './metadata'
+import { buildImageList, sortByName, currentIndex, parentOf, makeViewerUrl } from './navigation'
 
 const IMAGE_EXTENSIONS = [
   'png',
@@ -38,7 +42,7 @@ const ZOOM_STEP = 0.25
 const WHEEL_ZOOM_STEP = 0.1
 
 function createImageViewer(ctx: FrontendPluginContext) {
-  const { h, ref, watch, onMounted, onBeforeUnmount } = ctx.Vue
+  const { h, ref, computed, watch, onMounted, onBeforeUnmount } = ctx.Vue
   const { ElButton, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
 
   const api = ctx.api.fileIO
@@ -62,6 +66,10 @@ function createImageViewer(ctx: FrontendPluginContext) {
       /** 图片真实尺寸兜底（img 加载后可得，解析失败时使用） */
       let naturalW = 0
       let naturalH = 0
+
+      // 当前文件夹内全部图片（按名称升序）与当前所处位置
+      const images = ref<FileItem[]>([])
+      const currentIndex_ = ref(-1)
 
       // 拖拽状态（不用 ref，避免触发渲染）
       let dragging = false
@@ -105,11 +113,64 @@ function createImageViewer(ctx: FrontendPluginContext) {
         }
       }
 
-      onMounted(loadToken)
-      watch(() => props.file.path, loadToken)
+      /** 拉取当前文件夹图片列表并按名称排列、定位当前位置；失败禁用导航 */
+      const loadSiblings = async () => {
+        const parent = parentOf(props.file.path)
+        try {
+          // 与 file-viewer 核心查看页一致，直接走 HTTP 列表接口（ctx.api.file 的
+          // 声明与运行时方法存在历史偏差，避免依赖其方法名）
+          const res = await ctx.api.instance.get('/files', { params: { path: parent } })
+          const files = (res.data?.files as FileItem[] | undefined) ?? []
+          const list = sortByName(buildImageList(files, IMAGE_EXTENSIONS))
+          images.value = list
+          currentIndex_.value = currentIndex(list, props.file.path)
+        } catch {
+          images.value = []
+          currentIndex_.value = -1
+        }
+      }
+
+      /** 导航到目标图片（保持 mode，由查看页 parseFromRoute 接管重渲染） */
+      const goTo = (target: FileItem | undefined) => {
+        if (!target) return
+        const q = ctx.router.currentRoute.value.query
+        const mode = typeof q.mode === 'string' ? q.mode : undefined
+        history.pushState(history.state ?? null, '', makeViewerUrl(target.path, mode))
+        window.dispatchEvent(new PopStateEvent('popstate'))
+      }
+      const goPrev = () => goTo(images.value[currentIndex_.value - 1])
+      const goNext = () => goTo(images.value[currentIndex_.value + 1])
+
+      const canPrev = computed(() => currentIndex_.value > 0)
+      const canNext = computed(
+        () => currentIndex_.value >= 0 && currentIndex_.value < images.value.length - 1
+      )
+
+      // 键盘 ←/→ 切换（忽略修饰键组合，避免与全局快捷键冲突）
+      const onKeydown = (e: KeyboardEvent) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          goPrev()
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          goNext()
+        }
+      }
+
+      onMounted(() => {
+        document.addEventListener('keydown', onKeydown)
+        void loadToken()
+        void loadSiblings()
+      })
+      watch(() => props.file.path, () => {
+        void loadToken()
+        void loadSiblings()
+      })
 
       onBeforeUnmount(() => {
         token.value = ''
+        document.removeEventListener('keydown', onKeydown)
       })
 
       // ─── 缩放 ───
@@ -284,6 +345,30 @@ function createImageViewer(ctx: FrontendPluginContext) {
           ),
           metaText() ? h('span', { class: 'fiv-meta' }, metaText()) : null,
           h('span', { style: { flex: 1 } }),
+          h(
+            ElButton,
+            {
+              size: 'small',
+              disabled: !canPrev.value,
+              onClick: goPrev,
+            },
+            () => '‹ 上一张'
+          ),
+          h(
+            ElTag,
+            { size: 'small', type: 'info' },
+            () =>
+              `${images.value.length ? currentIndex_.value + 1 : 0} / ${images.value.length}`
+          ),
+          h(
+            ElButton,
+            {
+              size: 'small',
+              disabled: !canNext.value,
+              onClick: goNext,
+            },
+            () => '下一张 ›'
+          ),
           h(
             ElButton,
             {

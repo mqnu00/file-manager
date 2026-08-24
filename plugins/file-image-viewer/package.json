@@ -1,7 +1,7 @@
 {
   "name": "@mqn00/file-manager-plugin-file-image-viewer",
-  "version": "0.1.0",
-  "description": "File Manager 文件查看子插件：图片查看（缩放/旋转/适应窗口，常见图片格式）",
+  "version": "0.2.0",
+  "description": "File Manager 文件查看子插件：图片查看（缩放/旋转/适应窗口，文件夹内上一张/下一张切换，常见图片格式）",
   "main": "dist/backend.js",
   "exports": {
     ".": "./dist/backend.js",
@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc && node build.mjs",
     "dev": "tsc --watch",
-    "build:frontend": "node build.mjs"
+    "build:frontend": "node build.mjs",
+    "test": "vitest run"
   },
   "fileManagerPlugin": {
     "dependsOn": ["file-viewer"]
@@ -25,7 +26,8 @@
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",
     "esbuild": "^0.28.1",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
   },
   "repository": {
     "type": "git",
