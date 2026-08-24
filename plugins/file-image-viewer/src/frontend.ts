@@ -608,15 +608,18 @@ function injectStyles(): void {
 }
 .fiv-thumb-wrap:hover { border-color: var(--app-accent); }
 .fiv-thumb-wrap.is-active { border-color: var(--app-accent); background: var(--app-accent-bg); }
+/* 缩略图填满 wrap 内容盒（96px - 边框2*2 - 内边距4*2 = 84px），width:100% + aspect-ratio 保持方形，
+   避免固定宽高溢出遮住 wrap 的边框（尤其右侧） */
 .fiv-thumb {
-  width: 96px; height: 96px; object-fit: cover; border-radius: 4px; display: block; background: #000;
+  width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px;
+  display: block; background: #000; box-sizing: border-box;
 }
 .fiv-thumb-broken {
   display: flex; align-items: center; justify-content: center;
   color: var(--app-text-dim); background: var(--app-table-header-bg); font-size: 12px;
 }
 .fiv-thumb-name {
-  display: block; max-width: 96px; overflow: hidden; text-overflow: ellipsis;
+  display: block; max-width: 84px; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; font-size: 12px; color: var(--app-text-dim); margin-top: 4px;
 }
 .fiv-gallery-footer {
