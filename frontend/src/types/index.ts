@@ -11,10 +11,14 @@ export interface MoveTaskMetadata {
 }
 
 export interface CompressTaskMetadata {
-  sourcePath: string
-  sourceName: string
+  /** 待压缩条目（相对路径） */
+  paths: string[]
+  /** 显示用名称（与 paths 同序） */
+  names: string[]
+  /** 输出目录（相对路径） */
+  outputDir: string
+  /** 输出 zip 相对路径；创建时预计算，完成时由执行器回写最终值 */
   targetPath: string
-  totalBytes: number
 }
 
 export interface TaskInfo {

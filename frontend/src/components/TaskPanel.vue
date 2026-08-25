@@ -31,10 +31,16 @@
         >
           <div class="task-card__header">
             <el-icon class="task-card__icon" :size="16">
-              <FolderOpened />
+              <Files v-if="task.type === 'compress'" />
+              <FolderOpened v-else />
             </el-icon>
             <span class="task-card__title">
-              移动 {{ (task.metadata as any).sourceNames?.length || 0 }} 项到 {{ (task.metadata as any).targetPath }}
+              <template v-if="task.type === 'compress'">
+                压缩 {{ (task.metadata as any).names?.length || 0 }} 项
+              </template>
+              <template v-else>
+                移动 {{ (task.metadata as any).sourceNames?.length || 0 }} 项到 {{ (task.metadata as any).targetPath }}
+              </template>
             </span>
           </div>
 
@@ -55,7 +61,7 @@
               :show-text="false"
             />
 
-            <div v-if="task.speed > 0 && task.phase === 'copy'" class="task-card__speed">
+            <div v-if="task.speed > 0 && (task.phase === 'copy' || task.phase === 'compress')" class="task-card__speed">
               {{ formatSpeed(task.speed) }}
             </div>
 
@@ -65,7 +71,7 @@
           </div>
 
           <div class="task-card__footer">
-            <template v-if="task.phase === 'copy' && task.status !== 'cancelling'">
+            <template v-if="(task.phase === 'copy' || task.phase === 'compress') && task.status !== 'cancelling'">
               <el-button size="small" type="danger" text @click="handleCancel(task.id)">
                 取消
               </el-button>
@@ -82,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { FolderOpened, List, ArrowDown } from '@element-plus/icons-vue'
+import { Files, FolderOpened, List, ArrowDown } from '@element-plus/icons-vue'
 import { useTaskStore } from '@/stores/task'
 import type { TaskInfo } from '@/types'
 import { formatSpeed } from '@/utils/format'
@@ -108,11 +114,13 @@ watch(runningCount, (count) => {
 
 function phaseTagType(task: TaskInfo): 'primary' | 'warning' | 'info' | 'success' {
   if (task.status === 'cancelling') return 'warning'
+  if (task.phase === 'compress') return 'success'
   return task.phase === 'copy' ? 'primary' : 'info'
 }
 
 function phaseLabel(task: TaskInfo): string {
   if (task.status === 'cancelling') return '取消中...'
+  if (task.phase === 'compress') return '压缩中...'
   return task.phase === 'copy' ? '移动中...' : '清理中...'
 }
 

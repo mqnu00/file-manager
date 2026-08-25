@@ -2,7 +2,7 @@ import { Response } from 'express'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import type { TaskInfo, TaskStatus, TaskPhase, TaskType, TaskMetadata, MoveTaskMetadata, SSETaskMessage } from '../types'
+import type { TaskInfo, TaskStatus, TaskPhase, TaskType, TaskMetadata, MoveTaskMetadata, CompressTaskMetadata, SSETaskMessage } from '../types'
 import { setSSEHeaders, sendSSEMessage, endSSE } from '../utils/sse'
 import { log } from '../utils/logger'
 import { safePath } from '../utils/safePath'
@@ -69,11 +69,20 @@ function isPathConflict(a: string, b: string): boolean {
 
 /**
  * 提取任务占用的所有源路径（读取端）和目标路径（写入端）
+ * 按任务类型分支：move 用 sourcePaths/目标拼接；compress 用 paths/输出 zip
  */
+function getTaskPathsOf(type: TaskType, metadata: TaskMetadata): { sources: string[]; targets: string[] } {
+  if (type === 'compress') {
+    const cm = metadata as CompressTaskMetadata
+    return { sources: cm.paths, targets: cm.targetPath ? [cm.targetPath] : [] }
+  }
+  const mm = metadata as MoveTaskMetadata
+  const targets = mm.sourceNames.map((n) => mm.targetPath.replace(/\/$/, '') + '/' + n)
+  return { sources: mm.sourcePaths, targets }
+}
+
 function getTaskPaths(entry: TaskEntry): { sources: string[]; targets: string[] } {
-  const m = entry.info.metadata as MoveTaskMetadata
-  const targets = m.sourceNames.map((n) => m.targetPath.replace(/\/$/, '') + '/' + n)
-  return { sources: m.sourcePaths, targets }
+  return getTaskPathsOf(entry.info.type, entry.info.metadata)
 }
 
 /**
@@ -346,8 +355,8 @@ export function cancelTask(id: string): boolean {
   const entry = tasks.get(id)
   if (!entry) return false
 
-  // 复制阶段可以取消
-  const cancellablePhases: TaskPhase[] = ['copy']
+  // 复制/压缩阶段可以取消
+  const cancellablePhases: TaskPhase[] = ['copy', 'compress']
   if (!cancellablePhases.includes(entry.info.phase) || entry.info.status !== 'running') {
     return false
   }
@@ -357,6 +366,113 @@ export function cancelTask(id: string): boolean {
 
   log('INFO', 'task', `取消任务 ${id}`)
   persist()
+  return true
+}
+
+// ===== 外部任务（插件驱动的后台任务） =====
+
+/**
+ * 创建由外部执行器（插件）驱动的后台任务条目。
+ * 仅建条目 + 冲突检测 + 提供 AbortSignal，不启动执行；执行器需自行
+ * 调用 updateTaskProgress / finalizeTask 驱动其生命周期。
+ * 路径冲突时抛 TASK_CONFLICT 错误。
+ */
+export function createExternalTask(
+  type: TaskType,
+  metadata: TaskMetadata,
+  opts: { phase?: TaskPhase; totalCount?: number } = {}
+): TaskInfo {
+  const id = generateId()
+  const info: TaskInfo = {
+    id,
+    type,
+    status: 'running',
+    phase: opts.phase ?? 'copy',
+    progress: 0,
+    speed: 0,
+    totalSize: 0,
+    startTime: now(),
+    metadata,
+    completedCount: 0,
+    totalCount: opts.totalCount ?? 0,
+    totalItemCount: 0,
+    processedItemCount: 0,
+  }
+
+  const paths = getTaskPathsOf(type, metadata)
+  const conflict = checkConflict(paths.sources, paths.targets)
+  if (conflict) {
+    const err = new Error(conflict)
+    ;(err as any).code = 'TASK_CONFLICT'
+    throw err
+  }
+
+  const entry: TaskEntry = {
+    info,
+    abortController: new AbortController(),
+    subscribers: new Set(),
+    completedCopies: [],
+  }
+  tasks.set(id, entry)
+
+  // 外部任务无自动启动，创建即持久化，避免重启丢失
+  persist()
+
+  log('INFO', 'task', `创建外部任务 ${id}（${type}）`)
+  return info
+}
+
+/**
+ * 更新外部任务进度/状态字段（复用广播 + 持久化）。
+ * @returns 任务是否存在
+ */
+export function updateTaskProgress(
+  taskId: string,
+  partial: Partial<TaskInfo> & { _completedCopies?: string[] }
+): boolean {
+  const entry = tasks.get(taskId)
+  if (!entry) return false
+  updateTask(taskId, partial)
+  return true
+}
+
+/**
+ * 取外部任务的取消信号（执行器用它响应取消）。任务不存在返回 undefined。
+ */
+export function getTaskSignal(taskId: string): AbortSignal | undefined {
+  return tasks.get(taskId)?.abortController.signal
+}
+
+/**
+ * 外部任务终态收尾：置终态 → 广播对应事件 → 持久化 → 3 秒后移除条目。
+ */
+export function finalizeTask(
+  taskId: string,
+  status: 'completed' | 'failed' | 'cancelled',
+  opts: { error?: string; message?: string } = {}
+): boolean {
+  const entry = tasks.get(taskId)
+  if (!entry) return false
+
+  if (status === 'completed') {
+    entry.info.status = 'completed'
+    entry.info.progress = 100
+    log('INFO', 'task', `外部任务 ${taskId} 完成`)
+    broadcast(taskId, { type: 'complete' })
+  } else if (status === 'cancelled') {
+    entry.info.status = 'cancelled'
+    entry.info.progress = 0
+    log('INFO', 'task', `外部任务 ${taskId} 已取消`)
+    broadcast(taskId, { type: 'cancelled', message: opts.message || '任务已取消' })
+  } else {
+    entry.info.status = 'failed'
+    entry.info.error = opts.error
+    log('ERROR', 'task', `外部任务 ${taskId} 失败: ${opts.error || '未知错误'}`)
+    broadcast(taskId, { type: 'error', message: opts.error || '任务失败' })
+  }
+
+  persist()
+  setTimeout(() => { tasks.delete(taskId) }, 3000)
   return true
 }
 

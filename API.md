@@ -300,53 +300,35 @@
   | `targetPath` | 计划生成的 zip 相对路径（已考虑冲突自动加 `(n)` 后缀） |
   | `forbidden` | 输出文件夹是否位于某个选中文件夹内部（禁止） |
 
-#### 4.2 压缩（SSE）
+#### 4.2 创建压缩后台任务
+
+压缩任务创建后推入**主项目后台任务系统**：进度、取消、完成事件统一走任务系统
+（`GET /api/tasks`、`GET /api/tasks/:id/stream`、`POST /api/tasks/:id/cancel`），
+前端在后台任务面板（TaskPanel）展示并可取消；任务条目持久化于 `tasks.json`，
+页面刷新/重开后运行中任务继续跟踪。
 
 - **接口**: `POST /api/plugin/compress/zip`
 - **请求体**:
   ```json
   {
-    "jobId": "b7e2f0a1-...",
     "paths": ["docs", "readme.md"],
     "outputDir": "backup"
-  }
-  ```
-  `jobId` 由客户端生成（如 `crypto.randomUUID()`），用于取消时关联任务。
-
-- **响应**: SSE 流
-  ```text
-  data: {"type":"progress","progress":50}
-  data: {"type":"progress","progress":100}
-  data: {"type":"complete","zipPath":"backup/docs 等 2 项.zip"}
-  ```
-
-- **事件类型**:
-  | 类型 | 说明 |
-  |------|------|
-  | `progress` | 压缩进度，`progress` 字段表示百分比 (0-100) |
-  | `complete` | 压缩完成，`zipPath` 字段表示 zip 文件相对路径 |
-  | `error` | 压缩失败，`message` 字段表示错误信息 |
-  | `cancelled` | 压缩已取消 |
-
-- **命名规则**: 单项 → `<名称>.zip`；多项 → `<首项名称> 等 N 项.zip`；目标已存在时自动追加 ` (1)`、` (2)`… 后缀，不覆盖已有文件。
-- **取消**: 客户端断开连接即自动中止压缩并清理半成品。
-
-#### 4.3 取消压缩
-
-- **接口**: `POST /api/plugin/compress/cancel`
-- **请求体**:
-  ```json
-  {
-    "jobId": "b7e2f0a1-..."
   }
   ```
 - **响应示例**:
   ```json
   {
-    "success": true
+    "taskId": "5f9c1e2a-..."
   }
   ```
-- 未找到对应任务时返回 `404`。
+  创建成功即返回 `taskId`（压缩在后台执行）；`409` 表示与运行中任务路径冲突
+  （同源或同输出 zip）。
+
+- **任务信息**: 任务类型 `compress`，阶段 `compress`，元数据含 `paths` / `names` /
+  `outputDir` / `targetPath`（输出 zip 相对路径，完成时回写最终值）。
+- **命名规则**: 单项 → `<名称>.zip`；多项 → `<首项名称> 等 N 项.zip`；目标已存在时自动追加 ` (1)`、` (2)`… 后缀，不覆盖已有文件。
+- **取消**: `POST /api/tasks/:id/cancel`（压缩阶段可取消，取消后自动清理半成品 zip）。
+- **服务器重启**: 运行中的压缩任务恢复为 `failed`（与移动任务一致）。
 
 ---
 

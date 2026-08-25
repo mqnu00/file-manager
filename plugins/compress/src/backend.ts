@@ -2,9 +2,9 @@
  * 压缩插件后端入口
  *
  * 注册路由（均需登录）：
- * - POST /api/plugin/compress/check  ：压缩前预检（源读取权限 + 输出目录写入权限 + 目录包含防护）
- * - POST /api/plugin/compress/zip    ：SSE 压缩（多源，固定输出目录，进度/完成/错误/取消事件）
- * - POST /api/plugin/compress/cancel ：按 jobId 取消进行中的压缩
+ * - POST /api/plugin/compress/check ：压缩前预检（源读取权限 + 输出目录写入权限 + 目录包含防护）
+ * - POST /api/plugin/compress/zip   ：创建压缩后台任务（推入主项目任务系统，返回 taskId；
+ *                                      进度/取消/完成由主项目 /api/tasks 系列端点承载）
  */
 import type {
   BackendPluginContext,
@@ -20,18 +20,8 @@ interface CheckBody {
 }
 
 interface ZipBody {
-  jobId?: unknown
   paths?: unknown
   outputDir?: unknown
-}
-
-interface CancelBody {
-  jobId?: unknown
-}
-
-/** 进行中的压缩任务 */
-interface ActiveJob {
-  abort: () => void
 }
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
@@ -41,17 +31,11 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     log: (level, tag, message) => ctx.utils.logger.log(level, tag, message),
   })
 
-  const activeJobs = new Map<string, ActiveJob>()
-
   const toStrArray = (v: unknown): string[] =>
     Array.isArray(v)
       ? v.filter((x): x is string => typeof x === 'string' && x.length > 0)
       : []
   const toStr = (v: unknown): string => (typeof v === 'string' ? v : '')
-
-  const assertJobId = (jobId: string): void => {
-    if (!jobId) throw new ZCompressError('缺少任务标识 jobId')
-  }
 
   const router = ctx.express.Router()
 
@@ -75,95 +59,83 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     }
   )
 
-  // ---- 压缩（SSE） ----
+  // ---- 创建压缩后台任务 ----
   router.post(
     '/zip',
     ctx.middleware.auth,
     async (req: Request, res: Response): Promise<void> => {
-      const { jobId, paths, outputDir } = (req.body ?? {}) as ZipBody
-      const id = toStr(jobId)
-      ctx.utils.sse.setHeaders(res)
+      const { paths, outputDir } = (req.body ?? {}) as ZipBody
+      const pathsArr = toStrArray(paths)
+      const output = toStr(outputDir)
 
-      const cleanupJob = (): void => {
-        activeJobs.delete(id)
+      if (!output) {
+        res.status(400).json({ message: '缺少输出文件夹' })
+        return
+      }
+      if (!pathsArr.length) {
+        res.status(400).json({ message: '未选择任何文件/文件夹' })
+        return
       }
 
       try {
-        assertJobId(id)
-        const pathsArr = toStrArray(paths)
-        const output = toStr(outputDir)
-        if (!output) {
-          ctx.utils.sse.sendError(res, '缺少输出文件夹')
-          ctx.utils.sse.end(res)
+        // 预计算输出 zip 目标（与 runJob 内部幂等一致：命名只依赖首项名称与数量）
+        const sources = pathsArr.map((p) => service.resolveSource(p))
+        const target = service.computeTarget(sources, output)
+
+        // 任务条目注册进主项目任务系统（冲突检测失败抛 TASK_CONFLICT）
+        const task = ctx.services.task.createExternal(
+          'compress',
+          {
+            paths: pathsArr,
+            names: sources.map((s) => s.name),
+            outputDir: output,
+            targetPath: target.relativePath,
+          },
+          { phase: 'compress', totalCount: pathsArr.length }
+        )
+
+        // 异步执行压缩，进度/终态经任务系统广播（不阻塞创建响应）
+        const signal = ctx.services.task.signal(task.id)
+        void (async () => {
+          try {
+            const result = await service.runJob({
+              paths: pathsArr,
+              outputDir: output,
+              signal,
+              onProgress: (percent, _processedBytes, totalBytes) => {
+                ctx.services.task.updateProgress(task.id, {
+                  progress: percent,
+                  totalSize: totalBytes,
+                })
+              },
+            })
+            // 完成：回写最终目标路径后收尾
+            ctx.services.task.updateProgress(task.id, {
+              progress: 100,
+              metadata: { ...task.metadata, targetPath: result.target.relativePath },
+            })
+            ctx.services.task.finalize(task.id, 'completed')
+          } catch (e: any) {
+            if (e?.message === 'CANCELLED') {
+              ctx.services.task.finalize(task.id, 'cancelled', { message: '压缩已取消' })
+            } else {
+              const msg =
+                e instanceof ZCompressError ? e.message : `压缩失败: ${e?.message || '未知错误'}`
+              ctx.utils.logger.log('ERROR', 'compress', `压缩任务失败: ${msg}`)
+              ctx.services.task.finalize(task.id, 'failed', { error: msg })
+            }
+          }
+        })()
+
+        res.json({ taskId: task.id })
+      } catch (e: any) {
+        if (e?.code === 'TASK_CONFLICT') {
+          res.status(409).json({ message: e.message })
           return
         }
-
-        let abort: (() => void) | null = null
-        const abortController = new AbortController()
-        abort = () => {
-          if (!abortController.signal.aborted) abortController.abort()
-        }
-
-        if (activeJobs.has(id)) {
-          throw new ZCompressError('压缩任务已存在，请更换 jobId 后重试')
-        }
-
-        // 取消：abort 流 + 清 active 表；压缩侧清理半成品
-        const jobEntry: ActiveJob = { abort }
-        activeJobs.set(id, jobEntry)
-        // 客户端断开（刷新/关闭页面）：中止压缩并清理
-        res.on('close', () => {
-          abort()
-          cleanupJob()
-        })
-
-        const target = await service.runJob({
-          paths: pathsArr,
-          outputDir: output,
-          signal: abortController.signal,
-          onProgress: (percent, _processed, _total) => {
-            ctx.utils.sse.sendProgress(res, percent, 0, _total)
-          },
-        })
-
-        ctx.utils.sse.sendComplete(res, target.target.relativePath)
-        ctx.utils.sse.end(res)
-        cleanupJob()
-      } catch (e: any) {
-        if (e?.message === 'CANCELLED') {
-          ctx.utils.sse.sendMessage(res, { type: 'cancelled', message: '压缩已取消' })
-        } else {
-          const msg = e instanceof ZCompressError ? e.message : `压缩失败: ${e?.message || '未知错误'}`
-          ctx.utils.logger.log('ERROR', 'compress', `压缩任务失败: ${msg}`)
-          ctx.utils.sse.sendError(res, msg)
-        }
-        ctx.utils.sse.end(res)
-        cleanupJob()
+        ctx.utils.logger.log('ERROR', 'compress', `创建压缩任务失败: ${e?.message || '未知错误'}`)
+        res.status(400).json({ message: e?.message || '创建压缩任务失败' })
       }
-    }
-  )
-
-  // ---- 取消 ----
-  router.post(
-    '/cancel',
-    ctx.middleware.auth,
-    (req: Request, res: Response): void => {
-      const { jobId } = (req.body ?? {}) as CancelBody
-      const id = toStr(jobId)
-      try {
-        assertJobId(id)
-      } catch (e: any) {
-        res.status(400).json({ message: e.message })
-        return
-      }
-      const job = activeJobs.get(id)
-      if (!job) {
-        res.status(404).json({ message: '未找到正在进行的压缩任务' })
-        return
-      }
-      job.abort()
-      activeJobs.delete(id)
-      res.json({ success: true })
     }
   )
 

@@ -5,12 +5,18 @@
 - **插件工具栏操作挂载点**：主应用新增批量操作注册表（`window.__fm_bulk_actions` + `useBulkActions`），
   前端插件可注册显示在文件浏览器批量操作栏的自定义操作按钮（可见性 + 点击回调，按 id 幂等覆盖），
   为“压缩”等由插件提供能力的场景提供平台扩展点
+- **插件外部任务接入后台任务系统**：主应用任务系统支持插件驱动的后台任务——新增
+  `createExternalTask`（建任务条目 + 冲突检测 + 取消信号，不自动执行）、`updateTaskProgress`（进度上报）、
+  `finalizeTask`（终态收尾 + 广播 + 移除）并暴露到插件 `ctx.services.task`；任务类型/阶段恢复
+  `compress`，压缩任务可取消；TaskPanel 恢复压缩任务卡片（进度/速度/当前文件/取消）
 
 ### 🔧 变更
 
 - **压缩功能提取为独立插件**：主应用删除内置压缩（工具栏压缩按钮、`POST /api/tasks/compress` 任务型压缩、
   `POST /api/files/zip` SSE 压缩及 `/zip/cancel`），压缩改由插件 `@mqn00/file-manager-plugin-compress`
   提供（详见插件 README 与 API.md）
+- **压缩任务改为后台任务**：插件 `POST /api/plugin/compress/zip` 由 SSE 流改为创建后台任务并返回
+  `taskId`（进度/取消/完成走任务系统，TaskPanel 展示），取消/断开不再终止执行，任务可跨页面跟踪
 
 ---
 

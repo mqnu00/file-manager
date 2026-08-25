@@ -65,12 +65,12 @@ export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 
 /**
  * 移动任务阶段：复制（可取消）→ 删除（不可取消）
  */
-export type TaskPhase = 'copy' | 'delete'
+export type TaskPhase = 'copy' | 'delete' | 'compress'
 
 /**
  * 任务类型
  */
-export type TaskType = 'move'
+export type TaskType = 'move' | 'compress'
 
 /**
  * 移动任务元数据
@@ -82,9 +82,23 @@ export interface MoveTaskMetadata {
 }
 
 /**
+ * 压缩任务元数据（由 compress 插件创建并驱动执行）
+ */
+export interface CompressTaskMetadata {
+  /** 待压缩条目（相对路径） */
+  paths: string[]
+  /** 显示用名称（与 paths 同序） */
+  names: string[]
+  /** 输出目录（相对路径） */
+  outputDir: string
+  /** 输出 zip 相对路径；创建时预计算，完成时由执行器回写最终值 */
+  targetPath: string
+}
+
+/**
  * 任务元数据联合类型
  */
-export type TaskMetadata = MoveTaskMetadata
+export type TaskMetadata = MoveTaskMetadata | CompressTaskMetadata
 
 /**
  * 后台任务信息

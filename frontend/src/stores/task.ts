@@ -161,6 +161,21 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
+   * 挂载插件创建的后台任务（如压缩）：乐观插入 + 注册完成回调 + 建立 SSE 订阅。
+   * 任务条目的创建/执行在插件后端完成，这里只负责让任务面板感知并跟踪进度。
+   */
+  function attachTask(taskId: string, info: TaskInfo, onComplete?: () => void): void {
+    // 按 id 去重，避免重复挂载
+    if (!tasks.value.some((t) => t.id === taskId)) {
+      tasks.value.unshift(info)
+    }
+    if (onComplete) {
+      completeCallbacks.set(taskId, onComplete)
+    }
+    subscribeToTask(taskId)
+  }
+
+  /**
    * 从面板移除已完成/已取消的任务
    */
   function dismissTask(taskId: string): void {
@@ -172,6 +187,7 @@ export const useTaskStore = defineStore('task', () => {
     tasks,
     init,
     startMoveTask,
+    attachTask,
     cancelTask,
     dismissTask,
   }

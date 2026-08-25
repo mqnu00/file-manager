@@ -28,7 +28,10 @@ test.describe('后台任务（移动）与压缩插件', () => {
     await expect(compressDialog.getByRole('button', { name: '开始压缩' })).toBeEnabled()
     await compressDialog.getByRole('button', { name: '开始压缩' }).click()
 
-    // 小目录压缩瞬间完成，SSE complete 可能早于自动刷新完成；
+    // 任务推送到后台：对话框关闭（任务卡片在后台任务面板，进度/取消由主项目承接）
+    await expect(compressDialog).toBeHidden()
+
+    // 小目录压缩瞬间完成，完成回调自动刷新输出目录（或早于刷新完成）；
     // 轮询手动刷新直到 docs.zip 出现（zip 写入当前文件夹）
     for (let i = 0; i < 10; i++) {
       await page.getByRole('button', { name: '刷新' }).click()

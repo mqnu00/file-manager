@@ -28,7 +28,6 @@ const CSS = `
 }
 .fcp-status-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fcp-dim { color: var(--app-text-dim, #888); font-size: 12px; }
-.fcp-progress { margin-top: 14px; }
 .fcp-picker-path { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .fcp-picker-list {
   max-height: 320px; overflow-y: auto;

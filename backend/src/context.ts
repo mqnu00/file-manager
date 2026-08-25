@@ -37,6 +37,10 @@ import * as fileService from './services/fileService'
 import * as fileIO from './services/fileIO'
 import {
   createMoveTask,
+  createExternalTask,
+  getTaskSignal,
+  updateTaskProgress,
+  finalizeTask,
   getTask,
   getAllTasks,
   cancelTask,
@@ -107,6 +111,14 @@ export interface ScriptContext {
     fileIO: typeof fileIO
     task: {
       createMove: typeof createMoveTask
+      /** 创建外部（插件驱动的）后台任务条目，仅建条目不启动 */
+      createExternal: typeof createExternalTask
+      /** 取任务的取消信号（执行器响应取消用） */
+      signal: typeof getTaskSignal
+      /** 更新任务进度/字段（广播 + 持久化） */
+      updateProgress: typeof updateTaskProgress
+      /** 任务终态收尾（completed/failed/cancelled + 广播 + 移除） */
+      finalize: typeof finalizeTask
       get: typeof getTask
       getAll: typeof getAllTasks
       cancel: typeof cancelTask
@@ -189,6 +201,10 @@ export function createScriptContext(): ScriptContext {
       fileIO,
       task: {
         createMove: createMoveTask,
+        createExternal: createExternalTask,
+        signal: getTaskSignal,
+        updateProgress: updateTaskProgress,
+        finalize: finalizeTask,
         get: getTask,
         getAll: getAllTasks,
         cancel: cancelTask,

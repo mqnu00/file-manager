@@ -13,7 +13,7 @@ vi.mock('./fileService', () => ({
   removeSources: vi.fn(),
 }))
 
-import { createMoveTask, getTask, getAllTasks, cancelTask, subscribe } from './taskManager'
+import { createMoveTask, createExternalTask, updateTaskProgress, finalizeTask, getTask, getAllTasks, cancelTask, subscribe } from './taskManager'
 import { copyWithCancel, removeSources } from './fileService'
 
 const mockedCopyWithCancel = vi.mocked(copyWithCancel)
@@ -237,5 +237,152 @@ describe('taskManager 订阅与执行分支', () => {
     await tick()
     expect(getTask(task.id)!.status).toBe('completed')
     expect(mockedRemoveSources).toHaveBeenCalledWith(['fail1.txt', 'fail2.txt'])
+  })
+})
+
+describe('createExternalTask（插件驱动的外部任务）', () => {
+  const compressMeta = (paths: string[], targetPath: string) => ({
+    paths,
+    names: paths.map((p) => p.split('/').pop() || p),
+    outputDir: 'out',
+    targetPath,
+  })
+
+  it('创建压缩任务条目：running + compress 阶段，不自动执行', () => {
+    const task = createExternalTask('compress', compressMeta(['ext-a.txt'], 'ext-a.zip'), {
+      phase: 'compress',
+      totalCount: 1,
+    })
+    expect(task.type).toBe('compress')
+    expect(task.status).toBe('running')
+    expect(task.phase).toBe('compress')
+    expect(task.progress).toBe(0)
+    expect(task.totalCount).toBe(1)
+    expect(getTask(task.id)).toBe(task)
+  })
+
+  it('立即持久化（无自动启动，创建即落盘）', async () => {
+    const task = createExternalTask('compress', compressMeta(['ext-persist.txt'], 'ext-persist.zip'), {
+      phase: 'compress',
+    })
+    expect(readPersisted().some((t) => t.id === task.id)).toBe(true)
+  })
+
+  it('与运行中压缩任务同源 → TASK_CONFLICT', () => {
+    createExternalTask('compress', compressMeta(['ext-conflict.txt'], 'ext-conflict.zip'), { phase: 'compress' })
+    expect(
+      conflictCode(() =>
+        createExternalTask('compress', compressMeta(['ext-conflict.txt'], 'ext-conflict-2.zip'), {
+          phase: 'compress',
+        })
+      )
+    ).toBe('TASK_CONFLICT')
+  })
+
+  it('与运行中压缩任务同输出 zip → TASK_CONFLICT', () => {
+    createExternalTask('compress', compressMeta(['ext-a2.txt'], 'ext-same.zip'), { phase: 'compress' })
+    expect(
+      conflictCode(() =>
+        createExternalTask('compress', compressMeta(['ext-b2.txt'], 'ext-same.zip'), { phase: 'compress' })
+      )
+    ).toBe('TASK_CONFLICT')
+  })
+
+  it('不同源不同目标可正常创建', () => {
+    expect(() =>
+      createExternalTask('compress', compressMeta(['ext-free.txt'], 'ext-free.zip'), { phase: 'compress' })
+    ).not.toThrow()
+  })
+})
+
+describe('updateTaskProgress / finalizeTask', () => {
+  const compressMeta = (paths: string[], targetPath: string) => ({
+    paths,
+    names: paths.map((p) => p.split('/').pop() || p),
+    outputDir: 'out',
+    targetPath,
+  })
+
+  it('updateTaskProgress 更新进度并返回存在性', () => {
+    const task = createExternalTask('compress', compressMeta(['ext-up.txt'], 'ext-up.zip'), { phase: 'compress' })
+    expect(updateTaskProgress(task.id, { progress: 42, currentFile: 'ext-up.txt' })).toBe(true)
+    const info = getTask(task.id)!
+    expect(info.progress).toBe(42)
+    expect(info.currentFile).toBe('ext-up.txt')
+    expect(updateTaskProgress('no-such-task', { progress: 1 })).toBe(false)
+  })
+
+  it('finalizeTask completed → 状态完成、进度 100，3 秒后移除', () => {
+    vi.useFakeTimers()
+    try {
+      const task = createExternalTask('compress', compressMeta(['ext-done.txt'], 'ext-done.zip'), {
+        phase: 'compress',
+      })
+      expect(finalizeTask(task.id, 'completed')).toBe(true)
+      expect(getTask(task.id)!.status).toBe('completed')
+      expect(getTask(task.id)!.progress).toBe(100)
+      vi.advanceTimersByTime(3000)
+      expect(getTask(task.id)).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('finalizeTask cancelled → 状态取消、进度 0，广播 cancelled', () => {
+    vi.useFakeTimers()
+    try {
+      const task = createExternalTask('compress', compressMeta(['ext-cancel.txt'], 'ext-cancel.zip'), {
+        phase: 'compress',
+      })
+      const res = makeRes()
+      subscribe(task.id, res)
+      expect(finalizeTask(task.id, 'cancelled')).toBe(true)
+      expect(getTask(task.id)!.status).toBe('cancelled')
+      expect(getTask(task.id)!.progress).toBe(0)
+      expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"cancelled"'))
+      vi.advanceTimersByTime(3000)
+      expect(getTask(task.id)).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('finalizeTask failed → 记录错误，广播 error', () => {
+    vi.useFakeTimers()
+    try {
+      const task = createExternalTask('compress', compressMeta(['ext-fail.txt'], 'ext-fail.zip'), {
+        phase: 'compress',
+      })
+      const res = makeRes()
+      subscribe(task.id, res)
+      expect(finalizeTask(task.id, 'failed', { error: '磁盘已满' })).toBe(true)
+      expect(getTask(task.id)!.status).toBe('failed')
+      expect(getTask(task.id)!.error).toBe('磁盘已满')
+      expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"error"'))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('不存在的任务 finalize → false', () => {
+    expect(finalizeTask('no-such-task', 'completed')).toBe(false)
+  })
+
+  it('压缩阶段任务可取消（compress 进入可取消阶段列表）', () => {
+    const task = createExternalTask('compress', compressMeta(['ext-c2.txt'], 'ext-c2.zip'), { phase: 'compress' })
+    expect(cancelTask(task.id)).toBe(true)
+    expect(getTask(task.id)!.status).toBe('cancelling')
+  })
+
+  it('已完成的外部任务不可取消', () => {
+    vi.useFakeTimers()
+    try {
+      const task = createExternalTask('compress', compressMeta(['ext-c3.txt'], 'ext-c3.zip'), { phase: 'compress' })
+      finalizeTask(task.id, 'completed')
+      // 状态已 completed（非 running）→ 取消拒绝
+      expect(cancelTask(task.id)).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

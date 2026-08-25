@@ -54,6 +54,46 @@ describe('TaskPanel.vue', () => {
     expect(wrapper.text()).toContain('移动中...')
   })
 
+  it('running 压缩任务渲染卡片（压缩文案/阶段/取消按钮）', async () => {
+    const store = useTaskStore()
+    store.tasks.push(
+      makeTask({
+        id: 'zip-1',
+        type: 'compress',
+        phase: 'compress',
+        metadata: {
+          paths: ['docs'],
+          names: ['docs'],
+          outputDir: '',
+          targetPath: 'docs.zip',
+        },
+      })
+    )
+    const wrapper = mount(TaskPanel)
+    await nextTick()
+    expect(wrapper.find('.task-card').exists()).toBe(true)
+    expect(wrapper.text()).toContain('压缩 1 项')
+    expect(wrapper.text()).toContain('压缩中...')
+    expect(wrapper.find('.task-card__footer button').text()).toContain('取消')
+  })
+
+  it('压缩任务取消点击调用 store.cancelTask', async () => {
+    const store = useTaskStore()
+    store.tasks.push(
+      makeTask({
+        id: 'zip-cancel',
+        type: 'compress',
+        phase: 'compress',
+        metadata: { paths: ['docs'], names: ['docs'], outputDir: '', targetPath: 'docs.zip' },
+      })
+    )
+    vi.spyOn(store, 'cancelTask').mockImplementation(() => Promise.resolve())
+    const wrapper = mount(TaskPanel)
+    await nextTick()
+    await wrapper.find('.task-card__footer button').trigger('click')
+    expect(store.cancelTask).toHaveBeenCalledWith('zip-cancel')
+  })
+
   it('任务完成后自动折叠回徽章', async () => {
     const store = useTaskStore()
     store.tasks.push(makeTask())

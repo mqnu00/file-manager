@@ -6,9 +6,14 @@
  *
  * 流程：选择输出文件夹（默认当前浏览文件夹）→ 权限预检（POST /check，
  * 源读取权限 + 输出目录写入权限 + 目录包含防护）→ 全部通过才可「开始压缩」→
- * POST /zip（SSE 进度）→ 完成/失败/取消 → 完成后刷新当前目录列表。
+ * POST /zip 创建后台任务（推入主项目任务系统）→ 对话框关闭，任务卡片出现在
+ * 后台任务面板（进度/取消/完成由主项目 TaskPanel 承接）→ 完成后条件刷新输出目录。
  */
-import type { FrontendPluginContext, FileItem } from '@mqn00/file-manager/plugin/frontend'
+import type {
+  FrontendPluginContext,
+  FileItem,
+  TaskInfo,
+} from '@mqn00/file-manager/plugin/frontend'
 
 /** 与主应用 window.__fm_bulk_actions 的 BulkActionContext 结构一致 */
 export interface CompressPayload {
@@ -45,17 +50,6 @@ interface CheckResult {
 
 const HOST_ID = 'fcp-dialog-host'
 
-function genJobId(): string {
-  try {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID()
-    }
-  } catch {
-    // 降级
-  }
-  return `job-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
-
 function parentOf(pathStr: string): string {
   const parts = pathStr.split('/').filter(Boolean)
   parts.pop()
@@ -91,7 +85,7 @@ function renderFolderIcon(h: any) {
 
 export function openCompressDialog(ctx: FrontendPluginContext, payload: CompressPayload): void {
   const { createApp, defineComponent, h, ref, computed, watch } = ctx.Vue
-  const { ElDialog, ElButton, ElInput, ElProgress, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
+  const { ElDialog, ElButton, ElInput, ElAlert, ElTag, ElMessage } = ctx.ElementPlus
   const formatSize = ctx.utils.formatSize
   const api = ctx.api.instance
 
@@ -100,11 +94,6 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
   const host = document.createElement('div')
   host.id = HOST_ID
   document.body.appendChild(host)
-
-  const authHeaders = (): Record<string, string> => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
-  })
 
   const EllipsisPath = defineComponent({
     name: 'EllipsisPath',
@@ -122,9 +111,6 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
       const outputDir = ref(payload.currentPath || '/')
       const checkResult = ref<CheckResult | null>(null)
       const checking = ref(false)
-      const running = ref(false)
-      const progress = ref(0)
-      const jobId = ref('')
 
       // ─── 权限预检 ───
       const runCheck = async () => {
@@ -152,7 +138,6 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
       const canStart = computed(
         () =>
           !!checkResult.value?.ok &&
-          !running.value &&
           !checking.value &&
           payload.selected.length > 0
       )
@@ -169,99 +154,59 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
         }
       }
 
-      // ─── SSE 压缩 ───
+      // ─── 创建压缩后台任务 ───
       const startCompress = async () => {
         if (!canStart.value) return
-        running.value = true
-        progress.value = 0
-        jobId.value = genJobId()
-
         try {
-          const response = await fetch('/api/plugin/compress/zip', {
-            method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({
-              jobId: jobId.value,
-              paths: payload.selected,
-              outputDir: outputDir.value,
-            }),
+          // ctx.api.instance 的 baseURL 为 '/api'，路径不带 /api 前缀
+          const resp = await api.post('/plugin/compress/zip', {
+            paths: payload.selected,
+            outputDir: outputDir.value,
           })
-          if (!response.ok) {
-            const errData = await response.json().catch(() => ({ message: '压缩失败' }))
-            throw new Error(errData.message || '压缩失败')
+          const { taskId } = resp.data as { taskId: string }
+
+          // 乐观插入后台任务（进度/取消/完成由主项目任务面板承接）
+          const info: TaskInfo = {
+            id: taskId,
+            type: 'compress',
+            status: 'running',
+            phase: 'compress',
+            progress: 0,
+            speed: 0,
+            totalSize: 0,
+            startTime: Date.now(),
+            metadata: {
+              paths: payload.selected.slice(),
+              names: payload.infos.map((i) => i.name),
+              outputDir: outputDir.value,
+              targetPath: checkResult.value?.targetPath || '',
+            },
+            completedCount: 0,
+            totalCount: payload.selected.length,
+            totalItemCount: 0,
+            processedItemCount: 0,
           }
-          const reader = response.body?.getReader()
-          if (!reader) {
-            throw new Error('无法读取响应流')
-          }
+          ctx.stores.task.attachTask(taskId, info, makeConditionalRefresh())
 
-          const decoder = new TextDecoder()
-          let buffer = ''
-          let closed = false
-
-          const processStream = async (): Promise<void> => {
-            const { done, value } = await reader.read()
-            if (done) {
-              closed = true
-              if (running.value) {
-                ElMessage.error('压缩中断，请重试')
-                running.value = false
-              }
-              return
-            }
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue
-              try {
-                const data = JSON.parse(line.slice(6))
-                if (data.type === 'progress') {
-                  progress.value = data.progress
-                } else if (data.type === 'complete') {
-                  closed = true
-                  ElMessage.success(`压缩完成：${data.zipPath || ''}`)
-                  void refreshCurrentDir()
-                  running.value = false
-                  visible.value = false
-                  return
-                } else if (data.type === 'cancelled') {
-                  closed = true
-                  ElMessage.warning('压缩已取消')
-                  running.value = false
-                  return
-                } else if (data.type === 'error') {
-                  closed = true
-                  ElMessage.error(data.message || '压缩失败')
-                  running.value = false
-                  return
-                }
-              } catch {
-                // 忽略非 JSON 行
-              }
-            }
-            void processStream()
-          }
-
-          await processStream()
+          ElMessage.success('压缩任务已推送到后台')
+          visible.value = false
         } catch (e: any) {
-          ElMessage.error(e?.message || '压缩失败')
-          running.value = false
+          ElMessage.error(e?.response?.data?.message || '创建压缩任务失败')
         }
       }
 
-      // ─── 取消 ───
-      const cancelCompress = async () => {
-        if (!running.value || !jobId.value) return
-        try {
-          // ctx.api.instance 的 baseURL 为 '/api'，路径不带 /api 前缀
-          await api.post('/plugin/compress/cancel', { jobId: jobId.value })
-          // 取消结果由 SSE 的 cancelled 事件收敛
-        } catch (e: any) {
-          // cancel 404 = 任务已结束，SSE 流即将收敛
-          if (e?.response?.status !== 404) {
-            ElMessage.error(e?.response?.data?.message || '取消失败')
+      /**
+       * 压缩完成后的条件刷新回调：zip 落在输出目录，
+       * 仅当用户当前仍停留在该目录时刷新列表（与移动任务语义一致）。
+       * 回调注册在 task store 单例中，对话框关闭后依然有效。
+       */
+      const makeConditionalRefresh = () => {
+        const outputDirSnapshot = outputDir.value
+        return () => {
+          // 根目录时 currentPath 为 ''，与 outputDir 的 '/' 归一化对齐后再比较
+          const current = ctx.stores.file.currentPath || '/'
+          if (current === outputDirSnapshot) {
+            void refreshCurrentDir()
           }
         }
       }
@@ -429,8 +374,6 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
             appendToBody: true,
             closeOnClickModal: false,
             'onUpdate:modelValue': (v: boolean) => {
-              // 运行中禁止关闭（防止 SSE 回调作用在已卸载组件上）
-              if (!v && running.value) return
               visible.value = v
               if (!v) close()
             },
@@ -460,34 +403,16 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                     ? h('div', { class: 'fcp-status-list' }, statusChildren)
                     : h('div', { class: 'fcp-dim' }, '权限检查失败'),
                 forbiddenAlert,
-                running.value
-                  ? h('div', { class: 'fcp-progress' }, [
-                      h(ElProgress, { percentage: progress.value, 'stroke-width': 8 }),
-                      h('div', { style: { marginTop: '8px', textAlign: 'center' } }, [
-                        h(
-                          ElButton,
-                          { size: 'small', type: 'danger', onClick: cancelCompress },
-                          () => '取消压缩'
-                        ),
-                      ]),
-                    ])
-                  : null,
               ]),
               pickerDialog,
             ],
             footer: () => [
+              h(ElButton, { onClick: () => (visible.value = false) }, () => '关闭'),
               h(
                 ElButton,
-                { disabled: running.value, onClick: () => (visible.value = false) },
-                () => '关闭'
+                { type: 'primary', disabled: !canStart.value, onClick: startCompress },
+                () => '开始压缩'
               ),
-              running.value
-                ? null
-                : h(
-                    ElButton,
-                    { type: 'primary', disabled: !canStart.value, onClick: startCompress },
-                    () => '开始压缩'
-                  ),
             ],
           }
         )

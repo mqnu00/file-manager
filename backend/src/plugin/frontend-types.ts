@@ -39,10 +39,14 @@ export interface MoveTaskMetadata {
 }
 
 export interface CompressTaskMetadata {
-  sourcePath: string
-  sourceName: string
+  /** 待压缩条目（相对路径） */
+  paths: string[]
+  /** 显示用名称（与 paths 同序） */
+  names: string[]
+  /** 输出目录（相对路径） */
+  outputDir: string
+  /** 输出 zip 相对路径；创建时预计算，完成时由执行器回写最终值 */
   targetPath: string
-  totalBytes: number
 }
 
 export interface TaskInfo {
@@ -113,6 +117,11 @@ export interface TaskStore {
     targetPath: string,
     onComplete?: () => void
   ): Promise<void>
+  /**
+   * 挂载插件创建的后台任务（如压缩）：乐观插入 + 注册完成回调 + 建立 SSE 订阅。
+   * 任务条目的创建/执行由插件后端完成。
+   */
+  attachTask(taskId: string, info: TaskInfo, onComplete?: () => void): void
   cancelTask(taskId: string): Promise<void>
   dismissTask(taskId: string): void
 }
