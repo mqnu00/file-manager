@@ -71,18 +71,22 @@ function displayPath(pathStr: string): string {
  * 插件上下文不暴露图标包，故自绘；颜色用主题强调色令牌随主题换肤。
  */
 function renderFolderIcon(h: any) {
-  return h('svg', {
-    viewBox: '0 0 1024 1024',
-    width: '16',
-    height: '16',
-    'aria-hidden': 'true',
-    style: { display: 'block' },
-  }, [
-    h('path', {
-      d: 'M880 298.4H521L403.7 186.2a8.16 8.16 0 0 0-5.5-2.2H144c-17.7 0-32 14.3-32 32v592c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z',
-      fill: 'currentColor',
-    }),
-  ])
+  return h(
+    'svg',
+    {
+      viewBox: '0 0 1024 1024',
+      width: '16',
+      height: '16',
+      'aria-hidden': 'true',
+      style: { display: 'block' },
+    },
+    [
+      h('path', {
+        d: 'M880 298.4H521L403.7 186.2a8.16 8.16 0 0 0-5.5-2.2H144c-17.7 0-32 14.3-32 32v592c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32z',
+        fill: 'currentColor',
+      }),
+    ]
+  )
 }
 
 export function openCompressDialog(ctx: FrontendPluginContext, payload: CompressPayload): void {
@@ -114,7 +118,8 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
     name: 'CompressDialog',
     setup() {
       const visible = ref(true)
-      const outputDir = ref(payload.currentPath || '')
+      // 根目录时 currentPath 为 ''，归一化为 '/'（与 displayPath 显示一致，后端也按根目录解析）
+      const outputDir = ref(payload.currentPath || '/')
       const checkResult = ref<CheckResult | null>(null)
       const checking = ref(false)
       const running = ref(false)
@@ -263,7 +268,7 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
 
       // ─── 文件夹选择器 ───
       const pickerVisible = ref(false)
-      const pickerPath = ref(payload.currentPath || '')
+      const pickerPath = ref(payload.currentPath || '/')
       const pickerFolders = ref<string[]>([])
       const pickerLoading = ref(false)
 
@@ -326,10 +331,8 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                   { class: 'fcp-status-name' },
                   `${item.name}${item.kind === 'dir' ? '（文件夹）' : ''}`
                 ),
-                h(
-                  ElTag,
-                  { type: ok ? 'success' : 'danger', size: 'small', effect: 'plain' },
-                  () => (!item.exists ? '不存在' : ok ? '可读' : '不可读')
+                h(ElTag, { type: ok ? 'success' : 'danger', size: 'small', effect: 'plain' }, () =>
+                  !item.exists ? '不存在' : ok ? '可读' : '不可读'
                 ),
               ])
             )
@@ -379,7 +382,11 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                 h(EllipsisPath, { path: pickerPath.value }),
                 h(
                   ElButton,
-                  { size: 'small', disabled: pickerPath.value === '', onClick: pickerUp },
+                  {
+                    size: 'small',
+                    disabled: !pickerPath.value || pickerPath.value === '/',
+                    onClick: pickerUp,
+                  },
                   () => '上级'
                 ),
               ]),
@@ -403,12 +410,12 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                     ),
             ],
             footer: () => [
-              h(ElButton, { size: 'small', onClick: () => (pickerVisible.value = false) }, () => '取消'),
               h(
                 ElButton,
-                { size: 'small', type: 'primary', onClick: pickerConfirm },
-                () => `选择当前文件夹（${displayPath(pickerPath.value)}）`
+                { size: 'small', onClick: () => (pickerVisible.value = false) },
+                () => '取消'
               ),
+              h(ElButton, { size: 'small', type: 'primary', onClick: pickerConfirm }, () => '选择'),
             ],
           }
         )
@@ -441,7 +448,7 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                     placeholder: '请选择输出文件夹',
                     style: { flex: 1 },
                   }),
-                  h(ElButton, { size: 'small', onClick: openPicker }, () => '选择文件夹…'),
+                  h(ElButton, { size: 'default', onClick: openPicker }, () => '选择'),
                 ]),
                 checkResult.value?.targetPath
                   ? h('div', { class: 'fcp-target' }, `输出文件：${checkResult.value.targetPath}`)
@@ -456,17 +463,13 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
                 running.value
                   ? h('div', { class: 'fcp-progress' }, [
                       h(ElProgress, { percentage: progress.value, 'stroke-width': 8 }),
-                      h(
-                        'div',
-                        { style: { marginTop: '8px', textAlign: 'center' } },
-                        [
-                          h(
-                            ElButton,
-                            { size: 'small', type: 'danger', onClick: cancelCompress },
-                            () => '取消压缩'
-                          ),
-                        ]
-                      ),
+                      h('div', { style: { marginTop: '8px', textAlign: 'center' } }, [
+                        h(
+                          ElButton,
+                          { size: 'small', type: 'danger', onClick: cancelCompress },
+                          () => '取消压缩'
+                        ),
+                      ]),
                     ])
                   : null,
               ]),
