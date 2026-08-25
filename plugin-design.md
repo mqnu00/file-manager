@@ -188,12 +188,14 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
 ### 平台挂载点（window 注册表）
 
-主应用提供两个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖）：
+主应用提供两个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖，`unregister(id)` 供插件 teardown 移除）：
 
 | 挂载点 | 用途 | 注册项 |
 |---|---|---|
 | `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `{ id, label, visible(count, hasFolder), run(selected, infos, currentPath) }` |
 | `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
+
+> **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0-beta10+）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。
 
 ### 主题注册（registerTheme）
 
@@ -216,6 +218,43 @@ html.midnight {
 - 主题通过覆盖 `--app-*` CSS 变量与 Element Plus 变量实现，选择器写 `html.<className>`
 - 自带资源（图片等）经 `/plugins-assets/<短名>/assets/...` 引用，需将 `assets/` 列入 package.json `files` 随包发布
 - 纯前端主题插件（无后端功能）仍需提供最小后端入口（空 `install`）满足加载器要求
+
+### 前端卸载与 teardown 契约（v3.0.0-beta10+）
+
+**插件生命周期**：后端插件有完整的加载/卸载/重载生命周期；前端插件在 v3.0.0-beta10 起补齐——
+
+`install(ctx)` 的返回值可扩展为 **teardown 函数**：
+
+```ts
+export const install: FrontendPluginInstallFunction = (ctx) => {
+  const unregister = registry.register(module)   // 例：查看器注册表
+  document.addEventListener('click', handler, true)
+
+  // teardown 契约：撤销 install 期间的全局副作用
+  return () => {
+    unregister()
+    document.removeEventListener('click', handler, true)
+    document.getElementById('my-plugin-style')?.remove()
+  }
+}
+```
+
+- **返回 teardown = 插件声明「install 期间的全局副作用由我撤销」**；不返回 = 声明无全局副作用（路由由平台代管）。`FrontendPluginInstallFunction` 类型已放宽返回值。
+- **平台自动收集并清理两类资源**（插件无需自己处理）：
+  1. `ctx.router.addRoute` 注册的路由 —— 卸载时逐个移除；
+  2. `ctx.composables.useTheme().registerTheme` 注册的主题 —— 卸载时逐个 `unregisterTheme(name)`（列表项 + 注入的 `<style>`，若为当前活动主题则回退默认并持久化）。
+- **teardown 的职责**（平台不代管的）：
+  - 移除 document/window 上的事件监听与 MutationObserver；
+  - 注销 window 注册表条目（`__fm_bulk_actions.unregister(id)` / `__fm_nav_actions.unregister(id)`，v3.0.0-beta10+ 提供）；
+  - 移除自注入的 `<style>`；关闭自挂载的 `createApp` 对话框（`unmount()` + 移除宿主节点）；
+  - 注销插件间注册表条目（如 `__fm_file_viewer_registry__` 的 `register` 返回值 unregister 函数）。
+- **卸载顺序**（平台执行）：路由移除 → 主题反注册 → 插件 teardown；任一步骤抛错仅记日志，不阻断其余步骤，也不影响后端卸载与其他插件。
+- **重载/重复加载**：平台先调用旧实例 teardown 再重新 install（不再需要自造 `INSTALL_KEY` 之类全局清理标记）。
+- **边界**：
+  - 后端热重载（开发期 dist watcher）只重后端，前端保持不动，页面刷新后自然拿到新 bundle；
+  - 卸载后端插件后前端实例立即清理，无需刷新页面；
+  - demo 模式（gh-pages 纯前端）没有管理页入口，不存在卸载场景。
+- 插件内 `useTheme().registerTheme` 与 `router.addRoute` 的返回值在卸载时由平台统一处理，插件不要在 teardown 里重复反注册（幂等无害但冗余）。
 
 ### 插件样式与主题适配（样式规范）
 

@@ -114,7 +114,8 @@ describe('initPlugins', () => {
     )
     await initPlugins()
     expect(calls()).toEqual(['install-export'])
-    expect(console.error).toHaveBeenCalledWith('[Plugin] c failed:', expect.any(Error))
+    // 失败插件由 loadPluginFrontend 内部捕获记录，不影响后续插件
+    expect(console.error).toHaveBeenCalledWith('[Plugin] c frontend failed:', expect.any(Error))
   })
 
   it('fetch 抛错 → 警告不抛出', async () => {

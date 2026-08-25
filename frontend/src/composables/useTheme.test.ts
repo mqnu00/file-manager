@@ -100,4 +100,49 @@ describe('useTheme', () => {
     expect(document.documentElement.classList.contains('cyber')).toBe(false)
     expect(localStorage.getItem('file-manager-theme')).toBe('midnight')
   })
+
+  it('unregisterTheme：移除列表项与注入样式，非活动主题不影响当前主题', async () => {
+    const theme = await loadTheme()
+    theme.registerTheme({
+      name: 'midnight',
+      label: '午夜',
+      className: 'midnight',
+      css: 'html.midnight { --app-bg: #0d1117; }',
+    })
+    expect(theme.themes.value.map((t) => t.name)).toContain('midnight')
+    expect(document.getElementById('theme-css-midnight')).not.toBeNull()
+
+    theme.unregisterTheme('midnight')
+    expect(theme.themes.value.map((t) => t.name)).not.toContain('midnight')
+    expect(document.getElementById('theme-css-midnight')).toBeNull()
+    // 当前主题（cyber）不受影响
+    expect(theme.activeTheme.value.name).toBe('cyber')
+    expect(document.documentElement.classList.contains('cyber')).toBe(true)
+  })
+
+  it('unregisterTheme 移除的是活动主题 → 回退默认（cyber）并持久化', async () => {
+    const theme = await loadTheme()
+    theme.registerTheme({
+      name: 'midnight',
+      label: '午夜',
+      className: 'midnight',
+      css: 'html.midnight {}',
+    })
+    theme.setTheme('midnight')
+    expect(theme.activeTheme.value.name).toBe('midnight')
+
+    theme.unregisterTheme('midnight')
+    expect(theme.activeTheme.value.name).toBe('cyber')
+    expect(document.documentElement.classList.contains('midnight')).toBe(false)
+    expect(document.documentElement.classList.contains('cyber')).toBe(true)
+    // 回退已持久化，刷新后一致
+    expect(localStorage.getItem('file-manager-theme')).toBe('cyber')
+  })
+
+  it('unregisterTheme 未注册的主题为 no-op（不抛错、不影响现有主题）', async () => {
+    const theme = await loadTheme()
+    expect(() => theme.unregisterTheme('not-exists')).not.toThrow()
+    expect(theme.themes.value.map((t) => t.name)).toEqual(['light', 'cyber'])
+    expect(theme.activeTheme.value.name).toBe('cyber')
+  })
 })

@@ -4,9 +4,13 @@
  * 这里监听 tooltip popper，用 getBoundingClientRect 记录其实际视觉位置后改用
  * position: fixed 的 left/top 表达并清空 transform，使固定背景重新锚定视口
  * （el-select 下拉因 gpu-acceleration=false 无此问题）。
+ *
+ * @returns 清理函数（插件 teardown 调用）：断开全部观察器
  */
-export function setupTooltipFixedBackground(): void {
+export function setupTooltipFixedBackground(): () => void {
   const observers = new WeakMap<Element, MutationObserver>()
+  /** 全部活跃观察器（含 rootObserver），供 teardown 统一断开 */
+  const activeObservers = new Set<MutationObserver>()
 
   const sync = (el: HTMLElement): void => {
     const t = el.style.transform
@@ -32,10 +36,13 @@ export function setupTooltipFixedBackground(): void {
     const observer = new MutationObserver(() => sync(node))
     observer.observe(node, { attributes: true, attributeFilter: ['style'] })
     observers.set(el, observer)
+    activeObservers.add(observer)
   }
 
   const detach = (el: Element): void => {
-    observers.get(el)?.disconnect()
+    const observer = observers.get(el)
+    observer?.disconnect()
+    if (observer) activeObservers.delete(observer)
     observers.delete(el)
   }
 
@@ -61,7 +68,16 @@ export function setupTooltipFixedBackground(): void {
       }
     }
   })
+  activeObservers.add(rootObserver)
 
   rootObserver.observe(document.body, { childList: true, subtree: true })
   scan(document.body)
+
+  // teardown：断开全部观察器（插件卸载/重载时由平台调用）
+  return () => {
+    for (const observer of activeObservers) {
+      observer.disconnect()
+    }
+    activeObservers.clear()
+  }
 }

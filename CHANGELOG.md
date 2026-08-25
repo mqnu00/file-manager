@@ -1,7 +1,17 @@
-## v3.0.0-beta9 (2026-08-24)
+## v3.0.0 (2026-08-25)
+
+> v3.0.0 正式发布。以下为自 v3.0.0-beta8 至 beta10 的变更汇总（beta7 及更早版本记录见下）。
 
 ### ✨ 新增功能
 
+- **sudo 提权**：浏览目录（目录不可读）、读取文件内容、新建文件/文件夹、重命名、删除（单文件/批量）、写入文件内容因权限不足（`EACCES`/`EPERM`）失败时，前端弹出提权对话框收集 ubuntu 用户名 + 密码，后端校验后限时缓存凭据并自动以 `sudo` 重试原操作
+  - 列目录提权基于 `sudo find -printf` 实现；仅个别条目不可访问（如受限符号链接）时以 `lstat` 信息降级展示，不再导致整页 500
+  - 读文件提权基于 `sudo dd` 按 4KB 块对齐读取后裁剪目标区间，避免整文件载入
+  - 凭据内存级限时缓存，有效期由 `config.yml` 的 `auth.elevationTtlMinutes` 控制（默认 5 分钟，可配 5/10 等，热加载生效）；过期 / 后端进程重启 / 前端登出即失效
+  - 总开关 `features.sudoElevation`（默认 `true`），关闭后不进入提权流程
+  - 新增接口 `POST /api/auth/elevate`、`POST /api/auth/elevate-clear`；权限不足错误统一为 `403` + `code: ELEVATION_REQUIRED`
+  - 提权创建/重命名的文件默认归还属主给应用启动用户（对话框「提权后归还属主」勾选项，默认勾选），避免文件变 root 属主后应用无法再读写
+  - 安全：sudo 以数组参数调用（不进 shell，路径加 `--` 防注入），密码仅存内存不落盘
 - **插件工具栏操作挂载点**：主应用新增批量操作注册表（`window.__fm_bulk_actions` + `useBulkActions`），
   前端插件可注册显示在文件浏览器批量操作栏的自定义操作按钮（可见性 + 点击回调，按 id 幂等覆盖），
   为“压缩”等由插件提供能力的场景提供平台扩展点
@@ -12,6 +22,18 @@
 - **插件页面导航挂载点**：主应用新增页面导航注册表（`window.__fm_nav_actions` + `useNavActions`），
   前端插件可注册顶栏图标按钮跳转插件页面路由（`{ id, label, path, icon }`，按 id 幂等覆盖），
   为“系统信息”等由插件提供页面的场景提供平台扩展点
+- **前端插件卸载/重载生命周期（teardown 契约）**：前端插件补齐"加载 → 卸载 → 重载"完整生命周期，
+  卸载/重载插件不再需要刷新页面——
+  - `install(ctx)` 返回值可扩展为 teardown 函数（撤销 install 期间的全局副作用：移除监听器、
+    注销注册表条目、移除样式、关闭自挂载对话框）；`FrontendPluginInstallFunction` 类型同步放宽
+  - 平台自动收集并清理两类资源：`ctx.router.addRoute` 注册的路由（卸载时逐个移除）、
+    `ctx.composables.useTheme().registerTheme` 注册的主题（卸载时逐个 `unregisterTheme`，
+    若为当前活动主题则回退默认并持久化）
+  - 清理顺序「路由 → 主题 → 插件 teardown」，任一步骤失败仅记日志不阻断；同一插件重复加载
+    自动先卸载旧实例（重载 = 先清理再 install）
+  - `useTheme` 新增 `unregisterTheme(name)`；`window.__fm_bulk_actions` / `window.__fm_nav_actions`
+    注册表新增 `unregister(id)`（插件 teardown 用于移除自己注册的按钮/入口）
+  - 插件管理页「卸载」「重载」按钮接入前端清理流程，成功提示不再要求刷新页面
 
 ### 🔧 变更
 
@@ -24,21 +46,12 @@
   `/system` 路由、前端 system API 与 demo mock、`systeminformation` 依赖），改由插件
   `@mqn00/file-manager-plugin-system-info` 提供（页面 `/plugin/system-info` + 顶栏导航入口 +
   `GET /api/plugin/system-info/info`，详见插件 README 与 API.md）
-
----
-
-## v3.0.0-beta8 (2026-08-21)
-
-### ✨ 新增功能
-
-- **sudo 提权**：浏览目录（目录不可读）、读取文件内容、新建文件/文件夹、重命名、删除（单文件/批量）、写入文件内容因权限不足（`EACCES`/`EPERM`）失败时，前端弹出提权对话框收集 ubuntu 用户名 + 密码，后端校验后限时缓存凭据并自动以 `sudo` 重试原操作
-  - 列目录提权基于 `sudo find -printf` 实现；仅个别条目不可访问（如受限符号链接）时以 `lstat` 信息降级展示，不再导致整页 500
-  - 读文件提权基于 `sudo dd` 按 4KB 块对齐读取后裁剪目标区间，避免整文件载入
-  - 凭据内存级限时缓存，有效期由 `config.yml` 的 `auth.elevationTtlMinutes` 控制（默认 5 分钟，可配 5/10 等，热加载生效）；过期 / 后端进程重启 / 前端登出即失效
-  - 总开关 `features.sudoElevation`（默认 `true`），关闭后不进入提权流程
-  - 新增接口 `POST /api/auth/elevate`、`POST /api/auth/elevate-clear`；权限不足错误统一为 `403` + `code: ELEVATION_REQUIRED`
-  - 提权创建/重命名的文件默认归还属主给应用启动用户（对话框「提权后归还属主」勾选项，默认勾选），避免文件变 root 属主后应用无法再读写
-  - 安全：sudo 以数组参数调用（不进 shell，路径加 `--` 防注入），密码仅存内存不落盘
+- 内置插件适配 teardown 契约：file-viewer 核心删除自造 `INSTALL_KEY` 全局清理标记改为返回 teardown；
+  7 个 file-* 查看器卸载时注销查看器模块并移除注入样式；compress 卸载时移除批量操作、关闭打开的
+  对话框并移除样式；system-info 卸载时移除顶栏入口；smb/hatsune-miku-theme 卸载时移除注入样式
+  （miku 同时断开 tooltip 背景观察器）
+- 主项目 `frontend/src/pluginLoader.ts` 重写为实例化加载器：`loadPluginFrontend`（幂等）、
+  `unloadPluginFrontend`、包装 ctx（Proxy 拦截 addRoute/registerTheme 做平台收集）
 
 ---
 

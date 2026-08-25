@@ -46,4 +46,20 @@ describe('pluginNav 注册表', () => {
     api.register({ id: 'y', label: 'Y', path: '/y' })
     expect(fn).toHaveBeenCalledTimes(1)
   })
+
+  it('unregister 按 id 移除导航项并通知订阅者（插件 teardown 用）', async () => {
+    const reg = await loadRegistry()
+    const api = reg.getNavActionsApi()
+    const fn = vi.fn()
+    api.subscribe(fn)
+    api.register({ id: 'system-info', label: '系统信息', path: '/plugin/system-info' })
+    fn.mockClear()
+
+    api.unregister('system-info')
+    expect(api.list()).toHaveLength(0)
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    // 不存在的 id：no-op，不抛错
+    expect(() => api.unregister('not-exists')).not.toThrow()
+  })
 })

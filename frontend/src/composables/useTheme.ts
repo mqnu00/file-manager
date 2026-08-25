@@ -61,6 +61,27 @@ function applyTheme(theme: ThemeDefinition) {
   persistTheme(theme.name)
 }
 
+/**
+ * 反注册主题（插件卸载时由平台调用）：
+ * 移除主题列表项与注入的 <style>；若被移除的是当前活动主题，
+ * 先移除其 class 再回退到默认主题（与 loadPreference 同规则：cyber 优先）并持久化，保证刷新一致。
+ */
+export function unregisterTheme(name: string): void {
+  let className = ''
+  const index = themes.value.findIndex((t) => t.name === name)
+  if (index >= 0) {
+    className = themes.value[index].className
+    themes.value.splice(index, 1)
+  }
+  document.getElementById(`theme-css-${name}`)?.remove()
+  if (activeTheme.value.name === name) {
+    // 被卸载主题已不在列表中，applyClass 的清 class 循环扫不到它，需手动移除
+    if (className) document.documentElement.classList.remove(className)
+    const fallback = themes.value.find((t) => t.name === THEME_VALUE_CYBER) ?? themes.value[0]
+    if (fallback) applyTheme(fallback)
+  }
+}
+
 /** 注册（或覆盖同名）主题，供插件通过 ctx 调用 */
 export function registerTheme(def: ThemeDefinition): void {
   const index = themes.value.findIndex((t) => t.name === def.name)
@@ -108,5 +129,6 @@ export function useTheme() {
     isCyber: computed(() => activeTheme.value.name === THEME_VALUE_CYBER),
     setTheme,
     registerTheme,
+    unregisterTheme,
   }
 }

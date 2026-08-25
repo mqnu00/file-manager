@@ -10,8 +10,8 @@ import type {
   FrontendPluginInstallFunction,
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
-import { injectStyles } from './style'
-import { openCompressDialog } from './dialog'
+import { injectStyles, removeStyles } from './style'
+import { openCompressDialog, closeCompressDialog } from './dialog'
 
 /** 与主应用 BulkActionContext 结构一致 */
 interface BulkActionContextLike {
@@ -29,6 +29,8 @@ interface BulkActionLike {
 
 interface BulkActionsApiLike {
   register(action: BulkActionLike): void
+  /** 主应用 v3.0.0-beta10+ 提供；旧版本缺失时降级（无操作） */
+  unregister?(id: string): void
 }
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
@@ -49,4 +51,11 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     visible: (p) => p.count > 0,
     run: (payload: BulkActionContextLike) => openCompressDialog(ctx, payload),
   })
+
+  // teardown 契约：卸载/重载时移除批量操作、关闭打开的对话框并移除注入样式
+  return () => {
+    api.unregister?.('compress')
+    closeCompressDialog()
+    removeStyles()
+  }
 }

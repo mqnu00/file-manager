@@ -9,7 +9,7 @@ import type {
   FrontendPluginInstallFunction,
 } from '@mqn00/file-manager/plugin/frontend'
 import { Monitor } from '@element-plus/icons-vue'
-import { injectStyles } from './style'
+import { injectStyles, removeStyles } from './style'
 import { createSystemInfoPage } from './page'
 
 interface NavActionLike {
@@ -21,6 +21,8 @@ interface NavActionLike {
 
 interface NavActionsApiLike {
   register(action: NavActionLike): void
+  /** 主应用 v3.0.0-beta10+ 提供；旧版本缺失时降级（无操作） */
+  unregister?(id: string): void
 }
 
 /** 与主应用挂载点同定义：注册导航项（重复注册按 id 覆盖） */
@@ -33,6 +35,16 @@ function registerNavAction(action: NavActionLike): void {
     return
   }
   api.register(action)
+}
+
+/** 与主应用挂载点同定义：按 id 移除导航项（插件 teardown 调用） */
+function unregisterNavAction(id: string): void {
+  const api = (window as unknown as Record<string, unknown>)['__fm_nav_actions'] as
+    | NavActionsApiLike
+    | undefined
+  if (api && typeof api.unregister === 'function') {
+    api.unregister(id)
+  }
 }
 
 export const install: FrontendPluginInstallFunction = (ctx: FrontendPluginContext) => {
@@ -50,4 +62,10 @@ export const install: FrontendPluginInstallFunction = (ctx: FrontendPluginContex
     path: '/plugin/system-info',
     icon: Monitor,
   })
+
+  // teardown 契约：卸载/重载时移除顶栏入口并移除注入样式（路由由平台统一清理）
+  return () => {
+    unregisterNavAction('system-info')
+    removeStyles()
+  }
 }

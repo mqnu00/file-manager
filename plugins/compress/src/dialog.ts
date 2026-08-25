@@ -50,6 +50,33 @@ interface CheckResult {
 
 const HOST_ID = 'fcp-dialog-host'
 
+/** 当前挂载中的对话框实例（单例，供插件 teardown 统一关闭） */
+interface ActiveDialog {
+  /** Vue App 实例（unmount 关闭对话框） */
+  app: { unmount: () => void }
+  host: HTMLElement
+}
+let activeDialog: ActiveDialog | null = null
+
+/**
+ * 关闭并卸载当前打开的压缩对话框（插件 teardown 调用）。
+ * 幂等：未打开时 no-op。
+ */
+export function closeCompressDialog(): void {
+  if (!activeDialog) return
+  try {
+    activeDialog.app.unmount()
+  } catch {
+    // 忽略卸载异常
+  }
+  try {
+    activeDialog.host.remove()
+  } catch {
+    // 忽略宿主移除异常
+  }
+  activeDialog = null
+}
+
 function parentOf(pathStr: string): string {
   const parts = pathStr.split('/').filter(Boolean)
   parts.pop()
@@ -89,8 +116,8 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
   const formatSize = ctx.utils.formatSize
   const api = ctx.api.instance
 
-  // 复用宿主节点，避免重复打开时叠加多个对话框
-  document.getElementById(HOST_ID)?.remove()
+  // 复用宿主节点，避免重复打开时叠加多个对话框（同时卸载旧实例）
+  closeCompressDialog()
   const host = document.createElement('div')
   host.id = HOST_ID
   document.body.appendChild(host)
@@ -422,4 +449,5 @@ export function openCompressDialog(ctx: FrontendPluginContext, payload: Compress
 
   const rootApp = createApp(CompressDialog)
   rootApp.mount(host)
+  activeDialog = { app: rootApp, host }
 }

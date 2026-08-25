@@ -25,6 +25,8 @@ export interface NavAction {
 
 export interface NavActionsApi {
   register(action: NavAction): void
+  /** 按 id 移除已注册导航项（插件 teardown 用）；不存在则为 no-op */
+  unregister(id: string): void
   list(): NavAction[]
   subscribe(fn: () => void): () => void
 }
@@ -41,6 +43,10 @@ function notify(): void {
 const api: NavActionsApi = {
   register(action) {
     actions.value = actions.value.filter((a) => a.id !== action.id).concat(action)
+    notify()
+  },
+  unregister(id) {
+    actions.value = actions.value.filter((a) => a.id !== id)
     notify()
   },
   list() {

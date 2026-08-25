@@ -201,7 +201,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     editable: false,
     component: createOfficeViewer(ctx),
   }
-  registry.register(module)
+  const unregister = registry.register(module)
 
   console.log('[file-office-viewer] 前端已加载：office 模块已注册')
+
+  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  return () => {
+    unregister()
+    document.getElementById('file-office-viewer-style')?.remove()
+  }
 }

@@ -254,6 +254,8 @@ export interface ThemeComposable {
   isCyber: Ref<boolean>
   setTheme(theme: string): void
   registerTheme(def: ThemeDefinition): void
+  /** 反注册主题（插件卸载时由平台调用）：移除列表项/样式；若为活动主题则回退默认 */
+  unregisterTheme(name: string): void
 }
 
 /** useContextMenu 返回类型 */
@@ -361,5 +363,18 @@ export interface FrontendPluginContext {
 
 // ==================== 便捷类型别名 ====================
 
-/** 前端插件 install 函数签名 */
-export type FrontendPluginInstallFunction = PluginInstallFunction<FrontendPluginContext>
+/**
+ * 前端插件 teardown 契约：撤销 install 期间产生的全局副作用
+ * （移除监听器/注销注册表条目/移除注入样式等）。
+ * 平台卸载/重载插件时会调用；路由与主题由平台自动清理，无需插件处理。
+ */
+export type PluginTeardown = () => void | Promise<void>
+
+/**
+ * 前端插件 install 函数签名。
+ * 返回值可扩展为 teardown 函数（可选）：返回 teardown = 插件声明
+ * "install 期间的全局副作用由我撤销"；不返回 = 无全局副作用（路由由平台代管）。
+ */
+export type FrontendPluginInstallFunction = (
+  ctx: FrontendPluginContext
+) => void | Promise<void> | PluginTeardown | Promise<PluginTeardown>

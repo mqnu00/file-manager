@@ -54018,8 +54018,12 @@ var install = (ctx) => {
     editable: false,
     component: createMarkdownViewer(ctx)
   };
-  registry.register(module);
+  const unregister = registry.register(module);
   console.log("[file-markdown-viewer] \u524D\u7AEF\u5DF2\u52A0\u8F7D\uFF1Amarkdown \u6A21\u5757\u5DF2\u6CE8\u518C");
+  return () => {
+    unregister();
+    document.getElementById("file-markdown-viewer-style")?.remove();
+  };
 };
 export {
   install

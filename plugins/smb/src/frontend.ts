@@ -372,4 +372,9 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     meta: { requiresAuth: true },
   })
   console.log('[SMB Plugin] Frontend loaded — page registered at /plugin/smb')
+
+  // teardown 契约：卸载/重载时移除注入样式（路由由平台统一清理）
+  return () => {
+    document.getElementById(INJECTED_STYLE_ID)?.remove()
+  }
 }

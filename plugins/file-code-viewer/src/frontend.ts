@@ -256,7 +256,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     editable: true,
     component: createCodeViewer(ctx),
   }
-  registry.register(module)
+  const unregister = registry.register(module)
 
   console.log('[file-code-viewer] 前端已加载：代码模块已注册')
+
+  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  return () => {
+    unregister()
+    document.getElementById('file-code-viewer-style')?.remove()
+  }
 }

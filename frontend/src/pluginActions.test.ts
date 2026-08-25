@@ -52,4 +52,22 @@ describe('pluginActions 注册表', () => {
     api.register({ id: 'y', label: 'Y', visible: () => true, run: () => {} })
     expect(fn).toHaveBeenCalledTimes(1)
   })
+
+  it('unregister 按 id 移除操作并通知订阅者（插件 teardown 用）', async () => {
+    const reg = await loadRegistry()
+    const api = reg.getBulkActionsApi()
+    const fn = vi.fn()
+    api.subscribe(fn)
+    api.register({ id: 'compress', label: '压缩', visible: () => true, run: () => {} })
+    api.register({ id: 'other', label: '其他', visible: () => true, run: () => {} })
+    fn.mockClear()
+
+    api.unregister('compress')
+    expect(api.list().map((a) => a.id)).toEqual(['other'])
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    // 不存在的 id：no-op，不抛错
+    expect(() => api.unregister('not-exists')).not.toThrow()
+    expect(api.list().map((a) => a.id)).toEqual(['other'])
+  })
 })

@@ -6,6 +6,7 @@
  *    取当前文件，按扩展名解析默认查看模式后 SPA 导航到查看页。
  * 2. 初始化 globalThis 查看器注册表（子插件在此 register 自己的查看模块）。
  * 3. 注册查看页路由 /plugin/file-viewer（requiresAuth）。
+ * 4. 返回 teardown（平台卸载/重载时调用）：移除 DOM 监听与注册表变更订阅。
  *
  * 注意：与主应用 DOM 结构耦合（.file-name-text / .is-folder 类名），
  * 主应用重构文件列表时需同步更新（见 README）。
@@ -21,9 +22,6 @@ import { loadModeOverride } from './overrides'
 import { createViewerPage } from './page'
 import { createConfigPage } from './config-page'
 import { getMappings } from './config-api'
-
-/** 全局安装标记：热重载时先移除旧劫持监听，避免重复触发 */
-const INSTALL_KEY = '__fm_file_viewer_installed__'
 
 function extOf(name: string): string {
   const dot = name.lastIndexOf('.')
@@ -120,11 +118,8 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     meta: { requiresAuth: true },
   })
 
-  // 热重载/重复安装：先移除旧监听
-  const prevTeardown = (globalThis as Record<string, unknown>)[INSTALL_KEY] as
-    | (() => void)
-    | undefined
-  prevTeardown?.()
+  // 重复安装/热重载的旧实例清理由平台生命周期契约负责：
+  // 平台在重载前会先调用本插件上一次 install 返回的 teardown，无需自造全局标记。
 
   const handler = (e: MouseEvent) => {
     const target = e.target
@@ -175,15 +170,12 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const onPopState = () => setTimeout(() => updateFileStyles(registry), 0)
   window.addEventListener('popstate', onPopState)
 
-  const teardown = () => {
+  // teardown 契约：卸载/重载时由平台调用，撤销本插件全部全局副作用
+  // （路由由平台统一移除；此处清理 DOM 监听与注册表变更订阅）
+  return () => {
     document.removeEventListener('click', handler, true)
     window.removeEventListener('popstate', onPopState)
     offChange()
     observer.disconnect()
   }
-  ;(globalThis as Record<string, unknown>)[INSTALL_KEY] = teardown
-
-  console.log(
-    '[file-viewer] 核心前端已加载：单击劫持已启用，查看页 /plugin/file-viewer/view 与配置页 /plugin/file-viewer 已注册'
-  )
 }

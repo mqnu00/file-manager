@@ -209,7 +209,7 @@ import {
   type PluginInfo,
   type NpmSearchResult,
 } from '@/api/plugins'
-import { loadPluginFrontend } from '@/pluginLoader'
+import { loadPluginFrontend, unloadPluginFrontend } from '@/pluginLoader'
 import PluginVersionSelect from '@/components/PluginVersionSelect.vue'
 
 const router = useRouter()
@@ -263,12 +263,14 @@ async function handleLoad(plugin: PluginInfo) {
 async function confirmUnload(plugin: PluginInfo) {
   try {
     await ElMessageBox.confirm(
-      `确定要卸载插件 "${plugin.name}" 吗？卸载后建议刷新页面以清理前端状态。`,
+      `确定要卸载插件 "${plugin.name}" 吗？其前端模块（路由/监听/注册项）将一并清理，无需刷新页面。`,
       '确认卸载',
       { confirmButtonText: '卸载', cancelButtonText: '取消', type: 'warning' }
     )
+    // 先清理前端实例（平台收集的路由/主题 + 插件 teardown），再卸载后端
+    await unloadPluginFrontend(plugin.name)
     await unloadPlugin(plugin.name)
-    ElMessage.success(`插件 "${plugin.name}" 已卸载，请刷新页面清理前端状态`)
+    ElMessage.success(`插件 "${plugin.name}" 已卸载`)
     await refreshList()
   } catch {
     // 用户取消
@@ -282,6 +284,8 @@ async function reloadPlugin(plugin: PluginInfo) {
       '确认重载',
       { confirmButtonText: '重载', cancelButtonText: '取消', type: 'info' }
     )
+    // 前端先行卸载（清理旧实例副作用），后端重载后重新安装前端
+    await unloadPluginFrontend(plugin.name)
     await unloadPlugin(plugin.name)
     const reloaded = await loadPlugin(plugin.name)
     ElMessage.success(`插件 "${plugin.name}" 已重载`)

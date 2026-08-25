@@ -113,7 +113,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     editable: false,
     component: createAudioViewer(ctx),
   }
-  registry.register(module)
+  const unregister = registry.register(module)
 
   console.log('[file-music-viewer] 前端已加载：音乐模块已注册')
+
+  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  return () => {
+    unregister()
+    document.getElementById('file-music-viewer-style')?.remove()
+  }
 }

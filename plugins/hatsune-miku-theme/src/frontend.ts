@@ -56,7 +56,7 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
   })
 
   injectPageStyles()
-  setupTooltipFixedBackground()
+  const teardownTooltip = setupTooltipFixedBackground()
 
   /** 背景列表（内置 + 自定义），失败时保持内置兜底 */
   const backgrounds = ref<BackgroundInfo[]>(builtinFallback())
@@ -89,4 +89,12 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
   console.log(
     '[Hatsune Miku Theme] Frontend loaded — theme "hatsune-miku" registered, page at /plugin/hatsune-miku-theme'
   )
+
+  // teardown 契约：卸载/重载时移除页面样式并断开背景观察器。
+  // 主题本身（列表项 + CSS）由平台经 ctx.composables.useTheme().registerTheme
+  // 收集后统一反注册；背景图/面板设置属用户偏好，保留在 localStorage 中。
+  return () => {
+    document.getElementById(PAGE_STYLE_ID)?.remove()
+    teardownTooltip()
+  }
 }

@@ -373,7 +373,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     editable: true,
     component: createHexViewer(ctx),
   }
-  registry.register(module)
+  const unregister = registry.register(module)
 
   console.log('[file-binary-viewer] 前端已加载：hex 兜底模块已注册')
+
+  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  return () => {
+    unregister()
+    document.getElementById('file-binary-viewer-style')?.remove()
+  }
 }

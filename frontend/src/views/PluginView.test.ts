@@ -18,6 +18,7 @@ vi.mock('@/api/plugins', () => ({
 
 vi.mock('@/pluginLoader', () => ({
   loadPluginFrontend: vi.fn(),
+  unloadPluginFrontend: vi.fn(),
 }))
 
 vi.mock('element-plus', async (importOriginal) => {
@@ -31,7 +32,7 @@ vi.mock('element-plus', async (importOriginal) => {
 
 import PluginView from './PluginView.vue'
 import { getPlugins, loadPlugin, unloadPlugin, searchPlugins, deletePlugin } from '@/api/plugins'
-import { loadPluginFrontend } from '@/pluginLoader'
+import { loadPluginFrontend, unloadPluginFrontend } from '@/pluginLoader'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const mockedGetPlugins = vi.mocked(getPlugins)
@@ -40,6 +41,7 @@ const mockedUnloadPlugin = vi.mocked(unloadPlugin)
 const mockedSearchPlugins = vi.mocked(searchPlugins)
 const mockedDeletePlugin = vi.mocked(deletePlugin)
 const mockedLoadFrontend = vi.mocked(loadPluginFrontend)
+const mockedUnloadFrontend = vi.mocked(unloadPluginFrontend)
 const mockedConfirm = vi.mocked(ElMessageBox.confirm)
 
 const installedPlugins: PluginInfo[] = [
@@ -111,22 +113,38 @@ describe('PluginView.vue', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('加载失败: 入口缺失')
   })
 
-  it('卸载：确认后调用 unloadPlugin 并刷新列表', async () => {
+  it('卸载：前端先行清理（unloadPluginFrontend）再卸载后端并刷新列表', async () => {
     const wrapper = await mountView()
     mockedGetPlugins.mockClear()
     await rowButton(wrapper, 'smb', '卸载').trigger('click')
     await flushPromises()
     expect(mockedConfirm).toHaveBeenCalled()
+    // teardown 契约：前端实例先清理（路由/主题/teardown），后端随后卸载
+    expect(mockedUnloadFrontend).toHaveBeenCalledWith('smb')
     expect(mockedUnloadPlugin).toHaveBeenCalledWith('smb')
     expect(mockedGetPlugins).toHaveBeenCalled()
   })
 
-  it('卸载：取消后不调用 unloadPlugin', async () => {
+  it('卸载：取消后不调用 unloadPlugin 与 unloadPluginFrontend', async () => {
     mockedConfirm.mockRejectedValue(new Error('cancel'))
     const wrapper = await mountView()
     await rowButton(wrapper, 'smb', '卸载').trigger('click')
     await flushPromises()
     expect(mockedUnloadPlugin).not.toHaveBeenCalled()
+    expect(mockedUnloadFrontend).not.toHaveBeenCalled()
+  })
+
+  it('重载：前端先清理 → 后端卸载+加载 → 重新加载前端', async () => {
+    const reloaded: PluginInfo = { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/smb/frontend/index.js', frontendPage: '/plugin/smb', version: '1.2.0' }
+    mockedLoadPlugin.mockResolvedValue(reloaded)
+    const wrapper = await mountView()
+    await rowButton(wrapper, 'smb', '重载').trigger('click')
+    await flushPromises()
+    // 顺序：前端卸载 → 后端卸载 → 后端加载 → 前端加载
+    expect(mockedUnloadFrontend).toHaveBeenCalledWith('smb')
+    expect(mockedUnloadPlugin).toHaveBeenCalledWith('smb')
+    expect(mockedLoadPlugin).toHaveBeenCalledWith('smb')
+    expect(mockedLoadFrontend).toHaveBeenCalledWith(reloaded)
   })
 
   it('删除：npm 插件确认后调用 deletePlugin', async () => {

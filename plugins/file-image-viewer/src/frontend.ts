@@ -14,7 +14,7 @@ import type {
 } from '@mqn00/file-manager/plugin/frontend'
 import { getRegistry, type FileViewerModule } from './registry'
 import { injectStyles } from './styles'
-import { IMAGE_EXTENSIONS } from './constants'
+import { IMAGE_EXTENSIONS, STYLE_ID } from './constants'
 import type { ViewerVM } from './types'
 import { renderViewer } from './render/view'
 import { useSource } from './composables/useSource'
@@ -127,7 +127,13 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     editable: false,
     component: createImageViewer(ctx),
   }
-  registry.register(module)
+  const unregister = registry.register(module)
 
   console.log('[file-image-viewer] 前端已加载：图片模块已注册')
+
+  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  return () => {
+    unregister()
+    document.getElementById(STYLE_ID)?.remove()
+  }
 }

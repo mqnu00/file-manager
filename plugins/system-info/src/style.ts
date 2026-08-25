@@ -121,3 +121,8 @@ export function injectStyles(): void {
   style.textContent = CSS
   document.head.appendChild(style)
 }
+
+/** 移除注入样式（插件 teardown 调用） */
+export function removeStyles(): void {
+  document.getElementById(STYLE_ID)?.remove()
+}
