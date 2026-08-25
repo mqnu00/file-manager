@@ -1,8 +1,14 @@
 <template>
   <div class="plugins-container">
-    <div class="plugins-card">
+    <div
+      class="plugins-card"
+      v-loading="busyAction !== null"
+      :element-loading-text="
+        busyAction ? `正在${busyAction.verb}插件「${busyAction.name}」，请勿进行其他操作…` : ''
+      "
+    >
       <div style="padding-top: 10px; padding-left: 10px">
-        <el-button text class="back-btn" @click="router.push('/')">
+        <el-button text class="back-btn" :disabled="busyAction !== null" @click="router.push('/')">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
@@ -56,15 +62,31 @@
               <el-table-column label="操作" width="280" align="center">
                 <template #default="{ row }">
                   <template v-if="row.enabled">
-                    <el-button size="small" @click="reloadPlugin(row)">重载</el-button>
-                    <el-button size="small" type="danger" @click="confirmUnload(row)">卸载</el-button>
+                    <el-button
+                      size="small"
+                      :disabled="busyAction !== null"
+                      @click="reloadPlugin(row)"
+                    >重载</el-button>
+                    <el-button
+                      size="small"
+                      type="danger"
+                      :disabled="busyAction !== null"
+                      @click="confirmUnload(row)"
+                    >卸载</el-button>
                   </template>
-                  <el-button v-else size="small" type="primary" @click="handleLoad(row)">加载</el-button>
+                  <el-button
+                    v-else
+                    size="small"
+                    type="primary"
+                    :disabled="busyAction !== null"
+                    @click="handleLoad(row)"
+                  >加载</el-button>
                   <el-button
                     v-if="!row.local"
                     size="small"
                     type="danger"
                     plain
+                    :disabled="busyAction !== null"
                     @click="confirmDelete(row)"
                   >
                     删除
@@ -242,6 +264,22 @@ async function refreshList() {
 
 // ---- 已安装操作 ----
 
+/**
+ * 卸载/重载异步操作标记：非 null 表示插件管理操作进行中。
+ * 期间整卡加载遮罩 + 操作按钮禁用，阻止用户的其他操作；结束（含异常）后复位。
+ */
+const busyAction = ref<{ name: string; verb: string } | null>(null)
+
+/** 在「进行中 → 完成/失败」时间段内执行 fn：置忙 → await → 复位 */
+async function runWithBusy<T>(name: string, verb: string, fn: () => Promise<T>): Promise<T> {
+  busyAction.value = { name, verb }
+  try {
+    return await fn()
+  } finally {
+    busyAction.value = null
+  }
+}
+
 async function handleLoad(plugin: PluginInfo) {
   try {
     const result = await loadPlugin(plugin.name)
@@ -261,15 +299,19 @@ async function handleLoad(plugin: PluginInfo) {
 }
 
 async function confirmUnload(plugin: PluginInfo) {
+  if (busyAction.value) return
   try {
     await ElMessageBox.confirm(
       `确定要卸载插件 "${plugin.name}" 吗？其前端模块（路由/监听/注册项）将一并清理，无需刷新页面。`,
       '确认卸载',
       { confirmButtonText: '卸载', cancelButtonText: '取消', type: 'warning' }
     )
-    // 先清理前端实例（平台收集的路由/主题 + 插件 teardown），再卸载后端
-    await unloadPluginFrontend(plugin.name)
-    await unloadPlugin(plugin.name)
+    // 整个卸载流程（前端清理 + 后端卸载）期间阻止页面其他操作
+    await runWithBusy(plugin.name, '卸载', async () => {
+      // 先清理前端实例（平台收集的路由/主题 + 插件 teardown），再卸载后端
+      await unloadPluginFrontend(plugin.name)
+      await unloadPlugin(plugin.name)
+    })
     ElMessage.success(`插件 "${plugin.name}" 已卸载`)
     await refreshList()
   } catch {
@@ -278,26 +320,29 @@ async function confirmUnload(plugin: PluginInfo) {
 }
 
 async function reloadPlugin(plugin: PluginInfo) {
+  if (busyAction.value) return
   try {
     await ElMessageBox.confirm(
       `确定要重载插件 "${plugin.name}" 吗？`,
       '确认重载',
       { confirmButtonText: '重载', cancelButtonText: '取消', type: 'info' }
     )
-    // 前端先行卸载（清理旧实例副作用），后端重载后重新安装前端
-    await unloadPluginFrontend(plugin.name)
-    await unloadPlugin(plugin.name)
-    const reloaded = await loadPlugin(plugin.name)
+    // 整个重载流程（前端清理 → 后端卸载/加载 → 前端重装）期间阻止页面其他操作
+    await runWithBusy(plugin.name, '重载', async () => {
+      // 前端先行卸载（清理旧实例副作用），后端重载后重新安装前端
+      await unloadPluginFrontend(plugin.name)
+      await unloadPlugin(plugin.name)
+      const reloaded = await loadPlugin(plugin.name)
+      if (reloaded.frontendPath) {
+        try {
+          await loadPluginFrontend(reloaded)
+        } catch {
+          // loadPluginFrontend 内部已处理日志
+        }
+      }
+    })
     ElMessage.success(`插件 "${plugin.name}" 已重载`)
     await refreshList()
-
-    if (reloaded.frontendPath) {
-      try {
-        await loadPluginFrontend(reloaded)
-      } catch {
-        // loadPluginFrontend 内部已处理日志
-      }
-    }
   } catch {
     // 用户取消
   }

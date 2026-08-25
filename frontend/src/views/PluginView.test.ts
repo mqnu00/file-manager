@@ -147,6 +147,55 @@ describe('PluginView.vue', () => {
     expect(mockedLoadFrontend).toHaveBeenCalledWith(reloaded)
   })
 
+  it('卸载进行中：整卡遮罩 + 操作按钮禁用；完成后恢复', async () => {
+    let resolveUnload!: () => void
+    mockedUnloadPlugin.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveUnload = resolve
+      })
+    )
+    const wrapper = await mountView()
+    await rowButton(wrapper, 'smb', '卸载').trigger('click')
+    await flushPromises()
+
+    // 后端卸载挂起中 → 忙状态：遮罩出现、其他操作按钮禁用
+    expect(wrapper.find('.el-loading-mask').exists()).toBe(true)
+    expect(wrapper.find('.el-loading-text').text()).toContain('正在卸载插件')
+    const loadBtn = rowButton(wrapper, 'test', '加载')
+    expect(loadBtn.attributes('disabled')).toBeDefined()
+
+    // 卸载完成 → 忙状态解除（按钮恢复可用；遮罩自身带 300ms 淡出过渡，不在此断言）
+    resolveUnload()
+    await flushPromises()
+    expect(rowButton(wrapper, 'test', '加载').attributes('disabled')).toBeUndefined()
+    expect(ElMessage.success).toHaveBeenCalledWith('插件 "smb" 已卸载')
+  })
+
+  it('重载进行中：前端重装（loadPluginFrontend）完成前遮罩保持', async () => {
+    let resolveFrontend!: () => void
+    const reloaded: PluginInfo = { name: 'smb', enabled: true, local: true, source: 'local', frontendPath: '/plugins-assets/smb/frontend/index.js', frontendPage: '/plugin/smb', version: '1.2.0' }
+    mockedLoadPlugin.mockResolvedValue(reloaded)
+    mockedLoadFrontend.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveFrontend = resolve
+      })
+    )
+    const wrapper = await mountView()
+    await rowButton(wrapper, 'smb', '重载').trigger('click')
+    await flushPromises()
+
+    // 后端已重载、前端重装挂起 → 仍处于忙状态
+    expect(mockedLoadFrontend).toHaveBeenCalled()
+    expect(wrapper.find('.el-loading-mask').exists()).toBe(true)
+    expect(wrapper.find('.el-loading-text').text()).toContain('正在重载插件')
+
+    // 前端重装完成 → 忙状态解除（按钮恢复可用；遮罩自身带淡出过渡，不在此断言）
+    resolveFrontend()
+    await flushPromises()
+    expect(rowButton(wrapper, 'smb', '卸载').attributes('disabled')).toBeUndefined()
+    expect(ElMessage.success).toHaveBeenCalledWith('插件 "smb" 已重载')
+  })
+
   it('删除：npm 插件确认后调用 deletePlugin', async () => {
     mockedDeletePlugin.mockResolvedValue(undefined)
     const wrapper = await mountView()
