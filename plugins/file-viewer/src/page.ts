@@ -140,9 +140,8 @@ export function createViewerPage(ctx: FrontendPluginContext): unknown {
                 text: true,
                 size: 'small',
                 onClick: () => {
-                  // SPA 导航到配置主页（与 frontend.ts 的 spaNavigate 一致）
-                  history.pushState(history.state ?? null, '', '/plugin/file-viewer')
-                  window.dispatchEvent(new PopStateEvent('popstate'))
+                  // SPA 导航到配置主页（平台导航 API，适配 history/hash 双模式）
+                  void ctx.router.push('/plugin/file-viewer')
                 },
               },
               () => '查看器设置'

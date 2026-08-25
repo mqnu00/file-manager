@@ -182,20 +182,53 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 | `ctx.stores` | Pinia stores：`auth` / `file` / `task` |
 | `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `config` / `task` API 模块 |
 | `ctx.composables` | `useTheme` / `useContextMenu` / `useFileProgress` / `useFileSort` |
+| `ctx.platform` | 平台扩展注册表：`fileOpen`（文件打开钩子，见「文件打开契约」） |
 | `ctx.utils` | `formatSize` / `formatTime` / `formatSpeed` / `formatProgress` |
 | `ctx.constants` | 存储键、主题常量、`API_BASE_URL` |
-| `ctx.router` | `createRouter` / `createWebHistory` / `createWebHashHistory` / `addRoute` / `currentRoute` |
+| `ctx.router` | `createRouter` / `createWebHistory` / `createWebHashHistory` / `addRoute` / `push` / `replace` / `currentRoute` |
+
+### 文件打开契约（fileOpen）
+
+查看器类插件通过 `ctx.platform.fileOpen` 注册"能打开哪些文件"的 handler，主应用在渲染文件列表与单击文件名时统一分发，**插件不再劫持 document 点击事件、不再扫描主应用 DOM**：
+
+```ts
+import type { FileOpenHandler } from '@mqn00/file-manager/plugin/frontend'
+
+const handler: FileOpenHandler = {
+  id: 'my-viewer',              // 唯一；重复注册按 id 覆盖
+  canOpen(file) {               // 渲染期逐行调用：是否可打开（按扩展名/名称，必须轻量同步）
+    return !file.isDirectory && file.name.endsWith('.md')
+  },
+  open(file) {                  // 主应用单击该文件时调用（首个 canOpen 命中的 handler）
+    void ctx.router.push({ path: '/plugin/my-viewer', query: { path: file.path } })
+  },
+}
+const unregister = ctx.platform.fileOpen.register(handler)
+// teardown 契约：卸载/重载时注销（平台也会收集兜底清理）
+return () => { unregister() }
+```
+
+- 多个 handler 按**注册序**分发：首个 `canOpen` 命中者消费；全部未命中则维持主应用默认行为（当前为无操作）
+- 主应用渲染时对可打开文件打 `is-openable` class（**平台语义 class**，样式由插件自行注入，如 file-viewer 的悬浮高亮）；注册表变化（插件加载/卸载）时自动重算，插件无需 MutationObserver 扫描
+- 平台侧实现（`frontend/src/platform/fileOpen.ts`）与类型声明（`@mqn00/file-manager/plugin/frontend`）保持同步
+
+### SPA 导航（router.push / replace）
+
+- `ctx.router.push(to)` / `ctx.router.replace(to)`：编程式导航，vue-router 原生处理 history / hash（demo）双模式；**禁止**再使用 `history.pushState + PopStateEvent` hack（历史栈语义与 hash 模式均不正确）
+- 查看器"上一张/下一张"等原地切换场景用 `replace`，避免历史栈膨胀使"返回"失效
+- 页面路由注册仍用 `ctx.router.addRoute`
 
 ### 平台挂载点（window 注册表）
 
-主应用提供两个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖，`unregister(id)` 供插件 teardown 移除）：
+主应用提供多个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖，`unregister(id)` 供插件 teardown 移除）：
 
 | 挂载点 | 用途 | 注册项 |
 |---|---|---|
 | `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `{ id, label, visible(count, hasFolder), run(selected, infos, currentPath) }` |
 | `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
+| `window.__fm_file_open` | 文件打开钩子（查看器类插件） | `{ id, canOpen(file), open(file) }`（见「文件打开契约」） |
 
-> **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0-beta10+）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。
+> **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0-beta10+）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
 
 ### 主题注册（registerTheme）
 

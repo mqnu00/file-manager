@@ -1,21 +1,19 @@
 /**
  * file-viewer 核心前端
  *
- * 1. 劫持主应用文件列表的单击（捕获阶段监听 document click，
- *    匹配文件名元素 .file-name-text 且非文件夹），从 ctx.stores.file
- *    取当前文件，按扩展名解析默认查看模式后 SPA 导航到查看页。
+ * 1. 向主应用文件打开注册表（ctx.platform.fileOpen）注册 handler：
+ *    声明"哪些文件可打开"，主应用渲染时据此打 is-openable 标记、单击时
+ *    分发调用 open() —— 不再劫持 document 点击事件、不再扫描 DOM 加样式。
  * 2. 初始化 globalThis 查看器注册表（子插件在此 register 自己的查看模块）。
  * 3. 注册查看页路由 /plugin/file-viewer（requiresAuth）。
- * 4. 返回 teardown（平台卸载/重载时调用）：移除 DOM 监听与注册表变更订阅。
- *
- * 注意：与主应用 DOM 结构耦合（.file-name-text / .is-folder 类名），
- * 主应用重构文件列表时需同步更新（见 README）。
+ * 4. 返回 teardown（平台卸载/重载时调用）：注销文件打开 handler。
  */
 
 import type {
   FrontendPluginContext,
   FrontendPluginInstallFunction,
   FileItem,
+  FileOpenHandler,
 } from '@mqn00/file-manager/plugin/frontend'
 import { initRegistry, getRegistry, type FileViewerRegistry } from './registry'
 import { loadModeOverride } from './overrides'
@@ -26,16 +24,6 @@ import { getMappings } from './config-api'
 function extOf(name: string): string {
   const dot = name.lastIndexOf('.')
   return dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
-}
-
-/**
- * SPA 导航：主应用 ctx 未暴露 router.push，利用 vue-router 的 popstate 监听
- * （pushState 后派发合成 PopStateEvent → vue-router 解析新 URL 并导航，
- * 路由守卫照常生效，不整页刷新）。
- */
-function spaNavigate(url: string): void {
-  history.pushState(history.state ?? null, '', url)
-  window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
 function injectStyles(): void {
@@ -54,44 +42,35 @@ function injectStyles(): void {
 .fv-content { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .fv-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .fv-loading { color: var(--app-text-dim); padding: 48px; text-align: center; }
-.file-name-text:not(.is-folder) { cursor: pointer !important; transition: all 0.2s; }
-.file-name-text.has-viewer { color: var(--app-accent); text-shadow: var(--app-text-glow); }
-.file-name-text.has-viewer:hover { color: var(--app-accent); text-shadow: var(--app-text-glow-hover); text-decoration: underline; }
+/* is-openable 由主应用按文件打开注册表渲染期打标（平台语义 class，样式归插件） */
+.file-name-text.is-openable { cursor: pointer !important; transition: all 0.2s; color: var(--app-accent); text-shadow: var(--app-text-glow); }
+.file-name-text.is-openable:hover { color: var(--app-accent); text-shadow: var(--app-text-glow-hover); text-decoration: underline; }
 
 `
   document.head.appendChild(style)
 }
 
-/**
- * 扫描文件列表 DOM，为有已注册查看器的文件添加 .has-viewer class，
- * 移除不再匹配的（如子插件卸载后）。
- */
-function updateFileStyles(registry: FileViewerRegistry): void {
-  const exts = registry.registeredExtensions()
-  const elements = document.querySelectorAll('.file-name-text:not(.is-folder)')
-  for (const el of elements) {
-    const name = el.textContent?.trim() ?? ''
-    const dot = name.lastIndexOf('.')
-    const ext = dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
-    if (ext && exts.has(ext)) {
-      el.classList.add('has-viewer')
-    } else {
-      el.classList.remove('has-viewer')
-    }
-  }
+/** 打开判定：用户覆盖（localStorage）命中已注册模块，或注册表对该扩展名有默认查看方式 */
+function canOpenFile(registry: FileViewerRegistry | null, file: FileItem): boolean {
+  if (file.isDirectory || file.broken) return false
+  const ext = extOf(file.name)
+  if (!ext) return false
+  const override = loadModeOverride(ext)
+  if (override && registry?.get(override)) return true
+  return registry?.getDefault(ext) != null
 }
 
+/** 打开文件：计算查看模式（用户覆盖 > config.yml 映射 > 注册表默认）后 SPA 导航到查看页 */
 function openFile(ctx: FrontendPluginContext, file: FileItem): void {
-  const reg = getRegistry()
+  const registry = getRegistry()
   const ext = extOf(file.name)
-  // 优先级：用户覆盖（localStorage） > config.yml 映射 > 注册表默认
   const override = loadModeOverride(ext)
-  const def = reg?.getDefault(ext)?.id ?? null
-  const mode = override && reg?.get(override) ? override : def
-  const url = `/plugin/file-viewer/view?path=${encodeURIComponent(file.path)}${
-    mode ? `&mode=${encodeURIComponent(mode)}` : ''
-  }`
-  spaNavigate(url)
+  const def = registry?.getDefault(ext)?.id ?? null
+  const mode = override && registry?.get(override) ? override : def
+  void ctx.router.push({
+    path: '/plugin/file-viewer/view',
+    query: mode ? { path: file.path, mode } : { path: file.path },
+  })
 }
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
@@ -111,71 +90,23 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
     component: createConfigPage(ctx) as never,
     meta: { requiresAuth: true },
   })
-  // 查看页：单击文件打开
+  // 查看页：由文件打开注册表分发进入
   ctx.router.addRoute({
     path: '/plugin/file-viewer/view',
     component: createViewerPage(ctx) as never,
     meta: { requiresAuth: true },
   })
 
-  // 重复安装/热重载的旧实例清理由平台生命周期契约负责：
-  // 平台在重载前会先调用本插件上一次 install 返回的 teardown，无需自造全局标记。
-
-  const handler = (e: MouseEvent) => {
-    const target = e.target
-    if (!(target instanceof Element)) return
-    const nameEl = target.closest('.file-name-text')
-    // 文件夹/符号链接/其他区域不劫持，保留主应用行为
-    if (!nameEl || nameEl.classList.contains('is-folder')) return
-    const fileName = nameEl.textContent?.trim() ?? ''
-    if (!fileName) return
-    const file = ctx.stores.file.files.find(
-      (f) => !f.isDirectory && !f.broken && f.name === fileName
-    )
-    if (!file) return
-    e.preventDefault()
-    e.stopPropagation()
-    openFile(ctx, file)
+  // 文件打开 handler：主应用单击文件名时按 canOpen 分发到 open()
+  const handler: FileOpenHandler = {
+    id: 'file-viewer',
+    canOpen: (file) => canOpenFile(registry, file),
+    open: (file) => openFile(ctx, file),
   }
+  const unregisterOpen = ctx.platform.fileOpen.register(handler)
 
-  document.addEventListener('click', handler, true)
-
-  // --- 文件列表样式增强：有查看器的文件显示可点击样式 ---
-  // 初始扫描 + 注册表变更时重新扫描
-  updateFileStyles(registry)
-  const offChange = registry.onChange(() => updateFileStyles(registry))
-
-  // MutationObserver 监听文件列表 DOM 变化（Vue 渲染/分页切换等）。
-  // 关键：HomeView 在 SPA 路由切换（打开/返回查看页）时会整体卸载并重建，
-  // el-table 根节点会被替换。若只监听某个具体的 table 节点，重建后的新
-  // table 不在监听范围内，导致后续在页内刷新文件列表（如点击 breadcrumb
-  // 根目录）时，新渲染的行丢失 has-viewer 样式、悬浮下划线消失。
-  // 因此改为监听 document.body 子树，用 rAF 合并多次回调，保证任何文件列表
-  // 的重建/重渲染都被扫描到；只监听 childList（不监听 attributes），避免
-  // 自身设置 class 触发的属性变更回调形成循环。
-  let scanScheduled = false
-  const scheduleScan = () => {
-    if (scanScheduled) return
-    scanScheduled = true
-    requestAnimationFrame(() => {
-      scanScheduled = false
-      updateFileStyles(registry)
-    })
-  }
-  const observer = new MutationObserver(() => scheduleScan())
-  observer.observe(document.body, { childList: true, subtree: true })
-
-  // SPA 导航返回时文件列表会重新渲染，延时重新扫描兜底（body 子树监听已能覆盖，
-  // 这里保留以确保切换瞬间不被遗漏）。
-  const onPopState = () => setTimeout(() => updateFileStyles(registry), 0)
-  window.addEventListener('popstate', onPopState)
-
-  // teardown 契约：卸载/重载时由平台调用，撤销本插件全部全局副作用
-  // （路由由平台统一移除；此处清理 DOM 监听与注册表变更订阅）
+  // 卸载/重载清理：注销文件打开 handler（路由与主题由平台自动清理）
   return () => {
-    document.removeEventListener('click', handler, true)
-    window.removeEventListener('popstate', onPopState)
-    offChange()
-    observer.disconnect()
+    unregisterOpen()
   }
 }

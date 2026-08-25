@@ -18,8 +18,11 @@
               <Document v-else />
             </el-icon>
             <span
-              :class="['file-name-text', { 'is-folder': row.isDirectory && !row.broken }]"
-              @click="row.isDirectory && !row.broken && $emit('open', row.path)"
+              :class="[
+                'file-name-text',
+                { 'is-folder': row.isDirectory && !row.broken, 'is-openable': isOpenable(row) },
+              ]"
+              @click="onFileNameClick(row)"
             >
               {{ row.name }}
             </span>
@@ -61,6 +64,7 @@ import { ref } from 'vue'
 import { Folder, Document } from '@element-plus/icons-vue'
 import type { FileItem } from '@/types'
 import { formatSize, formatTime } from '@/utils/format'
+import { getFileOpenApi } from '@/platform/fileOpen'
 import type { ElTable } from 'element-plus'
 
 defineProps<{
@@ -79,6 +83,30 @@ const emit = defineEmits<{
 }>()
 
 const tableRef = ref<InstanceType<typeof ElTable>>()
+
+// 文件打开注册表（平台挂载点）：插件注册 handler 声明"能打开哪些文件"。
+// 渲染期 isOpenable 依赖 handlers ref，插件注册/注销时自动重算 is-openable 标记；
+// 单击分发调用首个 canOpen 命中的 handler，插件不再劫持 DOM 点击。
+const fileOpenApi = getFileOpenApi()
+
+/** 文件名单击：文件夹进入目录（原有行为）；文件分发给平台注册的打开 handler */
+const onFileNameClick = (row: FileItem) => {
+  if (row.isDirectory && !row.broken) {
+    emit('open', row.path)
+    return
+  }
+  if (row.broken) return
+  const handler = fileOpenApi.resolve(row)
+  if (handler) {
+    void handler.open(row)
+  }
+}
+
+/** 是否有插件声明可打开该文件（渲染期打 is-openable 标记，样式由插件注入） */
+const isOpenable = (row: FileItem): boolean => {
+  if (row.isDirectory || row.broken) return false
+  return fileOpenApi.resolve(row) !== null
+}
 
 const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {
   e.preventDefault()

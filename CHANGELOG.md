@@ -34,8 +34,21 @@
   - `useTheme` 新增 `unregisterTheme(name)`；`window.__fm_bulk_actions` / `window.__fm_nav_actions`
     注册表新增 `unregister(id)`（插件 teardown 用于移除自己注册的按钮/入口）
   - 插件管理页「卸载」「重载」按钮接入前端清理流程，成功提示不再要求刷新页面
+- **文件打开契约（平台化）**：新增前端平台挂载点 `ctx.platform.fileOpen`（`window.__fm_file_open`），
+  插件注册 `{ id, canOpen(file), open(file) }` 声明"能打开哪些文件"——
+  - 主应用渲染文件列表时逐行调用 `canOpen` 判定并打 `is-openable` 标记（数据驱动，注册表变化自动重算），
+    单击文件名按注册序分发首个命中 handler 的 `open()`，无命中维持默认行为；文件夹进入目录行为不变
+  - 插件不再劫持 document 点击事件、不再扫描主应用 DOM；viewer 类插件通过该契约声明打开能力
+  - 平台自动收集该注册表 handler 的注销函数，卸载/重载时与路由、主题一并清理（插件仍可自行 teardown 注销，幂等）
+- **`ctx.router` 新增编程式导航**：`push(to)` / `replace(to)`（vue-router 原生处理 history / hash 双模式），
+  替代插件自造的 `history.pushState + PopStateEvent` hack；"上一张/下一张"等原地切换场景用 `replace` 避免历史栈膨胀
 
 ### 🔧 变更
+
+- **file-viewer 系插件迁移到平台契约**：file-viewer 核心删除 document 捕获阶段点击劫持、`document.body`
+  MutationObserver 扫描与 `.has-viewer` 事后打标，改为注册文件打开 handler（`canOpen`/`open`）并由主应用
+  渲染期打 `is-openable` 标记；file-viewer（查看/返回/配置页）、file-image-viewer（上一张/下一张，改 `replace`）、
+  system-info（返回主页）移除全部 pushState hack，改用 `ctx.router.push/replace`
 
 - **压缩功能提取为独立插件**：主应用删除内置压缩（工具栏压缩按钮、`POST /api/tasks/compress` 任务型压缩、
   `POST /api/files/zip` SSE 压缩及 `/zip/cancel`），压缩改由插件 `@mqn00/file-manager-plugin-compress`
@@ -47,7 +60,7 @@
   `@mqn00/file-manager-plugin-system-info` 提供（页面 `/plugin/system-info` + 顶栏导航入口 +
   `GET /api/plugin/system-info/info`，详见插件 README 与 API.md）
 - 内置插件适配 teardown 契约：file-viewer 核心删除自造 `INSTALL_KEY` 全局清理标记改为返回 teardown；
-  7 个 file-* 查看器卸载时注销查看器模块并移除注入样式；compress 卸载时移除批量操作、关闭打开的
+  7 个 file-\* 查看器卸载时注销查看器模块并移除注入样式；compress 卸载时移除批量操作、关闭打开的
   对话框并移除样式；system-info 卸载时移除顶栏入口；smb/hatsune-miku-theme 卸载时移除注入样式
   （miku 同时断开 tooltip 背景观察器）
 - 主项目 `frontend/src/pluginLoader.ts` 重写为实例化加载器：`loadPluginFrontend`（幂等）、

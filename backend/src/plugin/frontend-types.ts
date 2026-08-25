@@ -213,8 +213,15 @@ export interface TaskApi {
     taskId: string,
     handlers: {
       onState?(data: TaskInfo): void
-      onProgress?(data: { progress: number; speed: number; totalSize: number;
-        currentFile?: string; completedCount: number; totalCount: number; phase?: TaskPhase }): void
+      onProgress?(data: {
+        progress: number
+        speed: number
+        totalSize: number
+        currentFile?: string
+        completedCount: number
+        totalCount: number
+        phase?: TaskPhase
+      }): void
       onComplete?(): void
       onCancelled?(message: string): void
       onError?(message: string): void
@@ -279,6 +286,38 @@ export interface FileSortComposable {
   sortOrder: Ref<string>
 }
 
+// ==================== 平台扩展注册表 ====================
+
+/**
+ * 文件打开 handler：插件声明"能打开哪些文件"，主应用单击文件名时分发调用。
+ *
+ * 注册表经 `ctx.platform.fileOpen` 访问（与 window.__fm_file_open 同一实例）。
+ * 主应用渲染文件列表时逐行调用 canOpen 判定并打 `is-openable` 标记，
+ * 单击时调用首个命中 handler 的 open()；不再需要插件劫持 DOM 点击事件。
+ */
+export interface FileOpenHandler {
+  /** 唯一 id（重复注册时按 id 覆盖替换） */
+  id: string
+  /** 该文件是否可由此 handler 打开（同步、轻量，渲染期会被逐行调用） */
+  canOpen(file: FileItem): boolean
+  /** 消费打开请求（主应用单击文件且 canOpen 命中时调用） */
+  open(file: FileItem): void | Promise<void>
+}
+
+/** 文件打开注册表 API（与 frontend/src/platform/fileOpen.ts 同步） */
+export interface FileOpenApi {
+  /** 注册 handler；同 id 覆盖替换。返回注销函数（插件 teardown 用） */
+  register(handler: FileOpenHandler): () => void
+  /** 按 id 移除已注册 handler（插件 teardown 用）；不存在则为 no-op */
+  unregister(id: string): void
+  /** 按注册序返回第一个 canOpen 命中的 handler；无则 null */
+  resolve(file: FileItem): FileOpenHandler | null
+  /** 当前全部 handler（注册顺序） */
+  list(): FileOpenHandler[]
+  /** 注册表变化订阅（插件加载/卸载时触发，主应用据此重算 is-openable），返回取消订阅函数 */
+  subscribe(fn: () => void): () => void
+}
+
 // ==================== 插件路由声明 ====================
 
 /**
@@ -328,6 +367,12 @@ export interface FrontendPluginContext {
     useFileSort(): FileSortComposable
   }
 
+  /** 平台扩展注册表（插件向主应用声明能力的挂载点集合） */
+  platform: {
+    /** 文件打开钩子：插件声明"能打开哪些文件"，主应用单击文件时分发 */
+    fileOpen: FileOpenApi
+  }
+
   /** 工具函数 */
   utils: {
     formatSize(bytes: number): string
@@ -356,6 +401,10 @@ export interface FrontendPluginContext {
      * 未登录访问会被重定向到登录页（登录后跳回原页面）。
      */
     addRoute(route: PluginRouteRecord): () => void
+    /** 编程式导航（SPA 内跳转；适配 history/hash 双模式，替代插件自造 pushState hack） */
+    push(to: Parameters<Router['push']>[0]): ReturnType<Router['push']>
+    /** 编程式替换当前路由（如查看器"上一张/下一张"切换，避免历史栈膨胀） */
+    replace(to: Parameters<Router['replace']>[0]): ReturnType<Router['replace']>
     /** 当前路由信息（Ref，读取 .value.query 等；与 frontend/src/context.ts 一致） */
     currentRoute: Ref<RouteLocationNormalizedLoaded>
   }

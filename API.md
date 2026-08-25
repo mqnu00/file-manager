@@ -795,6 +795,17 @@
   - `502` — npm registry 请求失败
   - `504` — 请求超时
 
+### 5. 前端插件平台契约（v3.0.0）
+
+前端插件 ctx 新增以下平台能力（类型入口 `@mqn00/file-manager/plugin/frontend`，完整规范见 [plugin-design.md](./plugin-design.md)）：
+
+| 能力 | 说明 |
+|---|---|
+| `ctx.platform.fileOpen` | 文件打开注册表（`window.__fm_file_open`）：插件注册 `{ id, canOpen(file), open(file) }`，主应用渲染期打 `is-openable` 标记、单击文件名时按注册序分发调用；插件不再劫持 DOM 点击事件 |
+| `ctx.router.push` | 编程式导航（适配 history / hash 双模式），替代插件自造的 `history.pushState + PopStateEvent` hack |
+| `ctx.router.replace` | 编程式替换当前路由（查看器"上一张/下一张"等原地切换场景，避免历史栈膨胀） |
+| 前端生命周期 | `install(ctx)` 可返回 teardown 函数；平台自动收集 `addRoute` 路由、`registerTheme` 主题与 `platform.fileOpen.register` 的 handler，卸载/重载时统一清理（`unloadPluginFrontend`） |
+
 ---
 
 ## 错误响应

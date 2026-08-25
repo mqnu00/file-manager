@@ -75,10 +75,9 @@ export interface DiskInfo {
   }>
 }
 
-/** SPA 导航：主应用 ctx 未暴露 router.push，利用 vue-router 的 popstate 监听 */
-function spaNavigate(url: string): void {
-  history.pushState(history.state ?? null, '', url)
-  window.dispatchEvent(new PopStateEvent('popstate'))
+/** SPA 导航：平台路由 API 经 ctx.router.push 完成（适配 history/hash 双模式） */
+function spaNavigate(ctx: FrontendPluginContext, url: string): void {
+  void ctx.router.push(url)
 }
 
 export function createSystemInfoPage(ctx: FrontendPluginContext) {
@@ -282,7 +281,7 @@ export function createSystemInfoPage(ctx: FrontendPluginContext) {
             h('div', { style: { paddingTop: '10px', paddingLeft: '10px' } }, [
               h(
                 ElButton,
-                { text: true, class: 'fci-back', onClick: () => spaNavigate('/') },
+                { text: true, class: 'fci-back', onClick: () => spaNavigate(ctx, '/') },
                 {
                   default: () => [
                     h(ElIcon, null, { default: () => h(ArrowLeft) }),

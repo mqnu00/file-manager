@@ -16,6 +16,7 @@
 
 import { ctx, type PluginRouteRecord, type ScriptContext } from '@/context'
 import { useTheme, type ThemeDefinition } from '@/composables/useTheme'
+import type { FileOpenHandler } from '@/platform/fileOpen'
 import { DEMO_PLUGINS } from '@/demo/plugins'
 
 interface PluginInfo {
@@ -35,6 +36,8 @@ interface FrontendPluginRecord {
   removeRoutes: Array<() => void>
   /** 经 ctx.composables.useTheme().registerTheme 注册的主题名（平台收集） */
   themeNames: string[]
+  /** 经 ctx.platform.fileOpen.register 注册的 handler 注销函数（平台收集） */
+  removeFileOpenHandlers: Array<() => void>
 }
 
 /** 已安装的前端插件实例（name → record） */
@@ -75,6 +78,22 @@ function wrapPluginContext(record: FrontendPluginRecord): ScriptContext {
           },
         }
       }
+      if (prop === 'platform') {
+        const p = target.platform
+        // 旧版 ctx / 测试 mock 未提供 platform 时原样透传，不抛错
+        if (!p?.fileOpen) return p ?? {}
+        return {
+          ...p,
+          fileOpen: {
+            ...p.fileOpen,
+            register: (handler: FileOpenHandler) => {
+              const unregister = p.fileOpen.register(handler)
+              record.removeFileOpenHandlers.push(unregister)
+              return unregister
+            },
+          },
+        }
+      }
       return Reflect.get(target, prop, receiver)
     },
   }) as ScriptContext
@@ -94,6 +113,13 @@ async function unloadRecord(record: FrontendPluginRecord): Promise<void> {
       useTheme().unregisterTheme(themeName)
     } catch (e) {
       console.error(`[Plugin] ${record.name} 主题清理失败:`, e)
+    }
+  }
+  for (const remove of record.removeFileOpenHandlers) {
+    try {
+      remove()
+    } catch (e) {
+      console.error(`[Plugin] ${record.name} 文件打开 handler 清理失败:`, e)
     }
   }
   if (record.teardown) {
@@ -127,7 +153,12 @@ export async function loadPluginFrontend(plugin: PluginInfo, cacheBust = true): 
   // 幂等：已加载的同名插件先卸载（重载语义 = 先清理再安装）
   await unloadPluginFrontend(plugin.name)
 
-  const record: FrontendPluginRecord = { name: plugin.name, removeRoutes: [], themeNames: [] }
+  const record: FrontendPluginRecord = {
+    name: plugin.name,
+    removeRoutes: [],
+    themeNames: [],
+    removeFileOpenHandlers: [],
+  }
   try {
     // 缓存破坏：安装/切换版本后 URL 不变但内容已变，追加时间戳强制重新请求
     const url = cacheBust

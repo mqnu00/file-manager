@@ -29,13 +29,13 @@ export function useFolderNavigation(ctx: FrontendPluginContext, props: { file: F
     }
   }
 
-  /** 导航到目标图片（保持 mode，由查看页 parseFromRoute 接管重渲染） */
+  /** 导航到目标图片（保持 mode，由查看页 parseFromRoute 接管重渲染）。
+   *  用 replace 而非 push：切换图片不堆历史记录，"返回"可直接回到上级页面 */
   const goTo = (target: FileItem | undefined) => {
     if (!target) return
     const q = ctx.router.currentRoute.value.query
     const mode = typeof q.mode === 'string' ? q.mode : undefined
-    history.pushState(history.state ?? null, '', makeViewerUrl(target.path, mode))
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    void ctx.router.replace(makeViewerUrl(target.path, mode))
   }
   const goPrev = () => goTo(images.value[currentIndex_.value - 1])
   const goNext = () => goTo(images.value[currentIndex_.value + 1])

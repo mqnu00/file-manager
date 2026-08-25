@@ -34,6 +34,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
+import { getFileOpenApi, type FileOpenApi } from '@/platform/fileOpen'
 
 import { formatSize, formatTime, formatSpeed, formatProgress } from '@/utils/format'
 
@@ -94,6 +95,12 @@ export interface ScriptContext {
     useFileSort: typeof useFileSort
   }
 
+  /** 平台扩展注册表（插件向主应用声明能力的挂载点集合） */
+  platform: {
+    /** 文件打开钩子：插件声明"能打开哪些文件"，主应用单击文件时分发 */
+    fileOpen: FileOpenApi
+  }
+
   /** 工具函数 */
   utils: {
     formatSize: typeof formatSize
@@ -122,9 +129,12 @@ export interface ScriptContext {
      * 未登录访问会被重定向到登录页（登录后跳回原页面）。
      */
     addRoute: (route: PluginRouteRecord) => () => void
+    /** 编程式导航（SPA 内跳转；适配 history/hash 双模式，替代插件自造 pushState hack） */
+    push: typeof router.push
+    /** 编程式替换当前路由（如查看器"上一张/下一张"切换，避免历史栈膨胀） */
+    replace: typeof router.replace
     currentRoute: typeof router.currentRoute
   }
-
 }
 
 /**
@@ -159,6 +169,10 @@ export function createScriptContext(): ScriptContext {
       useFileSort,
     },
 
+    platform: {
+      fileOpen: getFileOpenApi(),
+    },
+
     utils: {
       formatSize,
       formatTime,
@@ -181,6 +195,8 @@ export function createScriptContext(): ScriptContext {
       createWebHashHistory,
       // 插件仅使用单参数重载（RouteRecordRaw 宽于 PluginRouteRecord，需收窄签名）
       addRoute: router.addRoute.bind(router) as (route: PluginRouteRecord) => () => void,
+      push: router.push.bind(router),
+      replace: router.replace.bind(router),
       currentRoute: router.currentRoute,
     },
   }

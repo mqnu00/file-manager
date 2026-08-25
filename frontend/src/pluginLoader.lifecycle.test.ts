@@ -5,11 +5,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import path from 'path'
 
-const { removeRoute, registerTheme, unregisterTheme } = vi.hoisted(() => ({
-  removeRoute: vi.fn(),
-  registerTheme: vi.fn(),
-  unregisterTheme: vi.fn(),
-}))
+const { removeRoute, registerTheme, unregisterTheme, registerFileOpen, unregisterFileOpen } =
+  vi.hoisted(() => {
+    const unregisterFileOpen = vi.fn()
+    return {
+      removeRoute: vi.fn(),
+      registerTheme: vi.fn(),
+      unregisterTheme: vi.fn(),
+      // register 返回的注销函数引用同作用域的 unregister 间谍，供平台收集调用
+      registerFileOpen: vi.fn(() => () => unregisterFileOpen()),
+      unregisterFileOpen,
+    }
+  })
 
 vi.mock('@/context', () => ({
   ctx: {
@@ -26,6 +33,11 @@ vi.mock('@/context', () => ({
         registerTheme,
         unregisterTheme,
       }),
+    },
+    platform: {
+      fileOpen: {
+        register: registerFileOpen,
+      },
     },
   },
 }))
@@ -61,6 +73,8 @@ beforeEach(() => {
   removeRoute.mockClear()
   registerTheme.mockClear()
   unregisterTheme.mockClear()
+  registerFileOpen.mockClear()
+  unregisterFileOpen.mockClear()
   vi.spyOn(console, 'log').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -111,6 +125,16 @@ describe('前端插件 teardown 生命周期契约', () => {
     expect(unregisterTheme).toHaveBeenCalledWith('midnight')
   })
 
+  it('platform.fileOpen 注册的 handler 在卸载时被注销（平台收集兜底，插件无需自管理）', async () => {
+    const entry = path.join(FIXTURE, 'plugin-file-open.mjs')
+    await loadPluginFrontend({ name: 'demo', frontendPath: entry }, false)
+    expect(registerFileOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'demo-viewer' }))
+    expect(unregisterFileOpen).not.toHaveBeenCalled()
+
+    await unloadPluginFrontend('demo')
+    expect(unregisterFileOpen).toHaveBeenCalledTimes(1)
+  })
+
   it('teardown 抛错不阻断卸载（路由/主题已先行清理，unload 不抛出）', async () => {
     const entry = path.join(FIXTURE, 'plugin-teardown-throws.mjs')
     await loadPluginFrontend({ name: 'demo', frontendPath: entry }, false)
@@ -136,10 +160,7 @@ describe('前端插件 teardown 生命周期契约', () => {
     const entry = path.join(FIXTURE, 'plugin-throws-after-route.mjs')
     await loadPluginFrontend({ name: 'demo', frontendPath: entry }, false)
     expect(calls()).toEqual(['throws-after-route'])
-    expect(console.error).toHaveBeenCalledWith(
-      '[Plugin] demo frontend failed:',
-      expect.any(Error)
-    )
+    expect(console.error).toHaveBeenCalledWith('[Plugin] demo frontend failed:', expect.any(Error))
     // 回滚：install 注册的路由移除函数已被调用
     expect(removeRoute).toHaveBeenCalledTimes(1)
 

@@ -37,7 +37,7 @@ npm install @mqn00/file-manager-plugin-file-viewer @mqn00/file-manager-plugin-fi
 
 - 图片链路：`POST /api/files/token`（携带 Bearer 换令牌）→ `GET /api/files/stream?token=`（公开 Range 流）→ `<img src>`（平台 I/O，`ctx.api.fileIO`）
 - 流令牌绑定安全校验后的绝对路径，30 分钟有效，访问时惰性清理；切换文件自动重取令牌并重置视图
-- 文件夹切换：通过 `ctx.api.file.list(parent)` 拉取父目录列表，过滤当前文件夹内图片并按名称排序；上一张/下一张以 `history.pushState + PopStateEvent` 改写查看页 URL（保留 `mode`），由 file-viewer 查看页壳重渲染并复用图片查看器实例（触发路径 watch 重取令牌）
+- 文件夹切换：通过 `ctx.api.file.list(parent)` 拉取父目录列表，过滤当前文件夹内图片并按名称排序；上一张/下一张以 `ctx.router.replace` 改写查看页 URL（保留 `mode`，replace 避免历史栈膨胀），由 file-viewer 查看页壳重渲染并复用图片查看器实例（触发路径 watch 重取令牌）
 - 缩略图图库：复用同一名称升序列表，分页（每页 6 张）；缩略图复用 `createToken + streamUrl` 全尺寸流并以 CSS 缩放，按页惰性签发并缓存令牌、逐张懒加载，避免一次性加载整个文件夹
 - 注册表接入：前端 `install()` 时向 `globalThis.__fm_file_viewer_registry__` 注册 `{ id: 'image', editable: false }` 模块（契约见 file-viewer README）
 

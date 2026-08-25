@@ -1,6 +1,6 @@
 # @mqn00/file-manager-plugin-file-viewer
 
-File Manager 文件查看**核心插件**：劫持文件列表单击打开文件，维护查看器注册表并把渲染分发到各子查看插件（code / music / video / office / hex），并提供查看器映射**配置主页**（扩展名 → 查看器）。
+File Manager 文件查看**核心插件**：经平台文件打开契约（`ctx.platform.fileOpen`）承接文件列表单击打开，维护查看器注册表并把渲染分发到各子查看插件（code / music / video / office / hex），并提供查看器映射**配置主页**（扩展名 → 查看器）。
 
 本插件**不内置任何查看模块**，也**不再提供文件 I/O 后端**——通用文件读写能力已上收主项目平台（`/api/files/*` + `ctx.api.fileIO` / `ctx.services.fileIO`），子插件直接消费平台 API，与 file-viewer 无耦合。首次安装时请同时安装至少一个子插件，否则查看页会提示"未安装任何查看插件"。
 
@@ -140,9 +140,12 @@ plugins:
 
 ## 与主应用的耦合说明（重要）
 
-- 单击劫持通过**捕获阶段** `document` 级 click 监听实现，匹配 `.file-name-text` 类名元素且**不含** `.is-folder`（broken 符号链接跳过）
-- **主应用重构文件列表 DOM 时需保留 `file-name-text` / `is-folder` 类名**，否则本插件单击打开失效（文件列表类名位于主应用 `frontend/src/views/FileList.vue`）
-- SPA 导航不刷新页面：`history.pushState` + 合成 `PopStateEvent`，vue-router 守卫照常生效（未登录会拦截）
+- 文件打开经**平台文件打开契约**（`ctx.platform.fileOpen`，v3.0.0-beta10+）：注册
+  `{ id: 'file-viewer', canOpen(file), open(file) }` handler，主应用渲染文件列表时按
+  `canOpen` 判定打 `is-openable` 标记、单击文件名时分发调用 `open()`。**本插件不再劫持
+  document 点击事件、不再扫描主应用 DOM**；主应用重构文件列表 DOM 不影响本插件
+- 可打开文件的高亮样式由本插件注入（`.file-name-text.is-openable`，`is-openable` 为主应用打的平台语义 class）；注册表变化（子插件加载/卸载）由主应用自动重算
+- SPA 导航使用平台 `ctx.router.push` / `ctx.router.replace`（vue-router 原生处理 history / hash 双模式，未登录会被路由守卫拦截）
 
 ## 构建与发布
 
@@ -157,7 +160,7 @@ node scripts/publish.mjs   # 构建并发布到 npm（自动 patch 递增版本�
 
 ```
 src/
-├── frontend.ts      # 单击劫持 + 注册表初始化 + 双路由注册（配置主页 / 查看页）
+├── frontend.ts      # 文件打开 handler 注册 + 注册表初始化 + 双路由注册（配置主页 / 查看页）
 ├── backend.ts       # 配置 API（GET/PUT /api/file-viewer/config）
 ├── registry.ts      # 注册表 + 默认解析（含 config 映射优先级，纯逻辑，可单测）
 ├── config-page.ts   # 配置主页（按查看器分组编辑后缀列表）
