@@ -8,6 +8,10 @@ import router from './router'
 import { ctx } from './context'
 import { initScriptRunner } from './scriptRunner'
 import { initPlugins } from './pluginLoader'
+// 批量操作注册表必须在插件 install 前就绪（插件会写入 window.__fm_bulk_actions）。
+// pluginActions 仅被懒加载的 HomeView 静态 import，若不在此显式引入，
+// 其模块求值会晚于插件加载，导致插件注册静默失败（dev 模式必现）。
+import '@/pluginActions'
 import { useTheme } from './composables/useTheme'
 import { STORAGE_KEY_THEME } from './constants'
 import { DEMO_DEFAULT_THEME } from './demo/plugins'
