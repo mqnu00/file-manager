@@ -28,7 +28,8 @@ function mountToolbar(overrides: Record<string, unknown> = {}) {
       sortOrder: 'asc',
       selectedCount: 0,
       isSingleFileSelected: false,
-      isSingleFolderSelected: false,
+      selectedHasFolder: false,
+      bulkActions: [],
       ...overrides,
     },
   })
@@ -110,20 +111,45 @@ describe('Toolbar.vue', () => {
     const wrapper = mountToolbar({
       selectedCount: 1,
       isSingleFileSelected: true,
-      isSingleFolderSelected: false,
+      selectedHasFolder: false,
     })
     expect(wrapper.text()).toContain('下载')
-    expect(wrapper.text()).not.toContain('压缩')
   })
 
-  it('单选文件夹时显示"压缩"按钮', () => {
+  it('插件注册的批量操作：可见时渲染、点击触发 onClick', async () => {
+    const onClick = vi.fn()
     const wrapper = mountToolbar({
-      selectedCount: 1,
-      isSingleFileSelected: false,
-      isSingleFolderSelected: true,
+      selectedCount: 2,
+      selectedHasFolder: true,
+      bulkActions: [
+        {
+          id: 'compress',
+          label: '压缩',
+          visible: (p: { count: number; hasFolder: boolean }) => p.count > 0 && p.hasFolder,
+          onClick,
+        },
+      ],
     })
-    expect(wrapper.text()).toContain('压缩')
-    expect(wrapper.text()).not.toContain('下载')
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('压缩'))
+    expect(btn).toBeTruthy()
+    await btn!.trigger('click')
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('插件注册的批量操作：可见性不满足时不渲染', () => {
+    const wrapper = mountToolbar({
+      selectedCount: 0,
+      selectedHasFolder: false,
+      bulkActions: [
+        {
+          id: 'compress',
+          label: '压缩',
+          visible: (p: { count: number }) => p.count > 0,
+          onClick: vi.fn(),
+        },
+      ],
+    })
+    expect(wrapper.text()).not.toContain('压缩')
   })
 
   it('主题下拉框渲染已注册主题选项', () => {

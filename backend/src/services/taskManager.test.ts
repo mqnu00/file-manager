@@ -4,22 +4,20 @@ import path from 'path'
 import { STORAGE_ROOT } from '../../test/setup'
 
 /**
- * mock fileService：copyWithCancel/compressWithCancel 返回永不 resolve 的 Promise，
+ * mock fileService：copyWithCancel 返回永不 resolve 的 Promise，
  * 使任务稳定保持 running/copy 状态，冲突检测与取消逻辑可确定性测试。
- * （真实文件复制/压缩行为已由 routes/files.test.ts 集成覆盖）
+ * （真实文件复制行为已由 routes/files.test.ts 集成覆盖）
  */
 vi.mock('./fileService', () => ({
   copyWithCancel: vi.fn(() => new Promise(() => {})),
   removeSources: vi.fn(),
-  compressWithCancel: vi.fn(() => new Promise(() => {})),
 }))
 
-import { createMoveTask, createCompressTask, getTask, getAllTasks, cancelTask, subscribe } from './taskManager'
-import { copyWithCancel, removeSources, compressWithCancel } from './fileService'
+import { createMoveTask, getTask, getAllTasks, cancelTask, subscribe } from './taskManager'
+import { copyWithCancel, removeSources } from './fileService'
 
 const mockedCopyWithCancel = vi.mocked(copyWithCancel)
 const mockedRemoveSources = vi.mocked(removeSources)
-const mockedCompressWithCancel = vi.mocked(compressWithCancel)
 
 const TASKS_FILE = path.join(path.dirname(process.env.CONFIG_PATH!), 'tasks.json')
 
@@ -60,18 +58,6 @@ describe('taskManager 任务注册', () => {
     })
     expect(getTask(task.id)).toBe(task)
     expect(getAllTasks().some((t) => t.id === task.id)).toBe(true)
-  })
-
-  it('createCompressTask 创建压缩任务', () => {
-    const task = createCompressTask('reg-folder')
-    expect(task.type).toBe('compress')
-    expect(task.status).toBe('running')
-    expect(task.phase).toBe('compress')
-    expect(task.metadata).toMatchObject({
-      sourcePath: 'reg-folder',
-      sourceName: 'reg-folder',
-      targetPath: './reg-folder.zip',
-    })
   })
 
   it('getTask 对不存在的 id 返回 undefined', () => {
@@ -159,10 +145,9 @@ function makeRes() {
 
 describe('taskManager 订阅与执行分支', () => {
   afterEach(() => {
-    // 恢复默认：复制/压缩永不完成（与文件顶部 mock 一致）
+    // 恢复默认：复制永不完成（与文件顶部 mock 一致）
     mockedCopyWithCancel.mockImplementation(() => new Promise(() => {}))
     mockedRemoveSources.mockImplementation(() => {})
-    mockedCompressWithCancel.mockImplementation(() => new Promise(() => {}))
   })
 
   it('subscribe 立即发送 state 快照并注册 close 清理', async () => {
@@ -252,20 +237,5 @@ describe('taskManager 订阅与执行分支', () => {
     await tick()
     expect(getTask(task.id)!.status).toBe('completed')
     expect(mockedRemoveSources).toHaveBeenCalledWith(['fail1.txt', 'fail2.txt'])
-  })
-
-  it('压缩任务取消 → cancelled 并广播', async () => {
-    mockedCompressWithCancel.mockImplementation((_s, _t, signal) => new Promise((_resolve, reject) => {
-      signal.addEventListener('abort', () => reject(new Error('CANCELLED')), { once: true })
-    }))
-    const res = makeRes()
-    const task = createCompressTask('zip-cancel-folder')
-    await tick()
-    subscribe(task.id, res)
-    expect(cancelTask(task.id)).toBe(true)
-    await tick()
-    await tick()
-    expect(getTask(task.id)!.status).toBe('cancelled')
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"type":"cancelled"'))
   })
 })

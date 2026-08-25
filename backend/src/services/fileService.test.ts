@@ -7,7 +7,6 @@ import {
   getFileList,
   deleteFiles,
   copyWithCancel,
-  compressWithCancel,
   renameFile,
   createFolder,
   moveFile,
@@ -96,31 +95,6 @@ describe('copyWithCancel', () => {
     // 第一个文件复制完成（进度回调触发）后立即取消
     const p1 = copyWithCancel('srcdir', 'destdir', ac.signal, () => ac.abort())
     await expect(p1).rejects.toThrow('CANCELLED')
-  })
-})
-
-describe('compressWithCancel', () => {
-  it('正常完成 → resolve 且 zip 生成、有进度回调', async () => {
-    fs.mkdirSync(p('zipdir'), { recursive: true })
-    fs.writeFileSync(p('zipdir/a.txt'), 'aaa', 'utf-8')
-
-    const ac = new AbortController()
-    const progress: number[] = []
-    await compressWithCancel('zipdir', 'zipdir.zip', ac.signal, (percent) => progress.push(percent))
-    expect(fs.existsSync(p('zipdir.zip'))).toBe(true)
-    expect(progress.length).toBeGreaterThan(0)
-  })
-
-  it('预置 abort → 抛 CANCELLED 且半成品 zip 被清理', async () => {
-    fs.mkdirSync(p('zipdir'), { recursive: true })
-    fs.writeFileSync(p('zipdir/a.txt'), 'aaa', 'utf-8')
-
-    const ac = new AbortController()
-    ac.abort()
-    await expect(compressWithCancel('zipdir', 'zipdir.zip', ac.signal)).rejects.toThrow('CANCELLED')
-    expect(fs.existsSync(p('zipdir.zip'))).toBe(false)
-    // createWriteStream 的异步 open 可能晚于 cleanup 完成，等待其落定避免流错误泄漏
-    await new Promise((r) => setTimeout(r, 20))
   })
 })
 

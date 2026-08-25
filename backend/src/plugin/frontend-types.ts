@@ -113,7 +113,6 @@ export interface TaskStore {
     targetPath: string,
     onComplete?: () => void
   ): Promise<void>
-  startCompressTask(sourcePath: string, onComplete?: () => void): Promise<void>
   cancelTask(taskId: string): Promise<void>
   dismissTask(taskId: string): void
 }
@@ -135,7 +134,6 @@ export interface FileApi {
   delete(paths: string[]): Promise<void>
   rename(oldPath: string, newPath: string): Promise<void>
   move(sourcePaths: string[], targetPath: string): Promise<{ taskId: string }>
-  compress(sourcePath: string): Promise<{ taskId: string }>
   upload(formData: FormData, onProgress?: (pct: number) => void): Promise<void>
   download(path: string): Promise<Blob>
   search(query: string, dir?: string): Promise<{ files: FileItem[] }>

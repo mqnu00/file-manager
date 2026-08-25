@@ -47,10 +47,6 @@ export interface BatchDeleteRequest {
   paths: string[]
 }
 
-export interface ZipCancelRequest {
-  path: string
-}
-
 export interface CreateFolderRequest {
   path?: string
   name: string
@@ -62,13 +58,6 @@ export interface CreateFileRequest {
 }
 
 /**
- * Express app.locals 类型
- */
-export interface ArchiveLocals {
-  activeArchives?: Record<string, any>
-}
-
-/**
  * 后台任务状态
  */
 export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed'
@@ -76,12 +65,12 @@ export type TaskStatus = 'running' | 'cancelling' | 'cancelled' | 'completed' | 
 /**
  * 移动任务阶段：复制（可取消）→ 删除（不可取消）
  */
-export type TaskPhase = 'copy' | 'delete' | 'compress'
+export type TaskPhase = 'copy' | 'delete'
 
 /**
  * 任务类型
  */
-export type TaskType = 'move' | 'compress'
+export type TaskType = 'move'
 
 /**
  * 移动任务元数据
@@ -93,19 +82,9 @@ export interface MoveTaskMetadata {
 }
 
 /**
- * 压缩任务元数据
- */
-export interface CompressTaskMetadata {
-  sourcePath: string
-  sourceName: string
-  targetPath: string    // zip 文件路径
-  totalBytes: number    // 源文件夹总字节数
-}
-
-/**
  * 任务元数据联合类型
  */
-export type TaskMetadata = MoveTaskMetadata | CompressTaskMetadata
+export type TaskMetadata = MoveTaskMetadata
 
 /**
  * 后台任务信息
@@ -134,13 +113,6 @@ export interface TaskInfo {
 export interface MoveTaskRequest {
   sourcePaths: string[]
   targetPath: string
-}
-
-/**
- * 创建压缩任务请求
- */
-export interface CompressTaskRequest {
-  sourcePath: string
 }
 
 /**

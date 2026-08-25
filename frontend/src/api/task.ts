@@ -12,15 +12,6 @@ export const startMoveTask = (
 }
 
 /**
- * 创建压缩任务
- */
-export const startCompressTask = (
-  sourcePath: string
-): Promise<{ taskId: string }> => {
-  return api.post('/tasks/compress', { sourcePath }).then((res) => res.data)
-}
-
-/**
  * 获取所有任务
  */
 export const getTasks = (): Promise<{ tasks: TaskInfo[] }> => {

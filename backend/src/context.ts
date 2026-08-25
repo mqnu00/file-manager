@@ -37,7 +37,6 @@ import * as fileService from './services/fileService'
 import * as fileIO from './services/fileIO'
 import {
   createMoveTask,
-  createCompressTask,
   getTask,
   getAllTasks,
   cancelTask,
@@ -108,7 +107,6 @@ export interface ScriptContext {
     fileIO: typeof fileIO
     task: {
       createMove: typeof createMoveTask
-      createCompress: typeof createCompressTask
       get: typeof getTask
       getAll: typeof getAllTasks
       cancel: typeof cancelTask
@@ -191,7 +189,6 @@ export function createScriptContext(): ScriptContext {
       fileIO,
       task: {
         createMove: createMoveTask,
-        createCompress: createCompressTask,
         get: getTask,
         getAll: getAllTasks,
         cancel: cancelTask,

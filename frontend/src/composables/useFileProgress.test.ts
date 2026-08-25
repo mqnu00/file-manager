@@ -7,7 +7,6 @@ vi.mock('@/api/file', () => ({
 
 vi.mock('@/api/task', () => ({
   startMoveTask: vi.fn(),
-  startCompressTask: vi.fn(),
   getTasks: vi.fn(),
   cancelTask: vi.fn(),
   subscribeTask: vi.fn(() => vi.fn()),
@@ -79,13 +78,5 @@ describe('useFileProgress', () => {
 
     expect(startMove).toHaveBeenCalledWith(['a.txt'], ['a.txt'], '/docs', undefined)
     expect(progress.moveState.visible).toBe(false)
-  })
-
-  it('startZipTask 转发到 task store', () => {
-    const store = useTaskStore()
-    const startCompress = vi.spyOn(store, 'startCompressTask').mockImplementation(() => Promise.resolve())
-    const progress = useFileProgress()
-    progress.startZipTask('docs')
-    expect(startCompress).toHaveBeenCalledWith('docs', undefined)
   })
 })

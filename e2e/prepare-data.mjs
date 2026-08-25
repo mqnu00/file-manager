@@ -35,7 +35,7 @@ const logLines = [
 ]
 fs.writeFileSync(path.join(LOG_DIR, `${today}.log`), logLines.join('\n') + '\n', 'utf-8')
 
-// 生成 config.yml（含本地 test 插件，供插件管理页 E2E）
+// 生成 config.yml（含本地 test / compress 插件，供插件管理页与压缩 E2E 使用）
 const configYml = [
   'auth:',
   '  token: e2e-token-123',
@@ -46,6 +46,9 @@ const configYml = [
   '  retentionDays: 30',
   'plugins:',
   '  test:',
+  '    enabled: true',
+  '    source: local',
+  '  compress:',
   '    enabled: true',
   '    source: local',
   '',

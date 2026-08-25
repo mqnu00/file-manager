@@ -3,11 +3,9 @@ import fs from 'fs';
 import * as fileService from '../services/fileService';
 import * as fileIO from '../services/fileIO';
 import {
-  ArchiveLocals,
   RenameRequest,
   DeleteRequest,
   BatchDeleteRequest,
-  ZipCancelRequest,
   CreateFileRequest,
 } from '../types';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -27,56 +25,6 @@ router.get(
     const queryPath = typeof path === 'string' ? path : undefined;
     const result = fileService.getFileList(queryPath);
     res.json(result);
-  })
-);
-
-/**
- * 压缩文件夹（使用 SSE 发送进度）
- */
-router.post('/zip', async (req: Request, res: Response) => {
-  const folderPath = req.body.path as string
-  try {
-    if (!folderPath) {
-      return res.status(400).json({ message: '缺少文件夹路径' });
-    }
-
-    const activeArchives = (req.app.locals as ArchiveLocals).activeArchives || {};
-    if (!(req.app.locals as ArchiveLocals).activeArchives) {
-      (req.app.locals as ArchiveLocals).activeArchives = activeArchives;
-    }
-
-    await fileService.zipFolder(folderPath, res, activeArchives);
-  } catch (e) {
-    const errMsg = e instanceof Error ? e.message : '未知错误'
-    log('ERROR', 'other', `压缩失败 ${folderPath}: ${errMsg}`)
-    res.status(500).json({ message: errMsg })
-  }
-});
-
-/**
- * 取消压缩任务
- */
-router.post(
-  '/zip/cancel',
-  asyncHandler((req: Request, res: Response) => {
-    const { path: folderPath } = req.body as ZipCancelRequest;
-
-    if (!folderPath) {
-      return res.status(400).json({ message: '缺少文件夹路径' });
-    }
-
-    const archiveLocals = req.app.locals as ArchiveLocals;
-    if (!archiveLocals.activeArchives) {
-      archiveLocals.activeArchives = {};
-    }
-
-    const success = fileService.cancelZip(folderPath, archiveLocals.activeArchives);
-
-    if (!success) {
-      return res.status(404).json({ message: '未找到正在进行的压缩任务' });
-    }
-
-    res.json({ success: true });
   })
 );
 
@@ -217,7 +165,7 @@ router.post(
  * 下载文件
  *
  * ⚠️ 通配符兜底路由 — 必须保持在所有具体 GET 路由之后
- * 否则 /zip、/move 等路由会被通配符捕获
+ * 否则 /move 等路由会被通配符捕获
  */
 router.get(
   '/download/*',

@@ -267,6 +267,7 @@ html.my-theme { color-scheme: dark; }
 | file-music-viewer | `fmu-` |
 | file-office-viewer | `fov-` |
 | file-binary-viewer | `fbv-` |
+| compress | `fcp-` |
 
 样式注入惯例：`install()` 时创建带稳定 id 的 `<style>` 标签，先查重后追加（插件卸载/热重载时同 id 覆盖或复用）：
 

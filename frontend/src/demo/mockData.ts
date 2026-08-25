@@ -362,12 +362,6 @@ export const mockLogs: LogEntry[] = [
     detail: '移动 /home/user/files/数据备份 → /home/user/files/backup/数据备份',
   },
   {
-    time: logTime(3, 11, 12),
-    level: 'ERROR',
-    action: 'other',
-    detail: 'POST /api/files/zip: 压缩失败 - 磁盘空间不足',
-  },
-  {
     time: logTime(4, 16, 0),
     level: 'INFO',
     action: 'delete',

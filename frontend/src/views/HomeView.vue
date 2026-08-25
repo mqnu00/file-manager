@@ -7,7 +7,8 @@
         :sort-order="sortOrder"
         :selected-count="fileStore.selectedFiles.length"
         :is-single-file-selected="fileStore.isSingleFileSelected"
-        :is-single-folder-selected="fileStore.isSingleFolderSelected"
+        :selected-has-folder="selectedHasFolder"
+        :bulk-actions="bulkActionViews"
         @navigate="navigateTo"
         @sort-change="handleSortChange"
         @toggle-sort="toggleSortOrder"
@@ -17,7 +18,6 @@
         @batch-delete="handleBatchDelete"
         @batch-move="handleBatchMove"
         @batch-download="handleBatchDownload"
-        @batch-zip="handleBatchZip"
         @batch-rename="showRenameDialogFromSelection"
         @cancel-selection="handleCancelSelection"
       >
@@ -134,6 +134,7 @@ import ContextMenu from '../components/ContextMenu.vue'
 import TaskPanel from '../components/TaskPanel.vue'
 import { FileItem } from '@/types/index.ts'
 import { STORAGE_KEY_FILE_PATH } from '@/constants'
+import { useBulkActions, type BulkActionView } from '@/pluginActions'
 
 const fileStore = useFileStore()
 const progress = useFileProgress()
@@ -144,6 +145,23 @@ const fileSort = useFileSort(
   (files) => fileStore.setFiles(files)
 )
 const { sortBy, sortOrder, handleSortChange, toggleSortOrder, sortFiles } = fileSort
+
+// 插件注册的批量操作：可见性 + 点击上下文在此闭包捕获（点击时刻快照）
+const { actions: registeredBulkActions } = useBulkActions()
+const selectedHasFolder = computed(() => fileStore.selectedFileInfos.some((i) => i.isDirectory))
+const bulkActionViews = computed<BulkActionView[]>(() =>
+  registeredBulkActions.value.map((action) => ({
+    id: action.id,
+    label: action.label,
+    visible: action.visible,
+    onClick: () =>
+      action.run({
+        selected: fileStore.selectedFiles.slice(),
+        infos: fileStore.selectedFileInfos,
+        currentPath: fileStore.currentPath,
+      }),
+  }))
+)
 
 const contextMenu = useContextMenu()
 const { contextMenuVisible, contextMenuX, contextMenuY, contextMenuRow, onRowContextmenu, closeContextMenu } =
@@ -389,14 +407,6 @@ const handleBatchDownload = async () => {
     } catch (e: any) {
       ElMessage.error(e.message || '下载失败')
     }
-  }
-}
-
-const handleBatchZip = () => {
-  if (fileStore.isSingleFolderSelected) {
-    const sourcePath = fileStore.selectedFiles[0]
-    progress.startZipTask(sourcePath, makeConditionalRefresh([sourcePath]))
-    fileStore.setSelectedFiles([])
   }
 }
 

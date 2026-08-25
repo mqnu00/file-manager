@@ -218,12 +218,6 @@ export function setupMockApi(api: AxiosInstance) {
       return mockResponse({ taskId })
     }
 
-    // POST /api/tasks/compress — 创建压缩任务
-    if (fullUrl === '/api/tasks/compress' && method === 'post') {
-      const taskId = 'demo-compress-' + Date.now()
-      return mockResponse({ taskId })
-    }
-
     // GET /api/tasks — 获取所有任务
     if (fullUrl === '/api/tasks' && method === 'get') {
       return mockResponse({ tasks: [] })
@@ -253,17 +247,6 @@ export function setupMockApi(api: AxiosInstance) {
 
     // POST /api/tasks/:id/cancel — 取消任务
     if (fullUrl.startsWith('/api/tasks/') && fullUrl.endsWith('/cancel') && method === 'post') {
-      return mockResponse({ success: true })
-    }
-
-    // ============================================================
-    // SSE: Zip (模拟)
-    // ============================================================
-    if (fullUrl === '/api/files/zip' && method === 'post') {
-      return mockResponse({ success: true, message: '演示模式不支持压缩操作' })
-    }
-
-    if (fullUrl === '/api/files/zip/cancel' && method === 'post') {
       return mockResponse({ success: true })
     }
 

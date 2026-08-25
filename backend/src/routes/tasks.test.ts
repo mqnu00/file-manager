@@ -15,7 +15,6 @@ beforeAll(() => {
   // 预置任务测试数据
   fs.writeFileSync(path.join(STORAGE_ROOT, 'mv-src.txt'), 'move me', 'utf-8')
   fs.writeFileSync(path.join(STORAGE_ROOT, 'mv2-src.txt'), 'move me 2', 'utf-8')
-  fs.writeFileSync(path.join(STORAGE_ROOT, 'zip-src.txt'), 'zip me', 'utf-8')
 })
 
 describe('任务 API（集成）', () => {
@@ -54,21 +53,6 @@ describe('任务 API（集成）', () => {
     const task = list.body.tasks.find((t: { id: string }) => t.id === res.body.taskId)
     expect(task).toBeTruthy()
     expect(task.type).toBe('move')
-  })
-
-  it('创建压缩任务：缺少源路径 → 400；正常 → 200', async () => {
-    const missing = await request(app)
-      .post('/api/tasks/compress')
-      .send({})
-      .set('Authorization', authHeader)
-    expect(missing.status).toBe(400)
-
-    const res = await request(app)
-      .post('/api/tasks/compress')
-      .send({ sourcePath: 'zip-src.txt' })
-      .set('Authorization', authHeader)
-    expect(res.status).toBe(200)
-    expect(res.body.taskId).toBeTruthy()
   })
 
   it('任务详情：存在返回信息，不存在 → 404', async () => {

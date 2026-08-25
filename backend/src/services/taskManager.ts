@@ -2,11 +2,11 @@ import { Response } from 'express'
 import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import type { TaskInfo, TaskStatus, TaskPhase, TaskType, TaskMetadata, MoveTaskMetadata, CompressTaskMetadata, SSETaskMessage } from '../types'
+import type { TaskInfo, TaskStatus, TaskPhase, TaskType, TaskMetadata, MoveTaskMetadata, SSETaskMessage } from '../types'
 import { setSSEHeaders, sendSSEMessage, endSSE } from '../utils/sse'
 import { log } from '../utils/logger'
 import { safePath } from '../utils/safePath'
-import { copyWithCancel, removeSources, compressWithCancel } from './fileService'
+import { copyWithCancel, removeSources } from './fileService'
 
 /**
  * 任务持久化路径（与 config.yml 同目录）
@@ -71,14 +71,9 @@ function isPathConflict(a: string, b: string): boolean {
  * 提取任务占用的所有源路径（读取端）和目标路径（写入端）
  */
 function getTaskPaths(entry: TaskEntry): { sources: string[]; targets: string[] } {
-  if (entry.info.type === 'move') {
-    const m = entry.info.metadata as MoveTaskMetadata
-    const targets = m.sourceNames.map((n) => m.targetPath.replace(/\/$/, '') + '/' + n)
-    return { sources: m.sourcePaths, targets }
-  } else {
-    const c = entry.info.metadata as CompressTaskMetadata
-    return { sources: [c.sourcePath], targets: [c.targetPath] }
-  }
+  const m = entry.info.metadata as MoveTaskMetadata
+  const targets = m.sourceNames.map((n) => m.targetPath.replace(/\/$/, '') + '/' + n)
+  return { sources: m.sourcePaths, targets }
 }
 
 /**
@@ -339,54 +334,6 @@ export function createMoveTask(sourcePaths: string[], sourceNames: string[], tar
   return info
 }
 
-export function createCompressTask(sourcePath: string): TaskInfo {
-  const sourceName = path.basename(sourcePath)
-  const parentDir = path.dirname(sourcePath)
-  const targetPath = parentDir + '/' + sourceName + '.zip'
-
-  // 冲突检测
-  const conflict = checkConflict([sourcePath], [targetPath])
-  if (conflict) {
-    const err = new Error(conflict)
-    ;(err as any).code = 'TASK_CONFLICT'
-    throw err
-  }
-
-  const id = generateId()
-
-  const info: TaskInfo = {
-    id,
-    type: 'compress',
-    status: 'running',
-    phase: 'compress',
-    progress: 0,
-    speed: 0,
-    totalSize: 0,
-    startTime: now(),
-    metadata: { sourcePath, sourceName, targetPath, totalBytes: 0 },
-    completedCount: 0,
-    totalCount: 1,
-    totalItemCount: 0,
-    processedItemCount: 0,
-  }
-
-  const entry: TaskEntry = {
-    info,
-    abortController: new AbortController(),
-    subscribers: new Set(),
-    completedCopies: [],
-  }
-
-  tasks.set(id, entry)
-
-  log('INFO', 'task', `创建压缩任务 ${id}: ${sourcePath}`)
-
-  // 异步启动任务
-  startCompressTask(id)
-
-  return info
-}
-
 export function getTask(id: string): TaskInfo | undefined {
   return tasks.get(id)?.info
 }
@@ -399,8 +346,8 @@ export function cancelTask(id: string): boolean {
   const entry = tasks.get(id)
   if (!entry) return false
 
-  // 复制阶段和压缩阶段可以取消
-  const cancellablePhases: TaskPhase[] = ['copy', 'compress']
+  // 复制阶段可以取消
+  const cancellablePhases: TaskPhase[] = ['copy']
   if (!cancellablePhases.includes(entry.info.phase) || entry.info.status !== 'running') {
     return false
   }
@@ -586,76 +533,6 @@ async function startMoveTask(taskId: string): Promise<void> {
     // 3 秒后从内存删除
     setTimeout(() => { tasks.delete(taskId) }, 3000)
   }
-}
-
-// ===== 压缩任务执行器 =====
-
-async function startCompressTask(taskId: string): Promise<void> {
-  const entry = tasks.get(taskId)
-  if (!entry) return
-
-  const metadata = entry.info.metadata as CompressTaskMetadata
-  const { sourcePath, targetPath } = metadata
-  const abortSignal = entry.abortController.signal
-
-  try {
-    await compressWithCancel(
-      sourcePath,
-      targetPath,
-      abortSignal,
-      (percent, processedBytes, totalBytes) => {
-        // 更新 metadata 中的 totalBytes
-        if (totalBytes > 0 && metadata.totalBytes === 0) {
-          metadata.totalBytes = totalBytes
-        }
-
-        entry.info.progress = percent
-        entry.info.speed = 0
-        entry.info.totalSize = totalBytes
-
-        broadcast(taskId, {
-          type: 'progress',
-          progress: percent,
-          speed: 0,
-          totalSize: totalBytes,
-          currentFile: sourcePath,
-          completedCount: 0,
-          totalCount: 1,
-          phase: 'compress',
-        })
-      }
-    )
-  } catch (e: any) {
-    if (e.message === 'CANCELLED') {
-      entry.info.status = 'cancelled'
-      entry.info.progress = 0
-      log('INFO', 'task', `压缩任务 ${taskId} 已取消`)
-
-      broadcast(taskId, { type: 'cancelled', message: '任务已取消' })
-      // 3 秒后从内存删除
-      setTimeout(() => { tasks.delete(taskId) }, 3000)
-      return
-    }
-
-    entry.info.status = 'failed'
-    entry.info.error = `压缩失败: ${e.message}`
-    log('ERROR', 'task', `压缩任务 ${taskId} 失败: ${e.message}`)
-
-    broadcast(taskId, { type: 'error', message: entry.info.error })
-    // 3 秒后从内存删除
-    setTimeout(() => { tasks.delete(taskId) }, 3000)
-    return
-  }
-
-  // 完成
-  entry.info.status = 'completed'
-  entry.info.progress = 100
-
-  log('INFO', 'task', `压缩任务 ${taskId} 完成`)
-
-  broadcast(taskId, { type: 'complete' })
-  // 3 秒后从内存删除
-  setTimeout(() => { tasks.delete(taskId) }, 3000)
 }
 
 // ===== 初始化 =====

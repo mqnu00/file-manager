@@ -1,9 +1,8 @@
 import express, { Request, Response } from 'express'
 import { asyncHandler } from '../middleware/asyncHandler'
-import { MoveTaskRequest, CompressTaskRequest } from '../types'
+import { MoveTaskRequest } from '../types'
 import {
   createMoveTask,
-  createCompressTask,
   getTask,
   getAllTasks,
   cancelTask,
@@ -35,30 +34,6 @@ router.post(
 
     try {
       const task = createMoveTask(sourcePaths, sourceNames, targetPath)
-      res.json({ taskId: task.id })
-    } catch (e: any) {
-      if (e.code === 'TASK_CONFLICT') {
-        return res.status(409).json({ message: e.message })
-      }
-      throw e
-    }
-  })
-)
-
-/**
- * 创建压缩任务
- */
-router.post(
-  '/compress',
-  asyncHandler(async (req: Request, res: Response) => {
-    const { sourcePath } = req.body as CompressTaskRequest
-
-    if (!sourcePath) {
-      return res.status(400).json({ message: '缺少源文件夹路径' })
-    }
-
-    try {
-      const task = createCompressTask(sourcePath)
       res.json({ taskId: task.id })
     } catch (e: any) {
       if (e.code === 'TASK_CONFLICT') {

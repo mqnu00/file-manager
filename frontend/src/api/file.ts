@@ -120,79 +120,6 @@ export const moveFileAsync = (
   })
 }
 
-// 压缩文件夹（Promise 版本 + 进度回调 — 给 composable 使用）
-export const zipFolderAsync = (
-  path: string,
-  onProgress?: (progress: number) => void
-): Promise<void> => {
-  // Demo 模式：不支持压缩
-  if (import.meta.env.VITE_DEMO_MODE === 'true') {
-    return Promise.reject(new Error('演示模式不支持压缩操作'))
-  }
-
-  return new Promise((resolve, reject) => {
-    fetch('/api/files/zip', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('session_token') || ''}`,
-      },
-      body: JSON.stringify({ path }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('压缩失败')
-        }
-        const reader = response.body?.getReader()
-        if (!reader) {
-          throw new Error('无法读取响应流')
-        }
-
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        const processStream = (): void => {
-          reader.read().then(({ done, value }) => {
-            if (done) {
-              resolve()
-              return
-            }
-
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6))
-                  if (data.type === 'progress') {
-                    onProgress?.(data.progress)
-                  } else if (data.type === 'complete') {
-                    resolve()
-                    return
-                  } else if (data.type === 'error') {
-                    reject(new Error(data.message || '压缩失败'))
-                    return
-                  }
-                } catch {
-                  // Ignore JSON parse errors
-                }
-              }
-            }
-
-            processStream()
-          })
-        }
-
-        processStream()
-      })
-      .catch((error) => {
-        reject(error instanceof Error ? error : new Error('压缩失败'))
-      })
-  })
-}
-
 // 下载文件（fetch + blob 方式，支持认证头）
 export const downloadFile = async (filePath: string): Promise<void> => {
   // Demo 模式：不支持下载
@@ -224,11 +151,6 @@ export const downloadFile = async (filePath: string): Promise<void> => {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
-}
-
-// 取消压缩
-export const cancelZip = (path: string): Promise<{ success: boolean }> => {
-  return api.post('/files/zip/cancel', { path }).then((res) => res.data)
 }
 
 // 删除文件/文件夹

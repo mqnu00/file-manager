@@ -1,3 +1,19 @@
+## v3.0.0-beta9 (2026-08-24)
+
+### ✨ 新增功能
+
+- **插件工具栏操作挂载点**：主应用新增批量操作注册表（`window.__fm_bulk_actions` + `useBulkActions`），
+  前端插件可注册显示在文件浏览器批量操作栏的自定义操作按钮（可见性 + 点击回调，按 id 幂等覆盖），
+  为“压缩”等由插件提供能力的场景提供平台扩展点
+
+### 🔧 变更
+
+- **压缩功能提取为独立插件**：主应用删除内置压缩（工具栏压缩按钮、`POST /api/tasks/compress` 任务型压缩、
+  `POST /api/files/zip` SSE 压缩及 `/zip/cancel`），压缩改由插件 `@mqn00/file-manager-plugin-compress`
+  提供（详见插件 README 与 API.md）
+
+---
+
 ## v3.0.0-beta8 (2026-08-21)
 
 ### ✨ 新增功能

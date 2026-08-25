@@ -10,14 +10,12 @@ import {
   getFolders,
   getDirSize,
   createFolder,
-  cancelZip,
   deleteFile,
   batchDeleteFiles,
   renameFile,
   getLogs,
   getAvailableLogDates,
   moveFileAsync,
-  zipFolderAsync,
   downloadFile,
 } from './file'
 
@@ -97,11 +95,7 @@ describe('api/file（axios 封装）', () => {
     expect(mockedApi.post).toHaveBeenCalledWith('/folders', { path: '', name: 'newdir' })
   })
 
-  it('cancelZip / deleteFile / batchDeleteFiles / renameFile 调用正确端点', async () => {
-    mockedApi.post.mockResolvedValue({ data: { success: true } })
-    await cancelZip('docs')
-    expect(mockedApi.post).toHaveBeenCalledWith('/files/zip/cancel', { path: 'docs' })
-
+  it('deleteFile / batchDeleteFiles / renameFile 调用正确端点', async () => {
     mockedApi.delete.mockResolvedValue({ data: { success: true } })
     await deleteFile('a.txt')
     expect(mockedApi.delete).toHaveBeenCalledWith('/files', { params: { path: 'a.txt' } })
@@ -132,7 +126,7 @@ describe('api/file（axios 封装）', () => {
   })
 })
 
-describe('moveFileAsync / zipFolderAsync（fetch SSE 流）', () => {
+describe('moveFileAsync（fetch SSE 流）', () => {
   it('moveFileAsync：progress 回调递增，complete 后 resolve', async () => {
     stubFetchStream([
       `data: ${JSON.stringify({ type: 'progress', progress: 30, speed: 1, totalSize: 100 })}\n\n`,
@@ -166,26 +160,6 @@ describe('moveFileAsync / zipFolderAsync（fetch SSE 流）', () => {
       },
       body: JSON.stringify({ fromPath: 'a.txt', toPath: 'b.txt' }),
     })
-  })
-
-  it('zipFolderAsync：progress 回调 + complete resolve', async () => {
-    stubFetchStream([
-      `data: ${JSON.stringify({ type: 'progress', progress: 40 })}\n\n`,
-      `data: ${JSON.stringify({ type: 'complete' })}\n\n`,
-    ])
-    const progress: number[] = []
-    await zipFolderAsync('docs', (p) => progress.push(p))
-    expect(progress).toEqual([40])
-  })
-
-  it('zipFolderAsync：error 事件 reject', async () => {
-    stubFetchStream([`data: ${JSON.stringify({ type: 'error', message: '压缩失败' })}\n\n`])
-    await expect(zipFolderAsync('docs')).rejects.toThrow('压缩失败')
-  })
-
-  it('zipFolderAsync：非 ok 响应 reject', async () => {
-    stubFetchStream([], false)
-    await expect(zipFolderAsync('docs')).rejects.toThrow('压缩失败')
   })
 })
 

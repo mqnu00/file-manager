@@ -14,30 +14,6 @@ beforeAll(() => {
 })
 
 describe('文件 API 错误分支（集成）', () => {
-  it('zip 缺少文件夹路径 → 400', async () => {
-    const res = await request(app)
-      .post('/api/files/zip')
-      .send({})
-      .set('Authorization', authHeader)
-    expect(res.status).toBe(400)
-  })
-
-  it('zip/cancel 缺少路径 → 400', async () => {
-    const res = await request(app)
-      .post('/api/files/zip/cancel')
-      .send({})
-      .set('Authorization', authHeader)
-    expect(res.status).toBe(400)
-  })
-
-  it('zip/cancel 无活动压缩任务 → 404', async () => {
-    const res = await request(app)
-      .post('/api/files/zip/cancel')
-      .send({ path: 'no-active-zip-dir' })
-      .set('Authorization', authHeader)
-    expect(res.status).toBe(404)
-  })
-
   it('move 缺少必要参数 → 400', async () => {
     const res1 = await request(app)
       .post('/api/files/move')

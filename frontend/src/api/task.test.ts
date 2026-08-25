@@ -5,7 +5,7 @@ vi.mock('./index', () => ({
 }))
 
 import api from './index'
-import { startMoveTask, startCompressTask, getTasks, cancelTask, subscribeTask } from './task'
+import { startMoveTask, getTasks, cancelTask, subscribeTask } from './task'
 import type { TaskEventCallbacks } from './task'
 
 const mockedApi = vi.mocked(api)
@@ -62,13 +62,6 @@ describe('api/task', () => {
       targetPath: 'docs',
     })
     expect(res.taskId).toBe('mv-1')
-  })
-
-  it('startCompressTask 调用 POST /tasks/compress', async () => {
-    mockedApi.post.mockResolvedValue({ data: { taskId: 'zip-1' } })
-    const res = await startCompressTask('docs')
-    expect(mockedApi.post).toHaveBeenCalledWith('/tasks/compress', { sourcePath: 'docs' })
-    expect(res.taskId).toBe('zip-1')
   })
 
   it('getTasks 调用 GET /tasks', async () => {

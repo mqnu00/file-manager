@@ -22,7 +22,6 @@ const progressMock = {
   moveState: reactive({ visible: false, sourceNames: [] as string[], sourcePaths: [] as string[], targetPath: '' }),
   showBatchMoveDialog: vi.fn(),
   moveFile: vi.fn(),
-  startZipTask: vi.fn(),
 }
 vi.mock('@/composables/useFileProgress', () => ({
   useFileProgress: () => progressMock,

@@ -8,7 +8,6 @@ import type { TaskInfo } from '@/types'
 
 vi.mock('@/api/task', () => ({
   startMoveTask: vi.fn(),
-  startCompressTask: vi.fn(),
   getTasks: vi.fn(),
   cancelTask: vi.fn(),
   subscribeTask: vi.fn(() => vi.fn()),
@@ -53,23 +52,6 @@ describe('TaskPanel.vue', () => {
     expect(wrapper.find('.task-card').exists()).toBe(true)
     expect(wrapper.text()).toContain('移动 1 项到 docs')
     expect(wrapper.text()).toContain('移动中...')
-  })
-
-  it('压缩任务显示压缩文案与取消按钮', async () => {
-    const store = useTaskStore()
-    store.tasks.push(
-      makeTask({
-        id: 'zip-1',
-        type: 'compress',
-        phase: 'compress',
-        metadata: { sourcePath: 'docs', sourceName: 'docs', targetPath: './docs.zip', totalBytes: 0 },
-      })
-    )
-    const wrapper = mount(TaskPanel)
-    await nextTick()
-    expect(wrapper.text()).toContain('压缩 docs')
-    expect(wrapper.text()).toContain('压缩中...')
-    expect(wrapper.find('.task-card__footer button').text()).toContain('取消')
   })
 
   it('任务完成后自动折叠回徽章', async () => {

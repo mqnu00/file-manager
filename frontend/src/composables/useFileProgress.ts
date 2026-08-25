@@ -78,17 +78,9 @@ export const useFileProgress = () => {
     await taskStore.startMoveTask(sourcePaths, sourceNames, normalizedTargetPath, onComplete)
   }
 
-  /**
-   * 启动压缩后台任务
-   */
-  const startZipTask = (path: string, onComplete?: () => void) => {
-    taskStore.startCompressTask(path, onComplete)
-  }
-
   return {
     moveState,
     showBatchMoveDialog,
     moveFile: moveFiles,
-    startZipTask,
   }
 }

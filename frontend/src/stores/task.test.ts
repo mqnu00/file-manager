@@ -12,7 +12,6 @@ const h = vi.hoisted(() => ({
 
 vi.mock('@/api/task', () => ({
   startMoveTask: vi.fn(),
-  startCompressTask: vi.fn(),
   getTasks: vi.fn(),
   cancelTask: vi.fn(),
   subscribeTask: vi.fn((taskId: string, callbacks: Record<string, (data?: unknown) => void>) => {
@@ -33,14 +32,12 @@ vi.mock('element-plus', () => ({
 import { useTaskStore } from './task'
 import {
   startMoveTask as startMoveTaskApi,
-  startCompressTask as startCompressTaskApi,
   getTasks as getTasksApi,
   cancelTask as cancelTaskApi,
 } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
 const mockedStartMove = vi.mocked(startMoveTaskApi)
-const mockedStartCompress = vi.mocked(startCompressTaskApi)
 const mockedGetTasks = vi.mocked(getTasksApi)
 const mockedCancelTask = vi.mocked(cancelTaskApi)
 
@@ -152,16 +149,6 @@ describe('task store', () => {
     expect(ElMessage.error).toHaveBeenCalledWith('删除源文件失败: EACCES')
   })
 
-  it('startCompressTask 成功：创建 compress 任务并订阅', async () => {
-    mockedStartCompress.mockResolvedValue({ taskId: 'zip-1' })
-    const store = useTaskStore()
-    await store.startCompressTask('folder')
-    expect(store.tasks[0].id).toBe('zip-1')
-    expect(store.tasks[0].type).toBe('compress')
-    expect(store.tasks[0].phase).toBe('compress')
-    expect(h.subscribeCalls.length).toBe(1)
-  })
-
   it('cancelTask 成功：标记取消并取消订阅', async () => {
     mockedStartMove.mockResolvedValue({ taskId: 'mv-1' })
     mockedCancelTask.mockResolvedValue({ success: true })
@@ -181,11 +168,9 @@ describe('task store', () => {
 
   it('dismissTask 从列表移除并取消订阅', async () => {
     mockedStartMove.mockResolvedValue({ taskId: 'mv-1' })
-    mockedStartCompress.mockResolvedValue({ taskId: 'zip-1' })
     const store = useTaskStore()
     await store.startMoveTask(['a.txt'], ['a.txt'], 'dir')
-    await store.startCompressTask('folder')
     store.dismissTask('mv-1')
-    expect(store.tasks.map((t) => t.id)).toEqual(['zip-1'])
+    expect(store.tasks.map((t) => t.id)).toEqual([])
   })
 })

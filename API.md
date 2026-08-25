@@ -260,55 +260,93 @@
 
 ---
 
-### 4. 压缩文件夹
+### 4. 压缩（compress 插件）
 
-将指定文件夹压缩为 zip 文件，使用 SSE 发送压缩进度。
+> 压缩功能已由内置能力提取为独立插件 `@mqn00/file-manager-plugin-compress`（短名 `compress`）。
+> 接口统一挂在 `/api/plugin/compress` 下，需登录访问。支持**多选文件/文件夹**压缩为单个 zip，
+> **指定输出文件夹**（默认当前浏览文件夹），压缩前**预检源读取权限与输出目录写入权限**。
 
-- **接口**: `GET /api/files/zip`
-- **参数**:
-  | 参数 | 类型 | 必填 | 说明 |
-  |------|------|------|------|
-  | `path` | string | 是 | 要压缩的文件夹路径 |
+#### 4.1 权限预检
 
-- **请求示例**:
-  ```bash
-  GET /api/files/zip?path=/documents
+压缩前确认：每个源条目可读（`R_OK`）、输出文件夹存在且可写（`W_OK`）、输出文件夹未落在任一选中文件夹内部。
+
+- **接口**: `POST /api/plugin/compress/check`
+- **请求体**:
+  ```json
+  {
+    "paths": ["docs", "readme.md"],
+    "outputDir": "backup"
+  }
+  ```
+- **响应示例**:
+  ```json
+  {
+    "ok": true,
+    "items": [
+      { "path": "docs", "name": "docs", "kind": "dir", "exists": true, "readable": true },
+      { "path": "readme.md", "name": "readme.md", "kind": "file", "exists": true, "readable": true }
+    ],
+    "output": { "path": "backup", "exists": true, "isDir": true, "writable": true },
+    "targetPath": "docs 等 2 项.zip",
+    "forbidden": false
+  }
   ```
 
-- **响应**: SSE (Server-Sent Events) 流
+- **事件/字段说明**:
+  | 字段 | 说明 |
+  |------|------|
+  | `items[].readable` | 源条目是否可读；`exists:false` 表示条目已不存在 |
+  | `output.writable` | 输出文件夹是否可写 |
+  | `targetPath` | 计划生成的 zip 相对路径（已考虑冲突自动加 `(n)` 后缀） |
+  | `forbidden` | 输出文件夹是否位于某个选中文件夹内部（禁止） |
+
+#### 4.2 压缩（SSE）
+
+- **接口**: `POST /api/plugin/compress/zip`
+- **请求体**:
+  ```json
+  {
+    "jobId": "b7e2f0a1-...",
+    "paths": ["docs", "readme.md"],
+    "outputDir": "backup"
+  }
+  ```
+  `jobId` 由客户端生成（如 `crypto.randomUUID()`），用于取消时关联任务。
+
+- **响应**: SSE 流
   ```text
   data: {"type":"progress","progress":50}
   data: {"type":"progress","progress":100}
-  data: {"type":"complete","zipPath":"documents/documents.zip"}
+  data: {"type":"complete","zipPath":"backup/docs 等 2 项.zip"}
   ```
 
 - **事件类型**:
   | 类型 | 说明 |
   |------|------|
   | `progress` | 压缩进度，`progress` 字段表示百分比 (0-100) |
-  | `complete` | 压缩完成，`zipPath` 字段表示压缩文件路径 |
+  | `complete` | 压缩完成，`zipPath` 字段表示 zip 文件相对路径 |
   | `error` | 压缩失败，`message` 字段表示错误信息 |
+  | `cancelled` | 压缩已取消 |
 
----
+- **命名规则**: 单项 → `<名称>.zip`；多项 → `<首项名称> 等 N 项.zip`；目标已存在时自动追加 ` (1)`、` (2)`… 后缀，不覆盖已有文件。
+- **取消**: 客户端断开连接即自动中止压缩并清理半成品。
 
-### 5. 取消压缩
+#### 4.3 取消压缩
 
-取消正在进行的压缩任务。
-
-- **接口**: `POST /api/files/zip/cancel`
+- **接口**: `POST /api/plugin/compress/cancel`
 - **请求体**:
   ```json
   {
-    "path": "/documents"
+    "jobId": "b7e2f0a1-..."
   }
   ```
-
 - **响应示例**:
   ```json
   {
     "success": true
   }
   ```
+- 未找到对应任务时返回 `404`。
 
 ---
 

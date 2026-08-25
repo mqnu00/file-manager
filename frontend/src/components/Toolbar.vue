@@ -99,13 +99,12 @@
             下载
           </el-button>
           <el-button
-            v-if="isSingleFolderSelected"
+            v-for="action in visibleBulkActions"
+            :key="action.id"
             size="small"
-            type="warning"
-            @click="$emit('batch-zip')"
+            @click="action.onClick()"
           >
-            <el-icon><FolderChecked /></el-icon>
-            压缩
+            {{ action.label }}
           </el-button>
           <el-button
             v-if="selectedCount === 1"
@@ -137,10 +136,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FolderAdd,
-  FolderChecked,
   Refresh,
   HomeFilled,
   ArrowUp,
@@ -161,18 +160,27 @@ import {
   DocumentAdd,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
+import type { BulkActionView } from '@/pluginActions'
 
 const router = useRouter()
 const { themes, activeTheme, setTheme } = useTheme()
 
-defineProps<{
+const props = defineProps<{
   breadcrumbParts: string[]
   sortBy: string
   sortOrder: string
   selectedCount: number
   isSingleFileSelected: boolean
-  isSingleFolderSelected: boolean
+  selectedHasFolder: boolean
+  bulkActions: BulkActionView[]
 }>()
+
+// 渲染当前选择下可见的插件注册操作
+const visibleBulkActions = computed(() =>
+  props.bulkActions.filter((a) =>
+    a.visible({ count: props.selectedCount, hasFolder: props.selectedHasFolder })
+  )
+)
 
 const emit = defineEmits<{
   navigate: [index: number]
@@ -184,7 +192,6 @@ const emit = defineEmits<{
   'batch-delete': []
   'batch-move': []
   'batch-download': []
-  'batch-zip': []
   'batch-rename': []
   'cancel-selection': []
 }>()

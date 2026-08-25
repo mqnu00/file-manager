@@ -16,14 +16,20 @@ async function selectRow(page: Page, name: string): Promise<void> {
   await row.locator('.el-checkbox').click()
 }
 
-test.describe('后台任务（移动/压缩）', () => {
-  test('压缩文件夹：生成 zip 并出现在列表', async ({ page }) => {
+test.describe('后台任务（移动）与压缩插件', () => {
+  test('压缩文件夹：对话框默认输出当前文件夹，生成 zip 并出现在列表', async ({ page }) => {
     await openHome(page)
     await selectRow(page, 'docs')
     await page.locator('.bulk-actions').getByRole('button', { name: '压缩' }).click()
 
-    // 小目录压缩瞬间完成，SSE complete 可能早于订阅建立，自动刷新不可靠；
-    // 轮询手动刷新直到 docs.zip 出现（zip 写入被压缩目录的父目录）
+    // compress 插件对话框：已选 1 项，默认输出目录为当前文件夹，权限预检通过后可开始
+    const compressDialog = page.locator('.el-dialog', { hasText: /压缩（1 项）/ })
+    await expect(compressDialog).toBeVisible()
+    await expect(compressDialog.getByRole('button', { name: '开始压缩' })).toBeEnabled()
+    await compressDialog.getByRole('button', { name: '开始压缩' }).click()
+
+    // 小目录压缩瞬间完成，SSE complete 可能早于自动刷新完成；
+    // 轮询手动刷新直到 docs.zip 出现（zip 写入当前文件夹）
     for (let i = 0; i < 10; i++) {
       await page.getByRole('button', { name: '刷新' }).click()
       if (await page.locator('.file-name-text').filter({ hasText: 'docs.zip' }).isVisible()) break

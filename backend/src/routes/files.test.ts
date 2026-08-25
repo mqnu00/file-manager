@@ -173,32 +173,6 @@ describe('文件操作 API（集成）', () => {
     expect(names).not.toContain('f1.txt')
     expect(names).not.toContain('f2.txt')
   })
-
-  it('压缩文件夹（生成 zip 文件）', async () => {
-    // zipFolder 把 zip 写到被压缩目录的父目录（dirname(folderPath)/<name>.zip）
-    const zipPath = path.join(STORAGE_ROOT, 'dir.zip')
-    fs.rmSync(zipPath, { force: true })
-
-    // 注意：zipFolder 完成时只 sendSSEComplete（write）不 res.end()，连接保持打开，
-    // 因此不 await 响应结束，改为轮询 zip 文件生成后 abort 连接
-    const req = request(app)
-      .post('/api/files/zip')
-      .send({ path: 'dir' })
-      .set('Authorization', authHeader)
-    const settled = new Promise<void>((resolve) => {
-      req.end(() => resolve())
-    })
-
-    const deadline = Date.now() + 5000
-    while (!fs.existsSync(zipPath)) {
-      if (Date.now() > deadline) throw new Error('zip 文件未在超时时间内生成')
-      await new Promise((r) => setTimeout(r, 50))
-    }
-    expect(fs.statSync(zipPath).size).toBeGreaterThan(0)
-
-    req.abort()
-    await settled
-  })
 })
 
 describe('创建文件 API（集成）', () => {
