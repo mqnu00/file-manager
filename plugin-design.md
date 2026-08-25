@@ -180,11 +180,20 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 | `ctx.Vue` | Vue 核心库命名空间（`h`、`ref`、`defineComponent`、`onMounted` 等） |
 | `ctx.ElementPlus` | Element Plus 完整命名空间（组件 + 工具函数） |
 | `ctx.stores` | Pinia stores：`auth` / `file` / `task` |
-| `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `config` / `task` / `system` API 模块 |
+| `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `config` / `task` API 模块 |
 | `ctx.composables` | `useTheme` / `useContextMenu` / `useFileProgress` / `useFileSort` |
 | `ctx.utils` | `formatSize` / `formatTime` / `formatSpeed` / `formatProgress` |
 | `ctx.constants` | 存储键、主题常量、`API_BASE_URL` |
 | `ctx.router` | `createRouter` / `createWebHistory` / `createWebHashHistory` / `addRoute` / `currentRoute` |
+
+### 平台挂载点（window 注册表）
+
+主应用提供两个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖）：
+
+| 挂载点 | 用途 | 注册项 |
+|---|---|---|
+| `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `{ id, label, visible(count, hasFolder), run(selected, infos, currentPath) }` |
+| `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
 
 ### 主题注册（registerTheme）
 
@@ -268,6 +277,7 @@ html.my-theme { color-scheme: dark; }
 | file-office-viewer | `fov-` |
 | file-binary-viewer | `fbv-` |
 | compress | `fcp-` |
+| system-info | `fci-` |
 
 样式注入惯例：`install()` 时创建带稳定 id 的 `<style>` 标签，先查重后追加（插件卸载/热重载时同 id 覆盖或复用）：
 

@@ -9,6 +9,9 @@
   `createExternalTask`（建任务条目 + 冲突检测 + 取消信号，不自动执行）、`updateTaskProgress`（进度上报）、
   `finalizeTask`（终态收尾 + 广播 + 移除）并暴露到插件 `ctx.services.task`；任务类型/阶段恢复
   `compress`，压缩任务可取消；TaskPanel 恢复压缩任务卡片（进度/速度/当前文件/取消）
+- **插件页面导航挂载点**：主应用新增页面导航注册表（`window.__fm_nav_actions` + `useNavActions`），
+  前端插件可注册顶栏图标按钮跳转插件页面路由（`{ id, label, path, icon }`，按 id 幂等覆盖），
+  为“系统信息”等由插件提供页面的场景提供平台扩展点
 
 ### 🔧 变更
 
@@ -17,6 +20,10 @@
   提供（详见插件 README 与 API.md）
 - **压缩任务改为后台任务**：插件 `POST /api/plugin/compress/zip` 由 SSE 流改为创建后台任务并返回
   `taskId`（进度/取消/完成走任务系统，TaskPanel 展示），取消/断开不再终止执行，任务可跨页面跟踪
+- **系统信息抽取为独立插件**：主应用删除内置系统信息（`GET /api/system`、SystemInfoView、
+  `/system` 路由、前端 system API 与 demo mock、`systeminformation` 依赖），改由插件
+  `@mqn00/file-manager-plugin-system-info` 提供（页面 `/plugin/system-info` + 顶栏导航入口 +
+  `GET /api/plugin/system-info/info`，详见插件 README 与 API.md）
 
 ---
 

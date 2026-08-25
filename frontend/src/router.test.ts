@@ -17,7 +17,6 @@ vi.mock('@/stores/auth', () => ({
 vi.mock('@/views/HomeView.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/LoginView.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/ConfigView.vue', () => ({ default: { template: '<div />' } }))
-vi.mock('@/views/SystemInfoView.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/LogsView.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/PluginView.vue', () => ({ default: { template: '<div />' } }))
 

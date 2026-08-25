@@ -1,11 +1,21 @@
-import express, { Request, Response } from 'express'
+/**
+ * 系统信息插件后端入口
+ *
+ * 注册路由（需登录）：
+ * - GET /api/plugin/system-info/info ：收集并返回系统信息（OS/CPU/内存/磁盘分区/Node）
+ *
+ * 逻辑自主应用内置 GET /api/system 原样移植（systeminformation 收集 + 磁盘按物理盘分组 +
+ * 存储根目录磁盘匹配 + CPU 频率逐级回退），保证响应结构与迁移前完全一致。
+ */
+import type {
+  BackendPluginContext,
+  PluginInstallFunction,
+  Request,
+  Response,
+} from '@mqn00/file-manager/plugin'
 import os from 'os'
 import { execSync } from 'child_process'
 import si from 'systeminformation'
-import { asyncHandler } from '../middleware/asyncHandler'
-import { getStorageRoot } from '../utils/safePath'
-
-const router = express.Router()
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -142,70 +152,81 @@ function getCpuSpeed(cpuInfo: si.Systeminformation.CpuData): number {
   return cpus.length > 0 ? cpus[0].speed : 0
 }
 
-router.get(
-  '/',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const [cpuInfo, currentLoad, mem, fsSizes, diskLayouts] = await Promise.all([
-      si.cpu(),
-      si.currentLoad(),
-      si.mem(),
-      si.fsSize(),
-      si.diskLayout(),
-    ])
+export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
+  const router = ctx.express.Router()
 
-    const disks = buildDiskList(fsSizes, diskLayouts)
-    const storageRoot = getStorageRoot()
-    const defaultDisk =
-      disks.find((d) => d.mountpoint === storageRoot) ||
-      disks.find((d) => d.mountpoints.includes(storageRoot)) ||
-      disks[0]
+  router.get(
+    '/info',
+    ctx.middleware.auth,
+    async (_req: Request, res: Response): Promise<void> => {
+      try {
+        const [cpuInfo, currentLoad, mem, fsSizes, diskLayouts] = await Promise.all([
+          si.cpu(),
+          si.currentLoad(),
+          si.mem(),
+          si.fsSize(),
+          si.diskLayout(),
+        ])
 
-    const cpus = os.cpus()
+        const disks = buildDiskList(fsSizes, diskLayouts)
+        const storageRoot = ctx.utils.path.getStorageRoot()
+        const defaultDisk =
+          disks.find((d) => d.mountpoint === storageRoot) ||
+          disks.find((d) => d.mountpoints.includes(storageRoot)) ||
+          disks[0]
 
-    res.json({
-      os: {
-        type: os.type(),
-        platform: os.platform(),
-        arch: os.arch(),
-        release: os.release(),
-        hostname: os.hostname(),
-        uptime: os.uptime(),
-        uptimeFormatted: formatUptime(os.uptime()),
-      },
-      cpu: {
-        model: cpuInfo.brand || (cpus.length > 0 ? cpus[0].model.replace(/\s+/g, ' ').trim() : 'Unknown'),
-        cores: cpuInfo.cores,
-        physicalCores: cpuInfo.physicalCores,
-        speed: getCpuSpeed(cpuInfo),
-        usage: Math.round(currentLoad.currentLoad * 10) / 10,
-      },
-      memory: {
-        total: mem.total,
-        free: mem.free,
-        used: mem.used,
-        usagePercent: Math.round((mem.used / mem.total) * 1000) / 10,
-        totalFormatted: formatBytes(mem.total),
-        freeFormatted: formatBytes(mem.free),
-        usedFormatted: formatBytes(mem.used),
-      },
-      disk: defaultDisk || {
-        device: 'Unknown',
-        mountpoint: '/',
-        fstype: 'unknown',
-        total: 0,
-        free: 0,
-        used: 0,
-        totalFormatted: '0 B',
-        freeFormatted: '0 B',
-        usedFormatted: '0 B',
-      },
-      disks,
-      node: {
-        version: process.version,
-        pid: process.pid,
-      },
-    })
-  })
-)
+        const cpus = os.cpus()
 
-export default router
+        res.json({
+          os: {
+            type: os.type(),
+            platform: os.platform(),
+            arch: os.arch(),
+            release: os.release(),
+            hostname: os.hostname(),
+            uptime: os.uptime(),
+            uptimeFormatted: formatUptime(os.uptime()),
+          },
+          cpu: {
+            model:
+              cpuInfo.brand || (cpus.length > 0 ? cpus[0].model.replace(/\s+/g, ' ').trim() : 'Unknown'),
+            cores: cpuInfo.cores,
+            physicalCores: cpuInfo.physicalCores,
+            speed: getCpuSpeed(cpuInfo),
+            usage: Math.round(currentLoad.currentLoad * 10) / 10,
+          },
+          memory: {
+            total: mem.total,
+            free: mem.free,
+            used: mem.used,
+            usagePercent: Math.round((mem.used / mem.total) * 1000) / 10,
+            totalFormatted: formatBytes(mem.total),
+            freeFormatted: formatBytes(mem.free),
+            usedFormatted: formatBytes(mem.used),
+          },
+          disk: defaultDisk || {
+            device: 'Unknown',
+            mountpoint: '/',
+            fstype: 'unknown',
+            total: 0,
+            free: 0,
+            used: 0,
+            totalFormatted: '0 B',
+            freeFormatted: '0 B',
+            usedFormatted: '0 B',
+          },
+          disks,
+          node: {
+            version: process.version,
+            pid: process.pid,
+          },
+        })
+      } catch (e: any) {
+        ctx.utils.logger.log('ERROR', 'system-info', `获取系统信息失败: ${e?.message || '未知错误'}`)
+        res.status(500).json({ message: e?.message || '获取系统信息失败' })
+      }
+    }
+  )
+
+  ctx.app.use('/api/plugin/system-info', router)
+}

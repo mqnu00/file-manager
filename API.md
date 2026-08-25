@@ -482,13 +482,17 @@
 
 ---
 
-## 系统信息接口
+## 系统信息（system-info 插件）
+
+> 系统信息功能已抽取为独立插件 `@mqn00/file-manager-plugin-system-info`（短名 `system-info`）。
+> 插件前端注册 `/plugin/system-info` 页面路由与顶栏导航入口（主应用 `__fm_nav_actions` 挂载点）；
+> 后端接口挂在 `/api/plugin/system-info` 下，需登录访问。
 
 ### 1. 获取系统信息
 
 获取当前服务器的系统和硬件信息。
 
-- **接口**: `GET /api/system`
+- **接口**: `GET /api/plugin/system-info/info`
 - **请求头**: `Authorization: Bearer <sessionToken>`
 - **响应示例**:
   ```json
@@ -584,7 +588,7 @@
 - **字段说明**:
   | 字段 | 类型 | 说明 |
   |------|------|------|
-  | `disk` | object | 默认磁盘（与 `FILE_MANAGER_BASE_DIR` 或 `/` 匹配） |
+  | `disk` | object | 默认磁盘（与存储根目录或 `/` 匹配） |
   | `disks` | array | 所有磁盘列表 |
   | `disk.device` | string | 设备路径，如 `/dev/sda` |
   | `disk.vendor` | string | 制造商名称（可能为空） |

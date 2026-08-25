@@ -1,4 +1,4 @@
-import type { FileItem, SystemInfo, DiskInfo } from '@/types'
+import type { FileItem } from '@/types'
 import type { AppConfig } from '@/api/config'
 import type { LogEntry } from '@/api/file'
 
@@ -198,69 +198,6 @@ export const mockFileTree: Record<string, FileItem[]> = {
 // ============================================================
 // Mock 系统信息
 // ============================================================
-
-const mockDisk: DiskInfo = {
-  device: '/dev/sda1',
-  vendor: 'Samsung',
-  model: 'SSD 860 EVO 1TB',
-  mountpoint: '/',
-  mountpoints: ['/', '/home'],
-  fstype: 'ext4',
-  total: 1000204886016,
-  free: 423561234432,
-  used: 576643651584,
-  totalFormatted: '931.5 GB',
-  freeFormatted: '394.5 GB',
-  usedFormatted: '537.0 GB',
-  partitions: [
-    {
-      mountpoint: '/',
-      totalFormatted: '900.0 GB',
-      usedFormatted: '520.0 GB',
-      percent: 57.8,
-    },
-    {
-      mountpoint: '/home',
-      totalFormatted: '31.5 GB',
-      usedFormatted: '17.0 GB',
-      percent: 54.0,
-    },
-  ],
-}
-
-export const mockSystemInfo: SystemInfo = {
-  os: {
-    type: 'Linux',
-    platform: 'linux',
-    arch: 'x64',
-    release: '5.15.167.4-microsoft-standard-WSL2',
-    hostname: 'file-manager-demo',
-    uptime: 604800,
-    uptimeFormatted: '7 天 0 时 0 分',
-  },
-  cpu: {
-    model: 'Intel(R) Core(TM) i7-12700H @ 2.30GHz',
-    cores: 20,
-    physicalCores: 14,
-    speed: 2300,
-    usage: 12.5,
-  },
-  memory: {
-    total: 16777216000,
-    free: 8589934592,
-    used: 8187281408,
-    usagePercent: 48.8,
-    totalFormatted: '16.0 GB',
-    freeFormatted: '8.0 GB',
-    usedFormatted: '7.6 GB',
-  },
-  disk: mockDisk,
-  disks: [mockDisk],
-  node: {
-    version: 'v22.12.0',
-    pid: 12345,
-  },
-}
 
 // ============================================================
 // Mock 配置

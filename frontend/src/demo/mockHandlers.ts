@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios'
-import { mockFileTree, mockSystemInfo, mockConfig, mockLogs, getMockLogDates } from './mockData'
+import { mockFileTree, mockConfig, mockLogs, getMockLogDates } from './mockData'
 import type { FileItem } from '@/types'
 import { DEMO_PLUGINS } from './plugins'
 import type { DemoPluginConfig } from './plugins'
@@ -248,13 +248,6 @@ export function setupMockApi(api: AxiosInstance) {
     // POST /api/tasks/:id/cancel — 取消任务
     if (fullUrl.startsWith('/api/tasks/') && fullUrl.endsWith('/cancel') && method === 'post') {
       return mockResponse({ success: true })
-    }
-
-    // ============================================================
-    // System
-    // ============================================================
-    if (fullUrl === '/api/system' && method === 'get') {
-      return mockResponse(mockSystemInfo)
     }
 
     // ============================================================

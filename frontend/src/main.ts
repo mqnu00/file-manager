@@ -3,6 +3,7 @@ import * as Vue from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import * as ElementPlusAll from 'element-plus'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { ctx } from './context'
@@ -12,6 +13,7 @@ import { initPlugins } from './pluginLoader'
 // pluginActions 仅被懒加载的 HomeView 静态 import，若不在此显式引入，
 // 其模块求值会晚于插件加载，导致插件注册静默失败（dev 模式必现）。
 import '@/pluginActions'
+import '@/pluginNav'
 import { useTheme } from './composables/useTheme'
 import { STORAGE_KEY_THEME } from './constants'
 import { DEMO_DEFAULT_THEME } from './demo/plugins'
@@ -54,6 +56,10 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(ElementPlus)
 
+// 全局暴露（window.Vue / window.ElementPlus 等）提前：插件 install（initPlugins 内）
+// 可能使用 window.Vue（vue 运行时桥）等全局资源，必须早于插件加载完成
+exposeToGlobal()
+
 // 初始化插件系统（必须在 router/mount 前完成，确保插件路由先注册再解析 URL）
 initPlugins().then(() => {
   console.log('[Plugin] All plugins initialized')
@@ -72,9 +78,6 @@ initPlugins().then(() => {
   // router 必须在插件注册完路由之后才安装，否则初始导航找不到插件路由
   app.use(router)
   app.mount('#app')
-
-  // 暴露到全局
-  exposeToGlobal()
 
   // 初始化脚本运行器（控制台 __runScript()）
   initScriptRunner(ctx)

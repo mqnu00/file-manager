@@ -68,8 +68,14 @@
           </template>
           <el-option v-for="t in themes" :key="t.name" :label="t.label" :value="t.name" />
         </el-select>
-        <el-button size="small" @click="router.push('/system')">
-          <el-icon><Monitor /></el-icon>
+        <el-button
+          v-for="nav in navActions"
+          :key="nav.id"
+          size="small"
+          :title="nav.label"
+          @click="router.push(nav.path)"
+        >
+          <el-icon><component :is="nav.icon || Monitor" /></el-icon>
         </el-button>
         <el-button size="small" @click="router.push('/logs')">
           <el-icon><Document /></el-icon>
@@ -161,9 +167,12 @@ import {
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 import type { BulkActionView } from '@/pluginActions'
+import { useNavActions } from '@/pluginNav'
 
 const router = useRouter()
 const { themes, activeTheme, setTheme } = useTheme()
+// 插件注册的页面导航入口（顶栏图标按钮），响应式更新
+const { actions: navActions } = useNavActions()
 
 const props = defineProps<{
   breadcrumbParts: string[]

@@ -76,6 +76,18 @@ export interface FileItem {
   broken?: boolean
 }
 
+/** 插件页面导航项（注册进主应用顶栏导航区，经 window.__fm_nav_actions） */
+export interface NavAction {
+  /** 唯一 id（重复注册按 id 覆盖） */
+  id: string
+  /** 悬停提示/无障碍标签 */
+  label: string
+  /** 点击跳转的路由路径 */
+  path: string
+  /** 图标组件（插件自绘 SVG 组件或经类型门面引入的图标组件） */
+  icon?: unknown
+}
+
 // ==================== Store 类型 ====================
 
 /** Auth Store 公共 API（Pinia setup store，ref 已自动解包） */
@@ -210,11 +222,6 @@ export interface TaskApi {
   ): () => void
 }
 
-/** 系统 API */
-export interface SystemApi {
-  info(): Promise<Record<string, unknown>>
-}
-
 /** 前端 API 集合 */
 export interface FrontendApi {
   instance: AxiosInstance
@@ -223,7 +230,6 @@ export interface FrontendApi {
   fileIO: FileIOApi
   config: ConfigApi
   task: TaskApi
-  system: SystemApi
 }
 
 // ==================== Composable 类型 ====================

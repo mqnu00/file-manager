@@ -17,7 +17,6 @@ import * as fileApi from '@/api/file'
 import * as fileIOApi from '@/api/fileIO'
 import * as configApi from '@/api/config'
 import * as taskApi from '@/api/task'
-import * as systemApi from '@/api/system'
 
 import {
   createRouter,
@@ -85,7 +84,6 @@ export interface ScriptContext {
     fileIO: typeof fileIOApi
     config: typeof configApi
     task: typeof taskApi
-    system: typeof systemApi
   }
 
   /** 组合式函数 */
@@ -152,7 +150,6 @@ export function createScriptContext(): ScriptContext {
       fileIO: fileIOApi,
       config: configApi,
       task: taskApi,
-      system: systemApi,
     },
 
     composables: {
