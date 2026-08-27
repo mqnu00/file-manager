@@ -65,6 +65,9 @@
   （miku 同时断开 tooltip 背景观察器）
 - 主项目 `frontend/src/pluginLoader.ts` 重写为实例化加载器：`loadPluginFrontend`（幂等）、
   `unloadPluginFrontend`、包装 ctx（Proxy 拦截 addRoute/registerTheme 做平台收集）
+- **查看器服务化架构**：file-viewer 核心删除 `__fm_file_viewer_registry__` 全局注册表，改为经
+  `registerService('file-viewer:viewers')` 暴露注册服务；子查看插件（file-image/video/code/office/binary/music/markdown）经后端 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 向核心报备能力（默认扩展名 + 查看页路由），核心持有解析权（配置表可改写扩展名归属）；各子插件改为注册自有查看页路由（`/plugin/<id>/view`）而非注入组件到全局注册表
+- **服务停止级联卸载依赖插件**：`unloadPlugin` 停止托管服务时递归检查 `dependsOn` 包含该服务的其他托管服务，自动卸载其所属插件（对称于启动方向的 `startOneService` 等待机制）；file-viewer 的 `viewers` 服务停止时自动级联停/卸 7 个子查看插件
 
 ---
 

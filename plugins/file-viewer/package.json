@@ -5,7 +5,11 @@
   "main": "dist/backend.js",
   "exports": {
     ".": "./dist/backend.js",
-    "./frontend": "./dist/frontend.js"
+    "./frontend": "./dist/frontend.js",
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    }
   },
   "files": [
     "dist/",

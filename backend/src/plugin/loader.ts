@@ -476,11 +476,38 @@ async function loadSinglePlugin(
   }
 }
 
+/**
+ * 级联卸载依赖某服务的其他插件。
+ *
+ * 当某托管服务停止时（如 file-viewer 的 `viewers` 服务在 file-viewer 卸载时停止），
+ * 所有 `dependsOn` 包含该服务的托管服务所属插件应被一并卸载——这是插件间依赖
+ * 在「卸载方向」的对称处理（启动方向由 startOneService 的 waitForService 负责）。
+ *
+ * 用 visited 集合防止循环/重复：托管服务条目在 stop/unload 时被删除，故不会无限递归。
+ */
+async function cascadeUnloadDependents(serviceName: string, visited: Set<string>): Promise<void> {
+  for (const [name, entry] of [...manageRegistry]) {
+    if (visited.has(name)) continue
+    if ((entry.spec.dependsOn ?? []).includes(serviceName)) {
+      visited.add(name)
+      // 直接卸载依赖方插件：其 unloadPlugin 会负责停止自身托管服务（避免重复 stop）
+      try {
+        await unloadPluginByName(entry.pluginName)
+      } catch (err) {
+        log('ERROR', 'Plugin', `Cascade unload plugin "${entry.pluginName}" failed: ${err}`)
+      }
+    }
+  }
+}
+
 /** 卸载单个插件：停止托管服务 + 移除路由层 + 清除模块缓存 + 停止文件监视 + 清理服务 */
 async function unloadPlugin(instance: PluginInstance): Promise<void> {
   // 停止本插件的托管服务，并清理 config 中 startedServices 记录
+  const cascadeVisited = new Set<string>()
   for (const svcName of instance.managedServices) {
     const entry = manageRegistry.get(svcName)
+    // 级联卸载依赖本服务的其他插件（依赖方在「停止方向」同步清理）
+    await cascadeUnloadDependents(svcName, cascadeVisited)
     try {
       await entry?.spec.stop()
     } catch (err) {

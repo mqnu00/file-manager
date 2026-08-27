@@ -13,7 +13,6 @@ import type {
 import { Marked } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
-import { getRegistry, type FileViewerModule } from './registry'
 
 const EXTENSIONS = ['md', 'markdown', 'mdown', 'mkd']
 
@@ -247,26 +246,60 @@ function injectStyles(): void {
 
 // ==================== 插件安装 ====================
 
+/** 查看页外壳：返回按钮 + 文件信息 + 子查看器组件 */
+function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
+  const { h, computed, defineComponent } = ctx.Vue as unknown as {
+    h: (...args: unknown[]) => unknown
+    computed: <T>(fn: () => T) => { value: T }
+    defineComponent: (opts: { name: string; setup: () => () => unknown }) => unknown
+  }
+  const { ElButton } = ctx.ElementPlus as unknown as { ElButton: unknown }
+  const basename = (p: string) => p.split('/').pop() || p
+
+  return defineComponent({
+    name: 'MarkdownViewerPage',
+    setup() {
+      const route = ctx.router.currentRoute
+      const file = computed(() => {
+        const p = typeof route.value.query.path === 'string' ? route.value.query.path : ''
+        if (!p) return null
+        const existing = ctx.stores.file.files.find((f: FileItem) => f.path === p)
+        return existing ?? ({ name: basename(p), path: p, isDirectory: false, size: 0, modified: '' } as FileItem)
+      })
+      return () => {
+        if (!file.value) {
+          return h('div', { style: { padding: '48px', textAlign: 'center', color: 'var(--app-text-dim)' } }, '未指定文件')
+        }
+        return h('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 20px', boxSizing: 'border-box' } }, [
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' } }, [
+            h(ElButton as never, { text: true, onClick: () => window.history.back() }, () => '← 返回'),
+            h('span', { style: { fontWeight: 600, color: 'var(--app-text-bright)' } }, file.value!.name),
+            h('span', { style: { color: 'var(--app-text-dim)', fontSize: '12px', marginLeft: '8px' } }, file.value!.path),
+          ]),
+          h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } }, [
+            h(component as never, { file: file.value }),
+          ]),
+        ])
+      }
+    },
+  })
+}
+
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
-  const registry = getRegistry()
-  if (!registry) {
-    console.warn('[file-markdown-viewer] 未找到 file-viewer 核心注册表，跳过注册')
-    return
-  }
-  const module: FileViewerModule = {
-    id: 'markdown',
-    label: 'Markdown 查看器',
-    extensions: EXTENSIONS,
-    editable: false,
-    component: createMarkdownViewer(ctx),
-  }
-  const unregister = registry.register(module)
-  console.log('[file-markdown-viewer] 前端已加载：markdown 模块已注册')
+  const markdownComponent = createMarkdownViewer(ctx)
+  const viewerPage = createViewerPage(ctx, markdownComponent)
 
-  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  ctx.router.addRoute({
+    path: '/plugin/markdown/view',
+    component: viewerPage as never,
+    meta: { requiresAuth: true },
+  })
+
+  console.log('[file-markdown-viewer] 前端已加载：查看页路由 /plugin/markdown/view 已注册')
+
+  // teardown 契约：卸载/重载时移除注入样式（路由清理由平台负责）
   return () => {
-    unregister()
     document.getElementById('file-markdown-viewer-style')?.remove()
   }
 }

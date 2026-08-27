@@ -178,4 +178,29 @@ describe('loader 托管服务（manageService/startService/waitForService）', (
     // 原插件不受影响
     expect(getLoadedPlugins().some((p) => p.name === 'svc-a-plugin')).toBe(true)
   })
+
+  it('卸载依赖服务方 → 级联卸载依赖于它的插件', async () => {
+    // svc-b-plugin 的托管服务 dependsOn svc-a；卸载 svc-a 应级联卸载 svc-b
+    await loadPlugin('svc-a-plugin')
+    await loadPlugin('svc-b-plugin')
+    expect(getLoadedPlugins().some((p) => p.name === 'svc-b-plugin')).toBe(true)
+
+    expect(await unloadPluginByName('svc-a-plugin')).toBe(true)
+    // 依赖方被级联卸载
+    expect(getLoadedPlugins().some((p) => p.name === 'svc-a-plugin')).toBe(false)
+    expect(getLoadedPlugins().some((p) => p.name === 'svc-b-plugin')).toBe(false)
+    expect(recorder().stopped).toContain('svc-a')
+    expect(recorder().stopped).toContain('svc-b')
+  })
+
+  it('级联卸载不重复卸载同一插件', async () => {
+    // svc-b 依赖 svc-a；若两个插件各自只有一个服务，级联仅触发一次
+    await loadPlugin('svc-a-plugin')
+    await loadPlugin('svc-b-plugin')
+
+    expect(await unloadPluginByName('svc-a-plugin')).toBe(true)
+    expect(getLoadedPlugins().some((p) => p.name === 'svc-b-plugin')).toBe(false)
+    // svc-b 的 stop 只记录一次
+    expect(recorder().stopped.filter((s) => s === 'svc-b')).toEqual(['svc-b'])
+  })
 })

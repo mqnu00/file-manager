@@ -252,4 +252,21 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   router.use(auth)
   ctx.app.use('/api/file-office-viewer', router)
   ctx.utils.logger.log('INFO', 'file-office-viewer', '后端已挂载 /api/file-office-viewer')
+
+  // 向 file-viewer 核心报备能力（经 registerService）
+  ctx.getService('file-viewer:viewers').registerViewer({
+    id: 'office',
+    label: '办公文档查看器',
+    defaultExtensions: ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'],
+    route: '/plugin/office/view',
+  })
+
+  // 托管服务：生命周期信号（file-viewer 卸载时平台级联停/卸本插件）
+  ctx.manageService('office-viewer', {
+    canAutoStart: async () => true,
+    start: async () => {},
+    stop: async () => {},
+    isRunning: async () => true,
+  })
+  ctx.startService('office-viewer')
 }

@@ -11,7 +11,6 @@ import type {
   FrontendPluginInstallFunction,
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
-import { getRegistry, type FileViewerModule } from './registry'
 import { loadMonaco, resolveLanguage, type MonacoLike } from './monaco-loader'
 
 /** 支持查看/编辑的后缀 */
@@ -242,27 +241,60 @@ function injectStyles(): void {
   document.head.appendChild(style)
 }
 
+/** 查看页外壳：返回按钮 + 文件信息 + 子查看器组件 */
+function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
+  const { h, computed, defineComponent } = ctx.Vue as unknown as {
+    h: (...args: unknown[]) => unknown
+    computed: <T>(fn: () => T) => { value: T }
+    defineComponent: (opts: { name: string; setup: () => () => unknown }) => unknown
+  }
+  const { ElButton } = ctx.ElementPlus as unknown as { ElButton: unknown }
+  const basename = (p: string) => p.split('/').pop() || p
+
+  return defineComponent({
+    name: 'CodeViewerPage',
+    setup() {
+      const route = ctx.router.currentRoute
+      const file = computed(() => {
+        const p = typeof route.value.query.path === 'string' ? route.value.query.path : ''
+        if (!p) return null
+        const existing = ctx.stores.file.files.find((f: FileItem) => f.path === p)
+        return existing ?? ({ name: basename(p), path: p, isDirectory: false, size: 0, modified: '' } as FileItem)
+      })
+      return () => {
+        if (!file.value) {
+          return h('div', { style: { padding: '48px', textAlign: 'center', color: 'var(--app-text-dim)' } }, '未指定文件')
+        }
+        return h('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 20px', boxSizing: 'border-box' } }, [
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' } }, [
+            h(ElButton as never, { text: true, onClick: () => window.history.back() }, () => '← 返回'),
+            h('span', { style: { fontWeight: 600, color: 'var(--app-text-bright)' } }, file.value!.name),
+            h('span', { style: { color: 'var(--app-text-dim)', fontSize: '12px', marginLeft: '8px' } }, file.value!.path),
+          ]),
+          h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } }, [
+            h(component as never, { file: file.value }),
+          ]),
+        ])
+      }
+    },
+  })
+}
+
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
-  const registry = getRegistry()
-  if (!registry) {
-    console.warn('[file-code-viewer] 未找到 file-viewer 核心注册表，跳过注册')
-    return
-  }
-  const module: FileViewerModule = {
-    id: 'code',
-    label: '代码编辑器',
-    extensions: EXTENSIONS,
-    editable: true,
-    component: createCodeViewer(ctx),
-  }
-  const unregister = registry.register(module)
+  const codeComponent = createCodeViewer(ctx)
+  const viewerPage = createViewerPage(ctx, codeComponent)
 
-  console.log('[file-code-viewer] 前端已加载：代码模块已注册')
+  ctx.router.addRoute({
+    path: '/plugin/code/view',
+    component: viewerPage as never,
+    meta: { requiresAuth: true },
+  })
 
-  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  console.log('[file-code-viewer] 前端已加载：查看页路由 /plugin/code/view 已注册')
+
+  // teardown 契约：卸载/重载时移除注入样式（路由清理由平台负责）
   return () => {
-    unregister()
     document.getElementById('file-code-viewer-style')?.remove()
   }
 }

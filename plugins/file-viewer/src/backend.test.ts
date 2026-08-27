@@ -11,8 +11,9 @@ import request from 'supertest'
 import { install } from './backend'
 
 let app: Express
-/** 模拟 config.yml 中 plugins['file-viewer'].extensionMappings 的存储 */
+/** 模拟 config.yml 中 plugins['file-viewer'] 的存储 */
 let stored: Record<string, string> = {}
+let storedDefaultViewer = ''
 
 function mockAuth(req: Request, res: Response, next: NextFunction): void {
   if (req.headers.authorization?.startsWith('Bearer ')) {
@@ -31,15 +32,19 @@ beforeAll(() => {
     app: app as never,
     middleware: { auth: mockAuth },
     config: {
-      get: () => ({ plugins: { 'file-viewer': { extensionMappings: { ...stored } } } }),
+      get: () => ({ plugins: { 'file-viewer': { extensionMappings: { ...stored }, defaultViewer: storedDefaultViewer } } }),
       updatePlugin: (
         _name: string,
-        cfg: { extensionMappings: Record<string, string> }
+        cfg: { extensionMappings?: Record<string, string>; defaultViewer?: string }
       ) => {
-        stored = { ...cfg.extensionMappings }
+        if (cfg.extensionMappings) stored = { ...cfg.extensionMappings }
+        if (cfg.defaultViewer !== undefined) storedDefaultViewer = cfg.defaultViewer
         return {}
       },
     } as never,
+    registerService: () => {},
+    manageService: () => {},
+    startService: () => {},
     utils: { logger: { log: () => {} } } as never,
   } as never)
 })

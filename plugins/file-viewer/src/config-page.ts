@@ -3,12 +3,20 @@
  *
  * 按查看器分组编辑其默认后缀列表，保存为 config.yml 完整映射表
  * （plugins.file-viewer.extensionMappings，ext→viewerId）。
- * 打开方式优先级：URL 指定 > 页面内选择(localStorage) > config.yml 映射 > 注册表默认。
+ * 打开方式优先级：config.yml 映射 > 默认扩展名命中 > 默认查看器。
+ *
+ * 由核心 fileOpen handler 消费解析结果；子插件经后端注册服务报备能力，
+ * 配置页展示并编辑其扩展名归属（file-viewer 持有解析权）。
  */
 
 import type { FrontendPluginContext } from '@mqn00/file-manager/plugin/frontend'
-import { getRegistry, initRegistry, type FileViewerModule } from './registry'
-import { getMappings, saveMappings } from './config-api'
+import {
+  viewers as stateViewers,
+  extensionMappings as stateExtensionMappings,
+  defaultViewer as stateDefaultViewer,
+  refreshViewers,
+} from './state'
+import { saveMappings } from './config-api'
 
 type VueApp = {
   h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
@@ -68,7 +76,6 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
     ElMessage: { success(m: string): void; warning(m: string): void; error(m: string): void }
   }).ElMessage
 
-  const registry = getRegistry() ?? initRegistry()
   const http = ctx.api.instance
 
   return defineComponent({
@@ -79,29 +86,31 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
       const saving = ref(false)
       const groups = ref<Group[]>([])
       const orphans = ref<Array<{ ext: string; viewerId: string }>>([])
-      const defaultViewer = ref('')
+      const defaultViewer = ref('')  // 局部 ref，供 ElSelect v-model
 
       const load = async () => {
         loading.value = true
         loadingError.value = ''
         try {
-          const saved = await getMappings(http)
-          defaultViewer.value = saved.defaultViewer
-          const mods: FileViewerModule[] = registry.modules()
-          if (Object.keys(saved.extensionMappings).length === 0) {
+          await refreshViewers(http)
+          const mods = stateViewers
+          const map = stateExtensionMappings
+          defaultViewer.value = stateDefaultViewer
+          if (Object.keys(map).length === 0) {
+            // 无映射时展示每个查看器的默认扩展名
             groups.value = mods.map((m) => ({
               id: m.id,
               label: m.label,
-              exts: [...m.extensions],
+              exts: [...m.defaultExtensions],
               draft: '',
-              defaultExts: [...m.extensions],
+              defaultExts: [...m.defaultExtensions],
             }))
             orphans.value = []
           } else {
             const byViewer: Map<string, string[]> = new Map()
             const orphanList: Array<{ ext: string; viewerId: string }> = []
             const registered = new Set(mods.map((m) => m.id))
-            for (const [ext, vid] of Object.entries(saved.extensionMappings)) {
+            for (const [ext, vid] of Object.entries(map)) {
               if (!registered.has(vid)) {
                 orphanList.push({ ext, viewerId: vid })
                 continue
@@ -115,7 +124,7 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
               label: m.label,
               exts: (byViewer.get(m.id) ?? []).sort(),
               draft: '',
-              defaultExts: [...m.extensions],
+              defaultExts: [...m.defaultExtensions],
             }))
             orphans.value = orphanList
           }
@@ -173,8 +182,8 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
         saving.value = true
         try {
           await saveMappings(http, { extensionMappings: map, defaultViewer: defaultViewer.value })
-          registry.setConfigMappings(map)
-          registry.setDefaultViewer(defaultViewer.value)
+          await refreshViewers(http)
+          defaultViewer.value = stateDefaultViewer
           ElMessage.success('已保存，打开文件时按新映射解析')
         } catch (e) {
           ElMessage.error(`保存失败: ${e instanceof Error ? e.message : '未知错误'}`)
@@ -254,7 +263,7 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
                     defaultViewer.value = v ?? ''
                   },
                 }, () =>
-                  registry.modules().map((m) =>
+                  stateViewers.map((m) =>
                     h(ElOption as never, { key: m.id, label: m.label, value: m.id })
                   )
                 ),

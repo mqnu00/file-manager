@@ -4,6 +4,9 @@
  * 通过平台 I/O 换取流令牌：
  *   POST /api/files/token  → 30 分钟令牌
  *   GET  /api/files/stream（Range 流式）→ <audio>
+ *
+ * 查看页路由 /plugin/music/view 由本插件自行注册；
+ * file-viewer 的 fileOpen handler 在用户点击音频文件时跳转至此。
  */
 
 import type {
@@ -11,7 +14,6 @@ import type {
   FrontendPluginInstallFunction,
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
-import { getRegistry, type FileViewerModule } from './registry'
 
 const MIME_EXTENSIONS = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'opus']
 
@@ -41,7 +43,6 @@ function createAudioViewer(ctx: FrontendPluginContext) {
 
       const download = async () => {
         try {
-          // 主应用鉴权为 Bearer header，下载走带认证的 axios 请求再触发浏览器保存
           const resp = await ctx.api.instance.get(`/files/download/${encodeURIComponent(props.file.path)}`, {
             responseType: 'blob',
           })
@@ -99,27 +100,59 @@ function injectStyles(): void {
   document.head.appendChild(style)
 }
 
+/** 查看页外壳：返回按钮 + 文件信息 + 子查看器组件 */
+function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
+  const { h, computed, defineComponent } = ctx.Vue as unknown as {
+    h: (...args: unknown[]) => unknown
+    computed: <T>(fn: () => T) => { value: T }
+    defineComponent: (opts: { name: string; setup: () => () => unknown }) => unknown
+  }
+  const { ElButton } = ctx.ElementPlus as unknown as { ElButton: unknown }
+  const basename = (p: string) => p.split('/').pop() || p
+
+  return defineComponent({
+    name: 'MusicViewerPage',
+    setup() {
+      const route = ctx.router.currentRoute
+      const file = computed(() => {
+        const p = typeof route.value.query.path === 'string' ? route.value.query.path : ''
+        if (!p) return null
+        const existing = ctx.stores.file.files.find((f: FileItem) => f.path === p)
+        return existing ?? ({ name: basename(p), path: p, isDirectory: false, size: 0, modified: '' } as FileItem)
+      })
+      return () => {
+        if (!file.value) {
+          return h('div', { style: { padding: '48px', textAlign: 'center', color: 'var(--app-text-dim)' } }, '未指定文件')
+        }
+        return h('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 20px', boxSizing: 'border-box' } }, [
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' } }, [
+            h(ElButton as never, { text: true, onClick: () => window.history.back() }, () => '← 返回'),
+            h('span', { style: { fontWeight: 600, color: 'var(--app-text-bright)' } }, file.value!.name),
+            h('span', { style: { color: 'var(--app-text-dim)', fontSize: '12px', marginLeft: '8px' } }, file.value!.path),
+          ]),
+          h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } }, [
+            h(component as never, { file: file.value }),
+          ]),
+        ])
+      }
+    },
+  })
+}
+
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
-  const registry = getRegistry()
-  if (!registry) {
-    console.warn('[file-music-viewer] 未找到 file-viewer 核心注册表，跳过注册')
-    return
-  }
-  const module: FileViewerModule = {
-    id: 'music',
-    label: '音乐播放器',
-    extensions: MIME_EXTENSIONS,
-    editable: false,
-    component: createAudioViewer(ctx),
-  }
-  const unregister = registry.register(module)
+  const audioComponent = createAudioViewer(ctx)
+  const viewerPage = createViewerPage(ctx, audioComponent)
 
-  console.log('[file-music-viewer] 前端已加载：音乐模块已注册')
+  ctx.router.addRoute({
+    path: '/plugin/music/view',
+    component: viewerPage as never,
+    meta: { requiresAuth: true },
+  })
 
-  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  console.log('[file-music-viewer] 前端已加载：查看页路由 /plugin/music/view 已注册')
+
   return () => {
-    unregister()
     document.getElementById('file-music-viewer-style')?.remove()
   }
 }

@@ -14,7 +14,6 @@ import type {
   FrontendPluginInstallFunction,
   FileItem,
 } from '@mqn00/file-manager/plugin/frontend'
-import { getRegistry, type FileViewerModule } from './registry'
 
 const PAGE_SIZE = 256 * 1024
 const EDIT_LIMIT = 512 * 1024 * 1024
@@ -359,27 +358,60 @@ function injectStyles(): void {
   document.head.appendChild(style)
 }
 
+/** 查看页外壳：返回按钮 + 文件信息 + 子查看器组件 */
+function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
+  const { h, computed, defineComponent } = ctx.Vue as unknown as {
+    h: (...args: unknown[]) => unknown
+    computed: <T>(fn: () => T) => { value: T }
+    defineComponent: (opts: { name: string; setup: () => () => unknown }) => unknown
+  }
+  const { ElButton } = ctx.ElementPlus as unknown as { ElButton: unknown }
+  const basename = (p: string) => p.split('/').pop() || p
+
+  return defineComponent({
+    name: 'HexViewerPage',
+    setup() {
+      const route = ctx.router.currentRoute
+      const file = computed(() => {
+        const p = typeof route.value.query.path === 'string' ? route.value.query.path : ''
+        if (!p) return null
+        const existing = ctx.stores.file.files.find((f: FileItem) => f.path === p)
+        return existing ?? ({ name: basename(p), path: p, isDirectory: false, size: 0, modified: '' } as FileItem)
+      })
+      return () => {
+        if (!file.value) {
+          return h('div', { style: { padding: '48px', textAlign: 'center', color: 'var(--app-text-dim)' } }, '未指定文件')
+        }
+        return h('div', { style: { height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 20px', boxSizing: 'border-box' } }, [
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' } }, [
+            h(ElButton as never, { text: true, onClick: () => window.history.back() }, () => '← 返回'),
+            h('span', { style: { fontWeight: 600, color: 'var(--app-text-bright)' } }, file.value!.name),
+            h('span', { style: { color: 'var(--app-text-dim)', fontSize: '12px', marginLeft: '8px' } }, file.value!.path),
+          ]),
+          h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } }, [
+            h(component as never, { file: file.value }),
+          ]),
+        ])
+      }
+    },
+  })
+}
+
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
-  const registry = getRegistry()
-  if (!registry) {
-    console.warn('[file-binary-viewer] 未找到 file-viewer 核心注册表，跳过注册')
-    return
-  }
-  const module: FileViewerModule = {
-    id: 'hex',
-    label: '十六进制查看器',
-    extensions: ['bin', 'dat', 'hex'],
-    editable: true,
-    component: createHexViewer(ctx),
-  }
-  const unregister = registry.register(module)
+  const hexComponent = createHexViewer(ctx)
+  const viewerPage = createViewerPage(ctx, hexComponent)
 
-  console.log('[file-binary-viewer] 前端已加载：hex 兜底模块已注册')
+  ctx.router.addRoute({
+    path: '/plugin/hex/view',
+    component: viewerPage as never,
+    meta: { requiresAuth: true },
+  })
 
-  // teardown 契约：卸载/重载时注销查看器模块并移除注入样式
+  console.log('[file-binary-viewer] 前端已加载：查看页路由 /plugin/hex/view 已注册')
+
+  // teardown 契约：卸载/重载时移除注入样式（路由清理由平台负责）
   return () => {
-    unregister()
     document.getElementById('file-binary-viewer-style')?.remove()
   }
 }

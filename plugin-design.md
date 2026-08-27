@@ -189,28 +189,28 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
 ### 文件打开契约（fileOpen）
 
-查看器类插件通过 `ctx.platform.fileOpen` 注册"能打开哪些文件"的 handler，主应用在渲染文件列表与单击文件名时统一分发，**插件不再劫持 document 点击事件、不再扫描主应用 DOM**：
+平台提供 `ctx.platform.fileOpen` 作为「文件打开」的通用钩子。**file-viewer 是平台 fileOpen 的唯一注册者**——子查看插件（file-image-viewer 等）不直接注册 fileOpen，而是通过后端服务向 file-viewer 报备能力，由 file-viewer 统一注册和分发：
 
 ```ts
-import type { FileOpenHandler } from '@mqn00/file-manager/plugin/frontend'
-
+// file-viewer 核心前端（唯一注册者）
 const handler: FileOpenHandler = {
-  id: 'my-viewer',              // 唯一；重复注册按 id 覆盖
-  canOpen(file) {               // 渲染期逐行调用：是否可打开（按扩展名/名称，必须轻量同步）
-    return !file.isDirectory && file.name.endsWith('.md')
+  id: 'file-viewer',
+  canOpen(file) {
+    // 查缓存的查看器列表 + 映射表，判断该扩展名是否有可用查看器
+    return canOpenExt(normExt(file.name))
   },
-  open(file) {                  // 主应用单击该文件时调用（首个 canOpen 命中的 handler）
-    void ctx.router.push({ path: '/plugin/my-viewer', query: { path: file.path } })
+  open(file) {
+    // 根据可编辑的扩展名映射表解析最佳查看器，跳转到其查看页路由
+    const v = resolveViewer(normExt(file.name))
+    if (v) void ctx.router.push({ path: v.route, query: { path: file.path } })
   },
 }
-const unregister = ctx.platform.fileOpen.register(handler)
-// teardown 契约：卸载/重载时注销（平台也会收集兜底清理）
-return () => { unregister() }
+ctx.platform.fileOpen.register(handler)
 ```
 
-- 多个 handler 按**注册序**分发：首个 `canOpen` 命中者消费；全部未命中则维持主应用默认行为（当前为无操作）
-- 主应用渲染时对可打开文件打 `is-openable` class（**平台语义 class**，样式由插件自行注入，如 file-viewer 的悬浮高亮）；注册表变化（插件加载/卸载）时自动重算，插件无需 MutationObserver 扫描
+- 主应用渲染时对可打开文件打 `is-openable` class（**平台语义 class**，样式由插件自行注入）；注册表变化（插件加载/卸载）时自动重算
 - 平台侧实现（`frontend/src/platform/fileOpen.ts`）与类型声明（`@mqn00/file-manager/plugin/frontend`）保持同步
+- **子查看插件不直接调用 `ctx.platform.fileOpen.register`**——它们通过后端 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 向 file-viewer 报备能力，file-viewer 据此更新 fileOpen 的 canOpen 判断
 
 ### SPA 导航（router.push / replace）
 
@@ -226,9 +226,53 @@ return () => { unregister() }
 |---|---|---|
 | `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `{ id, label, visible(count, hasFolder), run(selected, infos, currentPath) }` |
 | `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
-| `window.__fm_file_open` | 文件打开钩子（查看器类插件） | `{ id, canOpen(file), open(file) }`（见「文件打开契约」） |
+| `window.__fm_file_open` | 文件打开钩子 | `{ id, canOpen(file), open(file) }`（见「文件打开契约」；file-viewer 为唯一注册者） |
 
 > **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0-beta10+）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
+
+### 查看器服务架构（v3.0.0）
+
+查看器类插件（file-image-viewer 等）通过**服务**向 file-viewer 核心报备能力，不再使用全局注册表。这是「分层契约」的体现：
+
+```
+子插件 ──① 后端 registerViewer(meta)──▶ file-viewer 核心（注册服务）
+子插件 ──② 自有托管服务 dependsOn 'viewers' ──▶ 平台（级联生命周期）
+file-viewer ──③ 唯一 fileOpen handler ──▶ 平台（文件打开分发）
+file-viewer ──④ 后端 GET /viewers ──▶ 前端（解析配置表 + 缓存）
+```
+
+**① 子插件报备能力**（后端 `install`）：
+
+```ts
+// 子插件后端 install
+ctx.getService('file-viewer:viewers').registerViewer({
+  id: 'image',                    // 查看器唯一标识
+  label: '图片查看器',              // 配置页显示名
+  defaultExtensions: ['png','jpg'], // 默认可打开后缀（配置表可改写）
+  route: '/plugin/image/view',     // 子插件提供的查看页路由
+})
+```
+
+**② 托管服务依赖**（级联生命周期）：
+
+```ts
+ctx.manageService('image-viewer', {
+  canAutoStart: async () => true,
+  start: async () => {},
+  stop: async () => {},
+  isRunning: async () => true,
+})
+ctx.startService('image-viewer')
+```
+
+- `dependsOn: ['file-viewer']` 写入 `fileManagerPlugin`（加载顺序保险）
+- 托管服务 `dependsOn: ['viewers']`（file-viewer 的托管服务名）——file-viewer 卸载时平台自动级联停/卸依赖它的子插件
+
+**③ file-viewer 唯一 fileOpen**：file-viewer 注册平台 fileOpen handler，根据可编辑的扩展名映射表（config.yml `extensionMappings` + `defaultViewer`）解析最佳查看器，`router.push` 到子插件查看页。
+
+**④ 配置表保持有效**：file-viewer 持有解析权，配置页（`/plugin/file-viewer`）可编辑扩展名→查看器映射。子插件声明的 `defaultExtensions` 为初始值，file-viewer 可改写。
+
+**子插件查看页路由约定**：`/plugin/<id>/view?path=<文件路径>`，子插件自行渲染组件（不再由中央页 `<component :is>` 渲染）。file-viewer 提供最小页面外壳参考（返回按钮 + 文件信息 + 组件渲染）。
 
 ### 主题注册（registerTheme）
 
@@ -280,7 +324,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   - 移除 document/window 上的事件监听与 MutationObserver；
   - 注销 window 注册表条目（`__fm_bulk_actions.unregister(id)` / `__fm_nav_actions.unregister(id)`，v3.0.0-beta10+ 提供）；
   - 移除自注入的 `<style>`；关闭自挂载的 `createApp` 对话框（`unmount()` + 移除宿主节点）；
-  - 注销插件间注册表条目（如 `__fm_file_viewer_registry__` 的 `register` 返回值 unregister 函数）。
+  - 子查看插件无需手动注销 fileOpen handler（平台自动收集）；其托管服务由平台级联停止。
 - **卸载顺序**（平台执行）：路由移除 → 主题反注册 → 插件 teardown；任一步骤抛错仅记日志，不阻断其余步骤，也不影响后端卸载与其他插件。
 - **重载/重复加载**：平台先调用旧实例 teardown 再重新 install（不再需要自造 `INSTALL_KEY` 之类全局清理标记）。
 - **边界**：
