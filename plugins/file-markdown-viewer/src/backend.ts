@@ -22,6 +22,7 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   // 托管服务：生命周期信号（file-viewer 卸载时平台级联停/卸本插件）
   ctx.manageService('markdown-viewer', {
     canAutoStart: async () => true,
+    dependsOn: ['viewers'],
     start: async () => {},
     stop: async () => {},
     isRunning: async () => true,
