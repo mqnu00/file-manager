@@ -104,6 +104,8 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
 | `ctx.waitForService(name, opts)` | 等待服务达到状态（默认运行中），超时抛错 |
 | `ctx.isServiceRunning(name)` | 查询托管服务是否运行 |
 | `ctx.utils.logger.log(level, tag, message)` | 日志（level: INFO/WARNING/ERROR） |
+| `ctx.dataDir` | 插件私有数据目录绝对路径（惰性创建）。缓存文件、二进制大文件等可直接在此写文件 |
+| `ctx.storage` | 结构化 KV 存储（JSON 序列化，落盘 `<dataDir>/store.json`）。方法：`get<T>`/`set`/`delete`/`has`/`keys`/`all`；键禁止路径分隔符、值必须可 JSON 序列化 |
 
 路由注册示例：
 
@@ -183,6 +185,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 | `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `config` / `task` API 模块 |
 | `ctx.composables` | `useTheme` / `useContextMenu` / `useFileProgress` / `useFileSort` |
 | `ctx.platform` | 平台扩展注册表：`fileOpen`（文件打开钩子，见「文件打开契约」） |
+| `ctx.pluginData` | 按插件隔离的 KV 数据（接口与后端 `ctx.storage` 对应：`get`/`set`/`remove`/`all`）。正式环境经已认证的 HTTP 调用后端 `ctx.storage`；Demo 模式降级为 localStorage 垫片 |
 | `ctx.utils` | `formatSize` / `formatTime` / `formatSpeed` / `formatProgress` |
 | `ctx.constants` | 存储键、主题常量、`API_BASE_URL` |
 | `ctx.router` | `createRouter` / `createWebHistory` / `createWebHashHistory` / `addRoute` / `push` / `replace` / `currentRoute` |
@@ -228,7 +231,46 @@ ctx.platform.fileOpen.register(handler)
 | `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
 | `window.__fm_file_open` | 文件打开钩子 | `{ id, canOpen(file), open(file) }`（见「文件打开契约」；file-viewer 为唯一注册者） |
 
-> **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0-beta10+）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
+> **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
+
+### 插件数据目录（v3.0.0）
+
+插件常需持久化自己的业务数据（配置、缓存、状态标记等）。主项目为插件提供**按短名隔离、跨重启保留**的本地存储，分两层：
+
+- **后端**（`install(ctx)` 中经 `ctx` 访问，存于磁盘）：
+  - `ctx.dataDir: string` —— 插件私有目录绝对路径（惰性 `mkdir`），可直接写缓存文件、二进制大文件。
+  - `ctx.storage` —— 结构化 KV 存储（JSON 序列化，落盘 `<dataDir>/store.json`），方法：`get<T>(key)`、`set(key, value)`、`delete(key)`、`has(key)`、`keys()`、`all()`。
+  - 约束：键禁止 `/` `\` `.` `..`（防越目录）；值必须可 JSON 序列化（函数 / `undefined` 等会抛错）；单进程内串行读写，适合配置型小数据；大/二进制数据请直接用 `ctx.dataDir` 写文件。
+- **前端**（`install(ctx)` 中经 `ctx.pluginData` 访问，因为浏览器无文件系统）：
+  - `ctx.pluginData` —— KV 接口与后端一致：`get<T>(key)`、`set(key, value)`、`remove(key)`、`all()`。
+  - 正式环境经已认证的 HTTP 调用后端 `ctx.storage`（`GET/PUT/DELETE /api/plugins/<名>/data[/<键>]`，详见 `API.md`）；Demo 模式（无后端）降级为 `localStorage` 垫片（键前缀 `fm-plugin-data:<名>:`）。
+  - 前端仅提供 KV，无 `dataDir` 等价物；需要落盘大文件时由插件后端经 `ctx.dataDir` 处理。
+
+**生命周期**：
+- 首次访问时惰性创建，不预先为空插件建目录；
+- 卸载（unload）/ 进程重启均**保留**数据；
+- 仅当**删除插件且显式勾选"同时删除本地数据目录"**时（`DELETE /api/plugins/<名>?clearData=1`）才清除；unload 不删。
+
+后端示例：
+
+```ts
+export const install: PluginInstallFunction = (ctx) => {
+  // 结构化配置
+  ctx.storage.set('lastSyncAt', Date.now())
+  const t = ctx.storage.get<number>('lastSyncAt')
+  // 原始文件缓存
+  fs.writeFileSync(path.join(ctx.dataDir, 'cache.bin'), buf)
+}
+```
+
+前端示例：
+
+```ts
+export const install: FrontendPluginInstallFunction = (ctx) => {
+  await ctx.pluginData.set('draft', { text: '…' })
+  const draft = await ctx.pluginData.get<{ text: string }>('draft')
+}
+```
 
 ### 查看器服务架构（v3.0.0）
 

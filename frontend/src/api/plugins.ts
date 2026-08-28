@@ -80,6 +80,8 @@ export function installPlugin(packageName: string, version?: string, force?: boo
   return api.post('/plugins/install', { packageName, version, force }).then((res) => res.data)
 }
 
-export function deletePlugin(name: string): Promise<void> {
-  return api.delete(`/plugins/${name}`).then((res) => res.data)
+export function deletePlugin(name: string, clearData = false): Promise<void> {
+  return api
+    .delete(`/plugins/${name}`, { params: { clearData: clearData ? 1 : 0 } })
+    .then((res) => res.data)
 }

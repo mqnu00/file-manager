@@ -62,4 +62,7 @@ backend/files/
 .sema/
 backend/tasks.json
 
+# 插件数据目录（运行时按插件短名隔离生成，位置取决于 pluginInstallPrefix）
+data/
+
 *timestamp*

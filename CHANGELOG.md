@@ -4,6 +4,11 @@
 
 ### ✨ 新增功能
 
+- **插件数据目录**：主项目为插件提供按短名隔离、跨重启保留的本地持久化存储
+  - 后端：`ctx.dataDir`（私有目录绝对路径，可直写缓存/二进制大文件）+ `ctx.storage`（结构化 KV，`get`/`set`/`delete`/`has`/`keys`/`all`，JSON 序列化落盘 `<dataDir>/store.json`）
+  - 前端：`ctx.pluginData`（KV 接口与后端一致，`get`/`set`/`remove`/`all`），正式环境经已认证 HTTP 调用后端 `ctx.storage`，Demo 模式降级 localStorage 垫片
+  - HTTP 端点：`GET/PUT/DELETE /api/plugins/:name/data[/:key]`（均需认证；`:name` 仅限已配置的插件，防止越目录建目录）；`DELETE /api/plugins/:name?clearData=1` 删除插件时一并清除数据目录
+  - 生命周期：首次访问惰性创建，卸载/重启保留，仅显式勾选「同时删除本地数据目录」时清除；键禁止路径分隔符、值须可 JSON 序列化
 - **sudo 提权**：浏览目录（目录不可读）、读取文件内容、新建文件/文件夹、重命名、删除（单文件/批量）、写入文件内容因权限不足（`EACCES`/`EPERM`）失败时，前端弹出提权对话框收集 ubuntu 用户名 + 密码，后端校验后限时缓存凭据并自动以 `sudo` 重试原操作
   - 列目录提权基于 `sudo find -printf` 实现；仅个别条目不可访问（如受限符号链接）时以 `lstat` 信息降级展示，不再导致整页 500
   - 读文件提权基于 `sudo dd` 按 4KB 块对齐读取后裁剪目标区间，避免整文件载入

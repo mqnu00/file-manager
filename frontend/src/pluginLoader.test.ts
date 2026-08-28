@@ -5,7 +5,7 @@ vi.mock('@/context', () => ({
   ctx: { tag: 'mock-ctx' },
 }))
 
-import { loadPluginFrontend, initPlugins } from './pluginLoader'
+import { loadPluginFrontend, initPlugins, wrapPluginContext } from './pluginLoader'
 
 const FIXTURE = path.resolve(__dirname, '../test/fixtures')
 
@@ -137,5 +137,24 @@ describe('initPlugins（demo 模式）', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(calls()).toEqual(['miku-demo'])
     expect(ctxs()).toEqual([{ tag: 'mock-ctx' }])
+  })
+})
+
+describe('wrapPluginContext pluginData 注入', () => {
+  it('按 record.name 绑定 pluginData 并缓存', () => {
+    const record = {
+      name: 'my-plugin',
+      removeRoutes: [] as Array<() => void>,
+      themeNames: [] as string[],
+      removeFileOpenHandlers: [] as Array<() => void>,
+    }
+    const wrapped = wrapPluginContext(record) as any
+    const pd = wrapped.pluginData
+    expect(typeof pd.get).toBe('function')
+    expect(typeof pd.set).toBe('function')
+    expect(typeof pd.remove).toBe('function')
+    expect(typeof pd.all).toBe('function')
+    // 同一 record 内缓存同一实例
+    expect(wrapped.pluginData).toBe(pd)
   })
 })

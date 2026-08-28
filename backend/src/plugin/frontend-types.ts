@@ -414,6 +414,18 @@ export type PluginRouteRecord = Omit<RouteRecordRaw, 'meta'> & {
 
 // ==================== 主接口 ====================
 
+/** 插件 KV 数据接口（前端侧，经 HTTP 调用后端 ctx.storage；与后端 PluginKVStore 对应） */
+export interface PluginDataApi {
+  /** 读取键值（未设置返回 undefined） */
+  get<T = unknown>(key: string): Promise<T | undefined>
+  /** 写入键值 */
+  set(key: string, value: unknown): Promise<void>
+  /** 删除键值 */
+  remove(key: string): Promise<void>
+  /** 读取全部键值 */
+  all(): Promise<Record<string, unknown>>
+}
+
 /**
  * 前端插件上下文
  *
@@ -426,6 +438,9 @@ export interface FrontendPluginContext {
 
   /** Element Plus 完整命名空间 */
   ElementPlus: typeof import('element-plus')
+
+  /** 按插件隔离的 KV 数据（经 HTTP 调用后端 ctx.storage；Demo 模式降级 localStorage） */
+  pluginData: PluginDataApi
 
   /** Pinia 状态管理 stores */
   stores: {

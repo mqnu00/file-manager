@@ -30,6 +30,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFileStore } from '@/stores/file'
 import { useTaskStore } from '@/stores/task'
 
+import { type PluginDataApi, createPluginDataApi } from '@/api/pluginData'
 import { useTheme } from '@/composables/useTheme'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useFileProgress } from '@/composables/useFileProgress'
@@ -67,6 +68,9 @@ export interface ScriptContext {
 
   /** Element Plus 完整命名空间，包含所有组件和工具函数 */
   ElementPlus: typeof ElementPlusAll
+
+  /** 按插件隔离的 KV 数据（经 HTTP 调用后端 ctx.storage；Demo 模式降级 localStorage） */
+  pluginData: PluginDataApi
 
   /** Pinia 状态管理 */
   stores: {
@@ -146,6 +150,8 @@ export function createScriptContext(): ScriptContext {
     Vue,
 
     ElementPlus: ElementPlusAll,
+
+    pluginData: createPluginDataApi(''),
 
     stores: {
       auth: useAuthStore(),

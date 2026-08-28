@@ -114,6 +114,28 @@ export interface ManagedServiceSpec {
   dependsOn?: string[]
 }
 
+// ==================== 插件数据目录（KV 存储） ====================
+
+/**
+ * 单插件 KV 存储（结构化、JSON 序列化）。插件经 ctx.storage 访问，
+ * 落盘到 <dataDir>/store.json；大/二进制数据请直接用 ctx.dataDir 写文件。
+ * 键禁止路径分隔符，值必须可 JSON 序列化（见 storage.ts）。
+ */
+export interface PluginKVStore {
+  /** 读取键值（未设置返回 undefined） */
+  get<T = unknown>(key: string): T | undefined
+  /** 写入键值（覆盖同名键） */
+  set(key: string, value: unknown): void
+  /** 删除键（未设置则无操作） */
+  delete(key: string): void
+  /** 是否存在某键 */
+  has(key: string): boolean
+  /** 全部键名 */
+  keys(): string[]
+  /** 导出全部键值 */
+  all(): Record<string, unknown>
+}
+
 // ==================== npm 搜索 ====================
 
 /** npm registry 搜索返回的包信息 */
@@ -153,6 +175,10 @@ export interface BackendPluginContext extends Omit<ScriptContext, 'app'> {
   ): Promise<void>
   /** 查询托管服务是否运行 */
   isServiceRunning(name: string): boolean | Promise<boolean>
+  /** 插件私有数据目录绝对路径（惰性创建）。缓存/二进制大文件可直接在此写文件 */
+  dataDir: string
+  /** 插件结构化 KV 存储（JSON 序列化，落盘到 <dataDir>/store.json） */
+  storage: PluginKVStore
   /** 插件间共享服务的扩展字段 */
   [key: string]: any
 }

@@ -806,6 +806,31 @@
 | `ctx.router.replace` | 编程式替换当前路由（查看器"上一张/下一张"等原地切换场景，避免历史栈膨胀） |
 | 前端生命周期 | `install(ctx)` 可返回 teardown 函数；平台自动收集 `addRoute` 路由、`registerTheme` 主题与 `platform.fileOpen.register` 的 handler，卸载/重载时统一清理（`unloadPluginFrontend`） |
 
+### 6. 插件数据目录（v3.0.0）
+
+插件经 `ctx.storage`（后端）/ `ctx.pluginData`（前端）访问按**插件短名隔离、跨重启保留**的 KV 存储。前端调用最终落到以下 HTTP 接口（均需在请求头携带 `Authorization: Bearer <sessionToken>`）：
+
+- **读取全部键值**
+  - `GET /api/plugins/:name/data`
+  - **响应**: `Record<string, unknown>`（JSON 对象）
+- **读取单个键值**
+  - `GET /api/plugins/:name/data/:key`
+  - **响应**: `{ "key": "<key>", "value": <任意 JSON 值> }`
+  - **错误**: `404` — 键不存在
+- **写入单个键值**
+  - `PUT /api/plugins/:name/data/:key`
+  - **请求体**: 任意 JSON 值（即存储值本身，非包裹对象）
+  - **响应**: `{ "success": true }`
+  - **错误**: `400` — 键含路径分隔符 / 值不可 JSON 序列化
+- **删除单个键值**
+  - `DELETE /api/plugins/:name/data/:key`
+  - **响应**: `{ "success": true }`
+- **清空插件全部数据**
+  - `DELETE /api/plugins/:name/data`
+  - **响应**: `{ "success": true }`
+
+> 约束：`:name` 必须是已在 `config.yml` 配置或可解析到安装目录的插件，否则返回 `404`（防止为任意名称创建数据目录）。KV 键禁止 `/` `\` `.` `..`；值必须可 JSON 序列化。数据存于 `<pluginDataBase>/<name>/store.json`，`pluginDataBase` 默认 `<插件安装 prefix>/data`（生产 = `~/.file-manager/data`），可由环境变量 `FILE_MANAGER_PLUGIN_DATA_DIR` 覆盖。卸载插件时默认保留数据；仅当 `DELETE /api/plugins/:name?clearData=1` 才一并删除数据目录。
+
 ---
 
 ## 错误响应

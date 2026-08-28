@@ -21,6 +21,7 @@ import semver from 'semver'
 import { getConfig, getPluginInstallDir, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
+import { getPluginDataDir, getPluginStore } from './storage'
 import { log } from '../utils/logger'
 import type {
   BackendPluginContext,
@@ -254,6 +255,16 @@ function getSharedPluginCtx(): BackendPluginContext {
     _sharedPluginCtx = {
       ...base,
       app: pluginApp,
+      // dataDir/storage 由 getPerPluginContext 在插件 install 时按名注入（共享实例仅占位）
+      dataDir: '',
+      storage: {
+        get: () => undefined,
+        set: () => {},
+        delete: () => {},
+        has: () => false,
+        keys: () => [],
+        all: () => ({}),
+      },
       registerService(name: string, impl: any) {
         if (serviceRegistry.has(name)) {
           throw new Error(
@@ -331,6 +342,24 @@ function getSharedPluginCtx(): BackendPluginContext {
     }
   }
   return _sharedPluginCtx!
+}
+
+/**
+ * 按插件名包装共享 ctx：注入 dataDir / storage（绑定当前插件），
+ * 其余能力原样透传共享实例（registerService 等仍写共享注册表）。
+ * 插件间数据目录以短名隔离，互不可见。
+ */
+function getPerPluginContext(name: string): BackendPluginContext {
+  const shared = getSharedPluginCtx()
+  const dataDir = getPluginDataDir(name)
+  const storage = getPluginStore(name)
+  return new Proxy(shared, {
+    get(target, prop, receiver) {
+      if (prop === 'dataDir') return dataDir
+      if (prop === 'storage') return storage
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as BackendPluginContext
 }
 
 // ==================== 兼容性校验（宿主版本 + 插件依赖版本） ====================
@@ -621,7 +650,7 @@ async function loadSinglePlugin(
 
     // 记录安装前的 stack 长度，捕获新增的 Layer 对象
     const stackBefore = (pluginApp as unknown as { stack: unknown[] }).stack.length
-    const pluginCtx = getSharedPluginCtx()
+    const pluginCtx = getPerPluginContext(name)
 
     // 记录当前安装中的插件，使 registerService 能准确归属（并行加载时避免串抢）
     currentInstallingPlugin = name

@@ -17,6 +17,7 @@
 import { ctx, type PluginRouteRecord, type ScriptContext } from '@/context'
 import { useTheme, type ThemeDefinition } from '@/composables/useTheme'
 import type { FileOpenHandler } from '@/platform/fileOpen'
+import { createPluginDataApi, type PluginDataApi } from '@/api/pluginData'
 import { DEMO_PLUGINS } from '@/demo/plugins'
 
 interface PluginInfo {
@@ -38,6 +39,8 @@ interface FrontendPluginRecord {
   themeNames: string[]
   /** 经 ctx.platform.fileOpen.register 注册的 handler 注销函数（平台收集） */
   removeFileOpenHandlers: Array<() => void>
+  /** 绑定到本插件的 pluginData 实例（缓存，避免每次访问重建） */
+  pluginData?: PluginDataApi
 }
 
 /** 已安装的前端插件实例（name → record） */
@@ -48,7 +51,7 @@ const loadedFrontend = new Map<string, FrontendPluginRecord>()
  * 把插件注册的路由/主题记录进 record，卸载时由平台统一清理。
  * 其余能力原样透传（同一底层 ctx，插件不感知包装）。
  */
-function wrapPluginContext(record: FrontendPluginRecord): ScriptContext {
+export function wrapPluginContext(record: FrontendPluginRecord): ScriptContext {
   return new Proxy(ctx, {
     get(target, prop, receiver) {
       if (prop === 'router') {
@@ -93,6 +96,13 @@ function wrapPluginContext(record: FrontendPluginRecord): ScriptContext {
             },
           },
         }
+      }
+      if (prop === 'pluginData') {
+        // 绑定到当前插件名的数据存储（缓存于 record，按 name 隔离）
+        if (!record.pluginData) {
+          record.pluginData = createPluginDataApi(record.name)
+        }
+        return record.pluginData
       }
       return Reflect.get(target, prop, receiver)
     },

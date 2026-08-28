@@ -24,6 +24,8 @@ import {
   ensurePluginInstallPrefix,
 } from '../config'
 import { authMiddleware } from '../middleware/auth'
+import { clearPluginData, getPluginStore } from '../plugin/storage'
+import { log } from '../utils/logger'
 import type { NpmSearchResult } from '../plugin/types'
 
 const router = Router()
@@ -466,6 +468,84 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
+// ==================== 插件数据目录（KV 存储） ====================
+
+/**
+ * 守卫：仅允许对"已在 config.yml 配置"或"可解析到安装目录"的插件访问数据目录，
+ * 防止为任意名称创建数据目录。
+ */
+function isKnownPlugin(name: string): boolean {
+  const cfg = (getConfig().plugins || {})[name]
+  return Boolean(cfg) || Boolean(resolvePluginRoot(name))
+}
+
+// 读取全部键值
+router.get('/:name/data', authMiddleware, async (req: Request, res: Response) => {
+  const name = req.params.name as string
+  if (!isKnownPlugin(name)) {
+    res.status(404).json({ error: `Plugin "${name}" not found` })
+    return
+  }
+  try {
+    res.json(getPluginStore(name).all())
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+  }
+})
+
+// 读取单个键值
+router.get('/:name/data/:key', authMiddleware, async (req: Request, res: Response) => {
+  const { name, key } = req.params as { name: string; key: string }
+  if (!isKnownPlugin(name)) {
+    res.status(404).json({ error: `Plugin "${name}" not found` })
+    return
+  }
+  const value = getPluginStore(name).get(key)
+  if (value === undefined) {
+    res.status(404).json({ error: `Key "${key}" not found in plugin "${name}" data` })
+    return
+  }
+  res.json({ key, value })
+})
+
+// 写入单个键值（body 即任意 JSON 值）
+router.put('/:name/data/:key', authMiddleware, async (req: Request, res: Response) => {
+  const { name, key } = req.params as { name: string; key: string }
+  if (!isKnownPlugin(name)) {
+    res.status(404).json({ error: `Plugin "${name}" not found` })
+    return
+  }
+  try {
+    getPluginStore(name).set(key, req.body)
+    res.json({ success: true })
+  } catch (err: unknown) {
+    const status = (err as { statusCode?: number })?.statusCode ?? 400
+    res.status(status).json({ error: err instanceof Error ? err.message : String(err) })
+  }
+})
+
+// 删除单个键值
+router.delete('/:name/data/:key', authMiddleware, async (req: Request, res: Response) => {
+  const { name, key } = req.params as { name: string; key: string }
+  if (!isKnownPlugin(name)) {
+    res.status(404).json({ error: `Plugin "${name}" not found` })
+    return
+  }
+  getPluginStore(name).delete(key)
+  res.json({ success: true })
+})
+
+// 清空插件全部数据
+router.delete('/:name/data', authMiddleware, async (req: Request, res: Response) => {
+  const name = req.params.name as string
+  if (!isKnownPlugin(name)) {
+    res.status(404).json({ error: `Plugin "${name}" not found` })
+    return
+  }
+  clearPluginData(name)
+  res.json({ success: true })
+})
+
 // ==================== 删除插件（npm uninstall + 清除配置） ====================
 
 router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
@@ -530,6 +610,16 @@ router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
     const msg = err instanceof Error ? err.message : String(err)
     res.status(500).json({ error: `Config cleanup failed: ${msg}` })
     return
+  }
+
+  // 4. 可选：一并删除插件本地数据目录（默认保留，仅当用户显式勾选）
+  if (req.query.clearData === 'true' || req.query.clearData === '1') {
+    try {
+      clearPluginData(name)
+    } catch (err: unknown) {
+      // 数据清理失败不阻断删除主流程（配置与包已移除）
+      log('WARNING', 'Plugin', `Failed to clear data dir for plugin "${name}": ${err}`)
+    }
   }
 
   res.json({ success: true })

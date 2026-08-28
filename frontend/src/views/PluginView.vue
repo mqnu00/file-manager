@@ -231,9 +231,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElCheckbox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import {
   getPlugins,
@@ -396,19 +396,37 @@ async function reloadPlugin(plugin: PluginInfo) {
 }
 
 async function confirmDelete(plugin: PluginInfo) {
+  // 数据目录是否一并删除（默认保留，由用户勾选）
+  let clearData = false
   try {
-    await ElMessageBox.confirm(
-      `确定要删除插件 "${plugin.name}" 吗？这将执行 npm uninstall 并从 config.yml 中移除配置。`,
-      '确认删除',
-      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
-    )
+    await ElMessageBox({
+      title: '确认删除',
+      type: 'warning',
+      message: h('div', [
+        h(
+          'p',
+          `确定要删除插件 "${plugin.name}" 吗？这将执行 npm uninstall 并从 config.yml 中移除配置。`,
+        ),
+        h(ElCheckbox, {
+          modelValue: clearData,
+          'onUpdate:modelValue': (v: string | number | boolean) => {
+            clearData = Boolean(v)
+          },
+          label: '同时删除该插件的本地数据目录',
+        }),
+      ]),
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
   } catch {
     return // 用户取消
   }
   try {
-    await deletePlugin(plugin.name)
+    await deletePlugin(plugin.name, clearData)
     ElMessage.success(`插件 "${plugin.name}" 已删除，即将刷新页面...`)
-    setTimeout(() => { window.location.reload() }, 800)
+    setTimeout(() => {
+      window.location.reload()
+    }, 800)
   } catch (err: unknown) {
     ElMessage.error(`删除失败: ${extractError(err)}`)
   }
