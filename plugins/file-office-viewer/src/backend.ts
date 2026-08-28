@@ -254,7 +254,8 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
   ctx.utils.logger.log('INFO', 'file-office-viewer', '后端已挂载 /api/file-office-viewer')
 
   // 向 file-viewer 核心报备能力（经 registerService）
-  ctx.getService('file-viewer:viewers').registerViewer({
+  const registry = ctx.getService('file-viewer:viewers')
+  registry.registerViewer({
     id: 'office',
     label: '办公文档查看器',
     defaultExtensions: ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'],
@@ -270,4 +271,13 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     isRunning: async () => true,
   })
   ctx.startService('office-viewer')
+
+  // teardown 契约：卸载/重载时注销查看器，使配置页不再展示、对应后缀不再可点击
+  return () => {
+    try {
+      registry.unregisterViewer('office')
+    } catch {
+      // file-viewer 已先卸载（级联）则忽略
+    }
+  }
 }

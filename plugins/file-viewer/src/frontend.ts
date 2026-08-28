@@ -19,6 +19,7 @@ import type {
 } from '@mqn00/file-manager/plugin/frontend'
 import { createConfigPage } from './config-page'
 import { refreshViewers, canOpenExt, resolveViewer, normExt } from './state'
+import { PLUGINS_CHANGED_EVENT } from '@mqn00/file-manager/plugin/frontend'
 
 function injectStyles(): void {
   if (document.getElementById('file-viewer-style')) return
@@ -33,8 +34,20 @@ function injectStyles(): void {
 
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
+  const http = ctx.api.instance
+  const fileOpen = ctx.platform.fileOpen
+
   // 拉取已注册查看器 + 映射配置（失败静默，保持空状态）
-  void refreshViewers(ctx.api.instance).catch(() => {})
+  void refreshViewers(http).catch(() => {})
+
+  // 插件集合变化（加载/卸载/重载）后重算可打开集合：后端注册表已由子插件 teardown
+  // 注销，重新拉取并通知主应用重算 is-openable 标记（避免卸载后子查看器后缀仍可点击）
+  const onPluginsChanged = () => {
+    void refreshViewers(http)
+      .catch(() => {})
+      .finally(() => fileOpen.refresh())
+  }
+  window.addEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
 
   // 配置页：查看器设置（扩展名→查看器映射）
   ctx.router.addRoute({
@@ -57,10 +70,11 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
       }
     },
   }
-  const unregisterOpen = ctx.platform.fileOpen.register(handler)
+  const unregisterOpen = fileOpen.register(handler)
 
-  // 卸载/重载清理：注销文件打开 handler（路由与主题由平台自动清理）
+  // 卸载/重载清理：注销文件打开 handler、移除事件监听（路由与主题由平台自动清理）
   return () => {
+    window.removeEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
     unregisterOpen()
   }
 }

@@ -86,4 +86,19 @@ describe('fileOpen 注册表', () => {
     const api = reg.getFileOpenApi()
     expect(() => api.unregister('not-exists')).not.toThrow()
   })
+
+  it('refresh() 重新赋值响应式 handlers 并通知订阅者（重算 is-openable 用）', async () => {
+    const reg = await loadRegistry()
+    const api = reg.getFileOpenApi()
+    const fn = vi.fn()
+    api.subscribe(fn)
+    api.register({ id: 'viewer', canOpen: () => true, open: () => {} })
+    fn.mockClear()
+
+    // 仅触发 refresh（handler 集合未变），应通知订阅者且 handlers 仍为同一逻辑集合
+    api.refresh()
+    expect(fn).toHaveBeenCalledTimes(1)
+    // handlers ref 被重新赋值（新数组引用），驱动依赖它的组件重算
+    expect(api.list().map((h) => h.id)).toEqual(['viewer'])
+  })
 })

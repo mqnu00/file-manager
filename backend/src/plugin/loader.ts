@@ -25,6 +25,7 @@ import { log } from '../utils/logger'
 import type {
   BackendPluginContext,
   PluginInstallFunction,
+  PluginTeardown,
   LoadedPlugin,
   PluginInfo,
   PluginManifestConfig,
@@ -50,6 +51,8 @@ interface PluginInstance {
   registeredServices: string[]
   /** 本插件注册的托管服务名列表，卸载时停止并清理 */
   managedServices: string[]
+  /** install 返回的 teardown（可缺省 = 插件声明无需要自清理的全局副作用） */
+  teardown?: PluginTeardown
   /** fs.watch 监视器 */
   watcher?: fs.FSWatcher
   /** 防抖重载定时器 */
@@ -622,11 +625,15 @@ async function loadSinglePlugin(
 
     // 记录当前安装中的插件，使 registerService 能准确归属（并行加载时避免串抢）
     currentInstallingPlugin = name
+    let installResult: unknown
     try {
-      await install(pluginCtx)
+      installResult = await install(pluginCtx)
     } finally {
       currentInstallingPlugin = null
     }
+    // 捕获 teardown 契约：install 返回函数 = 插件声明自行撤销 install 期间的全局副作用
+    const teardown: PluginTeardown | undefined =
+      typeof installResult === 'function' ? (installResult as PluginTeardown) : undefined
 
     // 归属 install 期间注册的服务：registerService 已直接归属当前插件，
     // 此处兜底处理极少数在 install 之外注册的占位符（___loading___）
@@ -672,6 +679,7 @@ async function loadSinglePlugin(
       layers,
       registeredServices,
       managedServices,
+      teardown,
     }
 
     log('INFO', 'Plugin', `Plugin "${name}" loaded from ${rootDir}`)
@@ -721,7 +729,17 @@ async function cascadeUnloadDependents(serviceName: string, visited: Set<string>
 
 /** 卸载单个插件：停止托管服务 + 移除路由层 + 清除模块缓存 + 停止文件监视 + 清理服务 */
 async function unloadPlugin(instance: PluginInstance): Promise<void> {
-  // 停止本插件的托管服务，并清理 config 中 startedServices 记录
+  // 1. 调用插件 teardown：撤销 install 期间的全局副作用（如向其他插件注册表报备的能力）。
+  //    在托管服务停止/路由清理之前调用，此时插件自身与其依赖服务仍处于可用状态。
+  if (instance.teardown) {
+    try {
+      await instance.teardown()
+    } catch (err) {
+      log('ERROR', 'Plugin', `Plugin "${instance.name}" teardown failed: ${err}`)
+    }
+  }
+
+  // 2. 停止本插件的托管服务，并清理 config 中 startedServices 记录
   const cascadeVisited = new Set<string>()
   for (const svcName of instance.managedServices) {
     const entry = manageRegistry.get(svcName)

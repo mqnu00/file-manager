@@ -246,6 +246,7 @@ import {
   type NpmSearchResult,
 } from '@/api/plugins'
 import { loadPluginFrontend, unloadPluginFrontend } from '@/pluginLoader'
+import { emitPluginsChanged } from '@/platform/fileOpen'
 import PluginVersionSelect from '@/components/PluginVersionSelect.vue'
 
 /** 聚合插件的兼容性原因（宿主版本 + 依赖问题），用于不兼容标签的 tooltip */
@@ -325,6 +326,8 @@ async function handleLoad(plugin: PluginInfo) {
       ElMessage.success(`插件 "${plugin.name}" 已加载`)
     }
     await refreshList()
+    // 加载后广播：查看器核心等据此重算可打开集合（后端注册表已就绪）
+    emitPluginsChanged()
 
     if (result.frontendPath) {
       try {
@@ -354,6 +357,8 @@ async function confirmUnload(plugin: PluginInfo) {
     })
     ElMessage.success(`插件 "${plugin.name}" 已卸载`)
     await refreshList()
+    // 卸载后广播：后端注册表已由子插件 teardown 注销，查看器核心据此重算可打开集合
+    emitPluginsChanged()
   } catch {
     // 用户取消
   }
@@ -383,6 +388,8 @@ async function reloadPlugin(plugin: PluginInfo) {
     })
     ElMessage.success(`插件 "${plugin.name}" 已重载`)
     await refreshList()
+    // 重载后广播：重算可打开集合
+    emitPluginsChanged()
   } catch {
     // 用户取消
   }

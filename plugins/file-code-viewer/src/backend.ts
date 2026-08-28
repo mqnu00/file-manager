@@ -1,8 +1,9 @@
 import type { BackendPluginContext, PluginInstallFunction } from '@mqn00/file-manager/plugin'
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
+  const registry = ctx.getService('file-viewer:viewers')
   // 向 file-viewer 核心报备能力（经 registerService）
-  ctx.getService('file-viewer:viewers').registerViewer({
+  registry.registerViewer({
     id: 'code',
     label: '代码编辑器',
     defaultExtensions: [
@@ -25,4 +26,13 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     isRunning: async () => true,
   })
   ctx.startService('code-viewer')
+
+  // teardown 契约：卸载/重载时注销查看器，使配置页不再展示、对应后缀不再可点击
+  return () => {
+    try {
+      registry.unregisterViewer('code')
+    } catch {
+      // file-viewer 已先卸载（级联）则忽略
+    }
+  }
 }

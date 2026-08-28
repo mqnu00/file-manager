@@ -11,8 +11,9 @@ import type {
 } from '@mqn00/file-manager/plugin'
 
 export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
+  const registry = ctx.getService('file-viewer:viewers')
   // 向 file-viewer 核心报备能力（经 registerService）
-  ctx.getService('file-viewer:viewers').registerViewer({
+  registry.registerViewer({
     id: 'markdown',
     label: 'Markdown 查看器',
     defaultExtensions: ['md', 'markdown', 'mdown', 'mkd'],
@@ -28,4 +29,13 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     isRunning: async () => true,
   })
   ctx.startService('markdown-viewer')
+
+  // teardown 契约：卸载/重载时注销查看器，使配置页不再展示、对应后缀不再可点击
+  return () => {
+    try {
+      registry.unregisterViewer('markdown')
+    } catch {
+      // file-viewer 已先卸载（级联）则忽略
+    }
+  }
 }

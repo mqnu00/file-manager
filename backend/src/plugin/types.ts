@@ -160,9 +160,21 @@ export interface BackendPluginContext extends Omit<ScriptContext, 'app'> {
 // ==================== 安装函数签名 ====================
 
 /**
+ * 后端插件 teardown 契约：撤销 install 期间产生的全局副作用
+ * （如经其他插件注册表报备的能力——查看器注册等）。
+ * 平台卸载/重载插件时会调用；路由层与注册服务由平台自动清理，无需插件处理。
+ */
+export type PluginTeardown = () => void | Promise<void>
+
+/**
  * 插件 install 函数签名
  *
  * @param ctx - 后端或前端插件上下文
- * @returns void 或 Promise<void>
+ * @returns void / Promise<void>，或返回 teardown 函数（可选）。
+ *          返回 teardown = 插件声明「install 期间的全局副作用由我撤销」；
+ *          不返回 = 无需要自行清理的全局副作用（路由层/注册服务于卸载时
+ *          由平台自动清理）。
  */
-export type PluginInstallFunction<C = BackendPluginContext> = (ctx: C) => void | Promise<void>
+export type PluginInstallFunction<C = BackendPluginContext> = (
+  ctx: C
+) => void | Promise<void> | PluginTeardown | Promise<PluginTeardown>

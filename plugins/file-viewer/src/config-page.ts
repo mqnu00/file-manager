@@ -10,6 +10,7 @@
  */
 
 import type { FrontendPluginContext } from '@mqn00/file-manager/plugin/frontend'
+import { PLUGINS_CHANGED_EVENT } from '@mqn00/file-manager/plugin/frontend'
 import {
   viewers as stateViewers,
   extensionMappings as stateExtensionMappings,
@@ -22,6 +23,7 @@ type VueApp = {
   h: (type: unknown, props?: Record<string, unknown>, children?: unknown) => unknown
   ref: <T>(v: T) => { value: T }
   onMounted: (cb: () => void) => void
+  onUnmounted: (cb: () => void) => void
   defineComponent: (opts: { name?: string; setup: () => () => unknown }) => unknown
 }
 
@@ -69,7 +71,7 @@ function injectStyles(): void {
 }
 
 export function createConfigPage(ctx: FrontendPluginContext): unknown {
-  const { h, ref, onMounted, defineComponent } = ctx.Vue as unknown as VueApp
+  const { h, ref, onMounted, onUnmounted, defineComponent } = ctx.Vue as unknown as VueApp
   const ep = ctx.ElementPlus as unknown as EP
   const { ElButton, ElTag, ElInput, ElSelect, ElOption, ElAlert, ElEmpty, ElIcon } = ep
   const ElMessage = (ctx.ElementPlus as unknown as {
@@ -136,6 +138,15 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
       }
 
       onMounted(load)
+
+      // 插件集合变化（加载/卸载/重载）后重算：子查看器卸载后其配置组应即时消失
+      const onPluginsChanged = () => {
+        void load()
+      }
+      window.addEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+      onUnmounted(() => {
+        window.removeEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+      })
 
       const addExt = (g: Group) => {
         const ext = g.draft.trim().toLowerCase().replace(/^\./, '')

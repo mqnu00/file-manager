@@ -391,7 +391,16 @@ export interface FileOpenApi {
   list(): FileOpenHandler[]
   /** 注册表变化订阅（插件加载/卸载时触发，主应用据此重算 is-openable），返回取消订阅函数 */
   subscribe(fn: () => void): () => void
+  /** 主动触发重算：handler 内部能力来源（如查看器注册表）变化但 handler 本身未增删时，
+   *  用于通知主应用重算 is-openable 标记（重新赋值响应式 handers ref 触发渲染） */
+  refresh(): void
 }
+
+/**
+ * 插件集合变化事件名（与 frontend/src/platform/fileOpen.ts 同步）。
+ * 插件管理页在加载/卸载/重载完成后于 window 上广播，供查看器核心等重算可打开集合。
+ */
+export const PLUGINS_CHANGED_EVENT = 'fm:plugins:changed'
 
 // ==================== 插件路由声明 ====================
 

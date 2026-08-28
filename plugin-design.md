@@ -300,6 +300,8 @@ html.midnight {
 
 **插件生命周期**：后端插件有完整的加载/卸载/重载生命周期；前端插件在 v3.0.0-beta10 起补齐——
 
+**后端 teardown 契约（与前端对称）**：后端 `install(ctx)` 同样可返回 **teardown 函数**，供插件撤销 install 期间产生的、平台不代管的全局副作用——典型场景即子查看插件经 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 报备能力后，在 teardown 中调用 `unregisterViewer(id)` 注销，使 file-viewer 配置页不再展示该查看器、其默认后缀也不再可点击。`PluginInstallFunction` 的返回类型已放宽（`void | Promise<void> | PluginTeardown | Promise<PluginTeardown>`）。平台在 `unloadPlugin` / `reloadPlugin` 时按「托管服务停止 → **插件 teardown** → 路由层移除 → 注册服务清理」顺序执行，teardown 抛错仅记日志不阻断。
+
 `install(ctx)` 的返回值可扩展为 **teardown 函数**：
 
 ```ts
