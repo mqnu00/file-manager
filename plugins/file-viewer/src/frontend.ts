@@ -18,8 +18,7 @@ import type {
   FileOpenHandler,
 } from '@mqn00/file-manager/plugin/frontend'
 import { createConfigPage } from './config-page'
-import { refreshViewers, canOpenExt, resolveViewer, normExt } from './state'
-import { PLUGINS_CHANGED_EVENT } from '@mqn00/file-manager/plugin/frontend'
+import { refreshViewers, canOpenExt, resolveViewer, normExt, PLUGINS_CHANGED_EVENT } from './state'
 
 function injectStyles(): void {
   if (document.getElementById('file-viewer-style')) return

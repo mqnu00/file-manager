@@ -10,7 +10,7 @@
  */
 
 import type { FrontendPluginContext } from '@mqn00/file-manager/plugin/frontend'
-import { PLUGINS_CHANGED_EVENT } from '@mqn00/file-manager/plugin/frontend'
+import { PLUGINS_CHANGED_EVENT } from './state'
 import {
   viewers as stateViewers,
   extensionMappings as stateExtensionMappings,

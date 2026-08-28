@@ -396,12 +396,6 @@ export interface FileOpenApi {
   refresh(): void
 }
 
-/**
- * 插件集合变化事件名（与 frontend/src/platform/fileOpen.ts 同步）。
- * 插件管理页在加载/卸载/重载完成后于 window 上广播，供查看器核心等重算可打开集合。
- */
-export const PLUGINS_CHANGED_EVENT = 'fm:plugins:changed'
-
 // ==================== 插件路由声明 ====================
 
 /**
