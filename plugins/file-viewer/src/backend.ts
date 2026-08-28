@@ -2,7 +2,7 @@
  * file-viewer 后端：查看器框架核心
  *
  * 职责：
- * 1. 提供查看器映射配置 API（extensionMappings + defaultViewer，存 config.yml）；
+ * 1. 提供查看器映射配置 API（extensionMappings + defaultViewer，经 ctx.storage 持久化）；
  * 2. 声明托管服务 `viewers`（查看器框架就绪信号，供子插件 dependsOn 并触发级联）；
  * 3. 经 registerService 暴露 `file-viewer:viewers` 注册服务，子插件据此向核心报备能力
  *    （默认扩展名 + 查看页路由）；核心持有解析权，配置表可改写扩展名归属。
@@ -18,19 +18,20 @@ import type {
 } from '@mqn00/file-manager/plugin'
 import type { ViewerMeta } from './types'
 
-/** 读取 config.yml 中本插件的配置（extensionMappings + defaultViewer） */
+/** 读取插件存储中的配置（extensionMappings + defaultViewer） */
 function getViewerConfig(ctx: BackendPluginContext): {
   extensionMappings: Record<string, string>
   defaultViewer: string
 } {
-  const cfg = ctx.config.get()
-  const pluginCfg = (cfg.plugins || {})['file-viewer'] as Record<string, unknown> | undefined
-  const raw = pluginCfg?.extensionMappings
-  const extMap =
-    raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, string>) : {}
-  const dv =
-    typeof pluginCfg?.defaultViewer === 'string' ? (pluginCfg.defaultViewer as string) : ''
-  return { extensionMappings: extMap, defaultViewer: dv }
+  const extMap = ctx.storage.get('extensionMappings')
+  const dv = ctx.storage.get('defaultViewer')
+  return {
+    extensionMappings:
+      extMap && typeof extMap === 'object' && !Array.isArray(extMap)
+        ? (extMap as Record<string, string>)
+        : {},
+    defaultViewer: typeof dv === 'string' ? dv : '',
+  }
 }
 
 /** 归一化扩展名（小写、去点、去空） */
@@ -71,7 +72,8 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     // 校验 defaultViewer（可选，字符串）
     const dv = typeof defaultViewer === 'string' ? defaultViewer.trim() : ''
 
-    ctx.config.updatePlugin('file-viewer', { extensionMappings: map, defaultViewer: dv })
+    ctx.storage.set('extensionMappings', map)
+    ctx.storage.set('defaultViewer', dv)
     ctx.utils.logger.log(
       'INFO',
       'file-viewer',
@@ -125,7 +127,7 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     },
     isRunning: async () => state.running,
   })
-  // 插件启动即自动注册（幂等，持久化到 config.yml startedServices）
+  // 插件启动即自动注册（幂等，持久化到宿主 startedServices）
   ctx.startService('viewers')
 
   ctx.utils.logger.log('INFO', 'file-viewer', '后端已加载（配置 API + viewers 服务）')

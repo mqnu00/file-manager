@@ -365,7 +365,7 @@ html.midnight {
                     showIcon: false,
                     title: '自动启动验证',
                     description:
-                      '1. 点击"启动服务"，服务状态写入 config.yml plugins.test.startedServices。' +
+                      '1. 点击"启动服务"，服务状态已记录，重启后自动恢复。' +
                       '2. 重启文件管理器，服务应自动恢复为运行中（启动次数 +1）。' +
                       '3. 点击"停止服务"后重启，服务不应自动启动。',
                     closable: false,

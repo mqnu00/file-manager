@@ -79,9 +79,15 @@ describe('api/plugins', () => {
     })
   })
 
-  it('deletePlugin 调用 DELETE /plugins/:name', async () => {
+  it('deletePlugin 调用 DELETE /plugins/:name 并携带 clearData 参数', async () => {
     mockedApi.delete.mockResolvedValue({ data: undefined })
     await deletePlugin('smb')
-    expect(mockedApi.delete).toHaveBeenCalledWith('/plugins/smb')
+    expect(mockedApi.delete).toHaveBeenCalledWith('/plugins/smb', { params: { clearData: 0 } })
+  })
+
+  it('deletePlugin clearData=true 时传递 clearData=1', async () => {
+    mockedApi.delete.mockResolvedValue({ data: undefined })
+    await deletePlugin('smb', true)
+    expect(mockedApi.delete).toHaveBeenCalledWith('/plugins/smb', { params: { clearData: 1 } })
   })
 })

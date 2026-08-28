@@ -22,7 +22,7 @@ export const PLUGINS_CHANGED_EVENT = 'fm:plugins:changed'
 
 /** 已注册查看器（id/label/默认扩展名/路由） */
 export let viewers: ViewerMeta[] = []
-/** config.yml 扩展名→查看器映射（小写后缀） */
+/** 扩展名→查看器映射（小写后缀，来自插件存储） */
 export let extensionMappings: Record<string, string> = {}
 /** 默认查看器 id（空串表示未设置） */
 export let defaultViewer = ''

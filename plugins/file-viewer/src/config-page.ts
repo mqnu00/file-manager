@@ -1,9 +1,9 @@
 /**
  * file-viewer 配置页（插件主页，/plugin/file-viewer）
  *
- * 按查看器分组编辑其默认后缀列表，保存为 config.yml 完整映射表
- * （plugins.file-viewer.extensionMappings，ext→viewerId）。
- * 打开方式优先级：config.yml 映射 > 默认扩展名命中 > 默认查看器。
+ * 按查看器分组编辑其默认后缀列表，保存为插件存储完整映射表
+ * （extensionMappings，ext→viewerId）。
+ * 打开方式优先级：存储映射 > 默认扩展名命中 > 默认查看器。
  *
  * 由核心 fileOpen handler 消费解析结果；子插件经后端注册服务报备能力，
  * 配置页展示并编辑其扩展名归属（file-viewer 持有解析权）。
@@ -215,7 +215,7 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
             h(
               'div',
               { class: 'fv-config-tip' },
-              '每个查看器一行，编辑其打开的后缀列表。保存后写入 config.yml 并立即生效；未列出的后缀优先用下方设置的「默认查看器」打开，未设置则不打开。'
+              '每个查看器一行，编辑其打开的后缀列表。保存后立即生效；未列出的后缀优先用下方设置的「默认查看器」打开，未设置则不打开。'
             ),
           ]),
           h('div', { class: 'fv-config-save' }, [

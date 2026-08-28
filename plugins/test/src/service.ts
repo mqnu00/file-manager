@@ -5,7 +5,7 @@ import type { BackendPluginContext } from '@mqn00/file-manager/plugin'
  * 托管服务：一个运行在文件管理器进程内的 HTTP 测试服务。
  *
  * 用途：验证托管服务机制 —— 通过 ctx.manageService 注册后，
- * 重启文件管理器会自动恢复（config.yml plugins.test.startedServices 持久化）。
+ * 重启文件管理器会自动恢复（宿主 startedServices 持久化）。
  * 服务随进程退出而关闭，重启后端口不会残留占用，适合反复测试。
  */
 
@@ -25,7 +25,7 @@ let server: http.Server | null = null
 let startedAt: number | null = null
 let startCount = 0
 
-/** 默认监听端口，可用 config.yml plugins.test.servicePort 覆盖 */
+/** 默认监听端口，可通过 ctx.storage 'servicePort' 键覆盖 */
 const DEFAULT_PORT = 18765
 
 export function initTestService(ctx: BackendPluginContext): void {
@@ -38,9 +38,8 @@ function getCtx(): BackendPluginContext {
 }
 
 function getPort(): number {
-  const cfg = getCtx().config.get()
-  const saved = (cfg.plugins?.test || {}) as Record<string, unknown>
-  return typeof saved.servicePort === 'number' ? saved.servicePort : DEFAULT_PORT
+  const port = getCtx().storage.get('servicePort')
+  return typeof port === 'number' ? port : DEFAULT_PORT
 }
 
 // ==================== HTTP 服务 ====================

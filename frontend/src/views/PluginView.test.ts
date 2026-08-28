@@ -23,10 +23,15 @@ vi.mock('@/pluginLoader', () => ({
 
 vi.mock('element-plus', async (importOriginal) => {
   const actual = await importOriginal<typeof import('element-plus')>()
+  // ElMessageBox 既可作为函数调用 ElMessageBox({...})，也有 .alert/.confirm 静态方法
+  const mockMessageBox = Object.assign(
+    vi.fn().mockResolvedValue('confirm'),
+    { alert: vi.fn(), confirm: vi.fn().mockResolvedValue('confirm'), prompt: vi.fn() }
+  )
   return {
     ...actual,
     ElMessage: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() },
-    ElMessageBox: { alert: vi.fn(), confirm: vi.fn() },
+    ElMessageBox: mockMessageBox,
   }
 })
 
@@ -197,12 +202,13 @@ describe('PluginView.vue', () => {
   })
 
   it('删除：npm 插件确认后调用 deletePlugin', async () => {
-    mockedDeletePlugin.mockResolvedValue(undefined)
+    mockedDeletePlugin.mockResolvedValue(undefined as never)
     const wrapper = await mountView()
     await rowButton(wrapper, 'abc', '删除').trigger('click')
     await flushPromises()
-    expect(mockedConfirm).toHaveBeenCalled()
-    expect(mockedDeletePlugin).toHaveBeenCalledWith('abc')
+    // 确认对话框以 ElMessageBox({...}) 函数形式调用（非 .confirm）
+    expect(ElMessageBox).toHaveBeenCalled()
+    expect(mockedDeletePlugin).toHaveBeenCalledWith('abc', false)
   })
 
   it('搜索 → searchPlugins 结果渲染', async () => {

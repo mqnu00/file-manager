@@ -2,7 +2,7 @@
  * 后端配置 API 集成测试：/api/file-viewer/config 读/写 extensionMappings。
  *
  * 文件 I/O 路由已上收主项目（/api/files/*），本插件后端只保留配置读写。
- * 使用真实 express + supertest，mock 主应用鉴权与 config 读写。
+ * 使用真实 express + supertest，mock 主应用鉴权与 ctx.storage 读写。
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
@@ -11,9 +11,8 @@ import request from 'supertest'
 import { install } from './backend'
 
 let app: Express
-/** 模拟 config.yml 中 plugins['file-viewer'] 的存储 */
-let stored: Record<string, string> = {}
-let storedDefaultViewer = ''
+/** 模拟插件存储（ctx.storage） */
+const store = new Map<string, unknown>()
 
 function mockAuth(req: Request, res: Response, next: NextFunction): void {
   if (req.headers.authorization?.startsWith('Bearer ')) {
@@ -24,6 +23,7 @@ function mockAuth(req: Request, res: Response, next: NextFunction): void {
 }
 
 beforeAll(() => {
+  store.clear()
   app = express()
   app.use(express.json())
 
@@ -31,16 +31,13 @@ beforeAll(() => {
     express,
     app: app as never,
     middleware: { auth: mockAuth },
-    config: {
-      get: () => ({ plugins: { 'file-viewer': { extensionMappings: { ...stored }, defaultViewer: storedDefaultViewer } } }),
-      updatePlugin: (
-        _name: string,
-        cfg: { extensionMappings?: Record<string, string>; defaultViewer?: string }
-      ) => {
-        if (cfg.extensionMappings) stored = { ...cfg.extensionMappings }
-        if (cfg.defaultViewer !== undefined) storedDefaultViewer = cfg.defaultViewer
-        return {}
-      },
+    storage: {
+      get: (key: string) => store.get(key),
+      set: (key: string, value: unknown) => { store.set(key, value) },
+      delete: (key: string) => { store.delete(key) },
+      has: (key: string) => store.has(key),
+      keys: () => [...store.keys()],
+      all: () => Object.fromEntries(store),
     } as never,
     registerService: () => {},
     manageService: () => {},
@@ -58,7 +55,7 @@ describe('配置 API（/api/file-viewer/config）', () => {
   })
 
   it('GET 缺省返回 {}', async () => {
-    stored = {}
+    store.clear()
     const res = await request(app).get('/api/file-viewer/config').set(auth)
     expect(res.status).toBe(200)
     expect(res.body.extensionMappings).toEqual({})
