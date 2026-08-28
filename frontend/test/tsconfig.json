@@ -1,0 +1,45 @@
+{
+  // test/ 目录的独立编译程序（供 vitest typecheck 与编辑器项目发现共用）：
+  //
+  // 1. 为什么放这里且命名为 tsconfig.json：
+  //    - 主 tsconfig.json 的 include 只覆盖 src/，types-sync.test-d.ts 若并入会让
+  //      vue-tsc 构建连带检查 backend 源码（解析 express 等前端不可用的后端依赖）
+  //    - 编辑器（tsserver）对"不属于任何已加载项目"的文件只做精确名 tsconfig.json
+  //      的向上扫描，且推断项目不应用 paths 别名；把配置命名为 test/tsconfig.json
+  //      后，该文件自动归属本项目，@/* 别名在编辑器里恢复正常
+  //
+  // 2. paths 重映射：发布类型文件（backend/src/plugin/frontend-types.ts）里的
+  //    `vue` / `vue-router` / `element-plus` / `axios` 及其 @vue/* 依赖默认解析到
+  //    backend/node_modules 的独立安装实例（版本可与 frontend 不同），其品牌化
+  //    类型（RefSymbol、NavigationFailure、__VLS_WithSlots 等）与 frontend 实例
+  //    互不兼容，导致纯结构声明的接口也过不了双向断言。此处强制整个编译程序统一
+  //    使用 frontend 的安装实例（也正是运行时插件经 ctx 拿到的实例）；
+  //    仅影响本 typecheck 程序，不影响正常构建。
+  //
+  // 3. baseUrl/paths 必须在此显式重声明：extends 继承的 baseUrl 是按声明它的
+  //    配置文件（frontend/tsconfig.json，其值为 "."）解析的，子配置里必须
+  //    相对本目录重写为 ".." 并补全 paths。
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["src/*"],
+      "vue": ["./node_modules/vue"],
+      "vue-router": ["./node_modules/vue-router"],
+      "element-plus": ["./node_modules/element-plus"],
+      "axios": ["./node_modules/axios"],
+      "@vue/runtime-dom": ["./node_modules/@vue/runtime-dom"],
+      "@vue/runtime-core": ["./node_modules/@vue/runtime-core"],
+      "@vue/reactivity": ["./node_modules/@vue/reactivity"],
+      "@vue/shared": ["./node_modules/@vue/shared"],
+      "@vue/compiler-core": ["./node_modules/@vue/compiler-core"],
+      "@vue/compiler-dom": ["./node_modules/@vue/compiler-dom"],
+      "@vue/compiler-sfc": ["./node_modules/@vue/compiler-sfc"],
+      "@vue/compiler-ssr": ["./node_modules/@vue/compiler-ssr"],
+      "@vue/devtools-api": ["./node_modules/@vue/devtools-api"],
+      "@vue/server-renderer": ["./node_modules/@vue/server-renderer"]
+    }
+  },
+  "include": ["types-sync.test-d.ts", "../src/env.d.ts"]
+}
