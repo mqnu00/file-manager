@@ -17,6 +17,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import semver from 'semver'
 import { getConfig, getPluginInstallDir, updatePluginConfig } from '../config'
 import { createScriptContext } from '../context'
 import { pluginApp } from '../app'
@@ -27,6 +28,7 @@ import type {
   LoadedPlugin,
   PluginInfo,
   PluginManifestConfig,
+  PluginDepIssue,
   ManagedServiceSpec,
 } from './types'
 
@@ -326,6 +328,223 @@ function getSharedPluginCtx(): BackendPluginContext {
     }
   }
   return _sharedPluginCtx!
+}
+
+// ==================== 兼容性校验（宿主版本 + 插件依赖版本） ====================
+
+/** 主项目自身版本（读取 backend/package.json 的 version 字段） */
+function getHostVersion(): string {
+  try {
+    // loader.ts 在 dev 位于 backend/src/plugin，产物位于 backend/dist/plugin，
+    // 两者上溯两级均指向 backend 包根目录（含 package.json）
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.resolve(__dirname, '..', '..', 'package.json'))
+    return (pkg.version as string) || '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+}
+
+/** 读取插件声明的「要求主项目最低版本」：优先 fileManagerPlugin.minHostVersion，
+ *  回退 peerDependencies["@mqn00/file-manager"]（忽略 file:/link: 等路径型 peer） */
+function readHostConstraint(rootDir: string): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.join(rootDir, 'package.json'))
+    const fm = pkg.fileManagerPlugin || {}
+    if (typeof fm.minHostVersion === 'string' && fm.minHostVersion) {
+      return fm.minHostVersion
+    }
+    const peer = pkg.peerDependencies && pkg.peerDependencies['@mqn00/file-manager']
+    if (typeof peer === 'string' && peer && !peer.includes(':')) {
+      return peer
+    }
+  } catch {
+    /* package.json 读取失败视为无约束 */
+  }
+  return null
+}
+
+export interface HostCompatResult {
+  compatible: boolean
+  range: string | null
+  reason?: string
+}
+
+/** 校验插件要求的主项目版本（宿主当前为预发布版时以 includePrerelease 处理，避免误判） */
+export function checkCompatibility(rootDir: string): HostCompatResult {
+  const range = readHostConstraint(rootDir)
+  if (!range) return { compatible: true, range: null }
+  const host = getHostVersion()
+  try {
+    const ok = semver.satisfies(host, range, { includePrerelease: true })
+    return ok
+      ? { compatible: true, range }
+      : {
+          compatible: false,
+          range,
+          reason: `需要主项目 ${range}，当前为 ${host}`,
+        }
+  } catch {
+    // range 写法非法：不阻断，仅告警
+    return {
+      compatible: true,
+      range,
+      reason: `版本约束 "${range}" 无法解析，已按兼容处理`,
+    }
+  }
+}
+
+/** 读取依赖插件的已安装版本与启用状态（未安装返回 null） */
+function getPluginInstalledVersion(
+  depName: string
+): { version: string | null; enabled: boolean } | null {
+  const root = resolvePluginRoot(depName)
+  if (!root) return null
+  const cfg = (getConfig().plugins || {})[depName] as Record<string, unknown> | undefined
+  const enabled = cfg ? cfg.enabled !== false : false
+  let version: string | null = null
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.join(root, 'package.json'))
+    version = (pkg.version as string) ?? null
+  } catch {
+    /* 读取失败视为未知版本 */
+  }
+  return { version, enabled }
+}
+
+export interface DepCompatResult {
+  ok: boolean
+  issues: PluginDepIssue[]
+}
+
+/** 依赖插件是否已加载（运行时处于激活状态） */
+function isPluginLoaded(depName: string): boolean {
+  return loadedPlugins.some((p) => p.name === depName)
+}
+
+/**
+ * 校验插件声明的依赖插件：存在性 + 已启用 + 已启动（已加载）+ 版本满足范围。
+ * 结果基于依赖插件的 package.json（与加载顺序无关），故可在加载前静态判定；
+ * "已启动"基于运行时 loadedPlugins（B 已 install 激活），缺省即 not-started（硬阻塞）。
+ */
+export function checkPluginDependencies(rootDir: string): DepCompatResult {
+  let fm: PluginManifestConfig = {}
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pkg = require(path.join(rootDir, 'package.json'))
+    fm = pkg.fileManagerPlugin || {}
+  } catch {
+    return { ok: true, issues: [] }
+  }
+  const deps: Record<string, string> = fm.dependencies || {}
+  const presenceOnly: string[] = ((fm.dependsOn || []) as unknown[]).filter(
+    (d) => typeof d === 'string'
+  ) as string[]
+  const names = new Set([...Object.keys(deps), ...presenceOnly])
+  const issues: PluginDepIssue[] = []
+  for (const name of names) {
+    const range = deps[name]
+    const inst = getPluginInstalledVersion(name)
+    if (!inst) {
+      issues.push({ name, required: range, current: null, status: 'missing' })
+      continue
+    }
+    if (!inst.enabled) {
+      issues.push({ name, required: range, current: inst.version, status: 'disabled' })
+      continue
+    }
+    if (!isPluginLoaded(name)) {
+      issues.push({ name, required: range, current: inst.version, status: 'not-started' })
+      continue
+    }
+    if (
+      range &&
+      inst.version &&
+      !semver.satisfies(inst.version, range, { includePrerelease: true })
+    ) {
+      issues.push({ name, required: range, current: inst.version, status: 'mismatch' })
+    }
+  }
+  return { ok: issues.length === 0, issues }
+}
+
+/** 依赖问题摘要（中文） */
+function depIssueSummary(issues: PluginDepIssue[]): string {
+  return issues
+    .map((i) => {
+      switch (i.status) {
+        case 'missing':
+          return `依赖 ${i.name} 缺失`
+        case 'disabled':
+          return `依赖 ${i.name} 已安装但未启用`
+        case 'not-started':
+          return `依赖 ${i.name} 未启动`
+        case 'mismatch':
+          return `依赖 ${i.name} 要求 ${i.required}，当前 ${i.current}`
+      }
+    })
+    .join('；')
+}
+
+/**
+ * 综合兼容性评估（宿主版本轴 + 依赖轴）。
+ *
+ * 策略（在「能加载」与「不能加载」之间做区分）：
+ * - 硬阻塞（不允许加载）：
+ *     · 任一依赖处于 missing / disabled / not-started（依赖根本不可用）；
+ *     · 或宿主版本不兼容 且 同时存在依赖版本 mismatch（多方面不兼容）。
+ * - 软提示（仍允许加载，仅告警）：
+ *     · 仅宿主版本不兼容（依赖正常）；
+ *     · 仅依赖版本 mismatch（依赖已安装/已启用/已启动，只是版本偏低）。
+ */
+export interface CompatEvaluation {
+  /** 是否硬阻塞（不允许加载） */
+  hardBlock: boolean
+  /** 硬阻塞时的原因 */
+  reason?: string
+  /** 软提示时的告警文案（仍允许加载） */
+  warning?: string
+}
+
+export function evaluateCompatibility(rootDir: string): CompatEvaluation {
+  const host = checkCompatibility(rootDir)
+  const deps = checkPluginDependencies(rootDir)
+  const hostIncompat = !host.compatible
+  const hardDep = deps.issues.filter((i) => i.status !== 'mismatch')
+  const softDep = deps.issues.filter((i) => i.status === 'mismatch')
+
+  const hardBlock = hardDep.length > 0 || (hostIncompat && softDep.length > 0)
+  if (hardBlock) {
+    const parts: string[] = []
+    if (hardDep.length) parts.push(depIssueSummary(hardDep))
+    if (hostIncompat && softDep.length) {
+      parts.push(`宿主版本：${host.reason ?? '不满足'}`)
+    }
+    return { hardBlock: true, reason: `插件不兼容：${parts.join('；')}` }
+  }
+
+  const warnParts: string[] = []
+  if (hostIncompat) warnParts.push(host.reason ?? '宿主版本不满足')
+  if (softDep.length) warnParts.push(depIssueSummary(softDep))
+  if (warnParts.length) {
+    return { hardBlock: false, warning: `兼容性警告：${warnParts.join('；')}` }
+  }
+  return { hardBlock: false }
+}
+
+/** 综合预检：宿主版本 + 依赖版本，供路由/加载流程直接调用 */
+export function preflightCheck(
+  name: string
+): { ok: boolean; reason?: string; warning?: string; notFound?: boolean } {
+  const rootDir = resolvePluginRoot(name)
+  if (!rootDir) {
+    return { ok: false, reason: `Plugin "${name}" not found`, notFound: true }
+  }
+  const r = evaluateCompatibility(rootDir)
+  if (r.hardBlock) return { ok: false, reason: r.reason }
+  return { ok: true, warning: r.warning }
 }
 
 // ==================== 单插件装载/卸载 ====================
@@ -671,7 +890,13 @@ function collectManifests(): PluginManifest[] {
       const pkg = require(path.join(rootDir, 'package.json')) as {
         fileManagerPlugin?: PluginManifestConfig
       }
-      dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
+      const fm = pkg.fileManagerPlugin || {}
+      const presenceOnly = ((fm.dependsOn || []) as unknown[]).filter(
+        (d) => typeof d === 'string'
+      ) as string[]
+      const depKeys = Object.keys(fm.dependencies || {})
+      // 拓扑依赖边 = dependsOn（存在性）∪ dependencies（版本约束），二者皆驱动加载顺序
+      dependsOn = [...new Set([...presenceOnly, ...depKeys])]
     } catch {
       /* package.json 读取失败则视为无依赖 */
     }
@@ -772,13 +997,29 @@ export async function loadEnabledPlugins(): Promise<void> {
     // 同一批次内插件互不依赖，可并行加载；跳过已加载/正在加载者
     const pending = batch.filter((m) => !loadedNames.has(m.name) && !loadingPlugins.has(m.name))
     if (pending.length === 0) continue
-    pending.forEach((m) => loadingPlugins.add(m.name))
+
+    // 兼容性预检（宿主版本 + 依赖版本）：
+    // 硬阻塞（缺失/未启用/未启动/多方面不兼容）→ 跳过并记录 ERROR；
+    // 软提示（仅宿主版本偏低 / 仅依赖版本偏低）→ 仍加载但记 WARNING
+    const eligible = pending.filter((m) => {
+      const r = evaluateCompatibility(m.rootDir)
+      if (r.hardBlock) {
+        log('ERROR', 'Plugin', `Plugin "${m.name}" skipped: ${r.reason}`)
+        return false
+      }
+      if (r.warning) {
+        log('WARNING', 'Plugin', `Plugin "${m.name}" loaded with compatibility warning: ${r.warning}`)
+      }
+      return true
+    })
+    if (eligible.length === 0) continue
+    eligible.forEach((m) => loadingPlugins.add(m.name))
 
     let results: (PluginInstance | null)[]
     try {
-      results = await Promise.all(pending.map((m) => loadSinglePlugin(m.name, m.rootDir)))
+      results = await Promise.all(eligible.map((m) => loadSinglePlugin(m.name, m.rootDir)))
     } finally {
-      pending.forEach((m) => loadingPlugins.delete(m.name))
+      eligible.forEach((m) => loadingPlugins.delete(m.name))
     }
 
     for (const instance of results) {
@@ -948,22 +1189,14 @@ export async function loadPlugin(name: string): Promise<LoadedPlugin | null> {
     return null
   }
 
-  // 检查依赖是否已加载
-  let dependsOn: string[] = []
-  try {
-    const pkg = require(path.join(rootDir, 'package.json')) as {
-      fileManagerPlugin?: PluginManifestConfig
-    }
-    dependsOn = pkg.fileManagerPlugin?.dependsOn ?? []
-  } catch {
-    /* ignore */
+  // 兼容性评估：硬阻塞（缺依赖/未启动/多方面不兼容）拒绝加载；软提示仍加载并记 WARNING
+  const pf = preflightCheck(name)
+  if (!pf.ok) {
+    log('ERROR', 'Plugin', `Cannot load "${name}": ${pf.reason}`)
+    return null
   }
-
-  for (const dep of dependsOn) {
-    if (!loadedPlugins.find((p) => p.name === dep)) {
-      log('ERROR', 'Plugin', `Cannot load "${name}": dependency "${dep}" is not loaded`)
-      return null
-    }
+  if (pf.warning) {
+    log('WARNING', 'Plugin', `Plugin "${name}" loaded with compatibility warning: ${pf.warning}`)
   }
 
   const instance = await loadSinglePlugin(name, rootDir)
@@ -1103,6 +1336,11 @@ export function getAllPluginInfos(): PluginInfo[] {
           : local
             ? 'local'
             : 'npm'
+      // 兼容性评估（无 rootDir 时保守视为兼容）
+      const evalRes = rootDir ? evaluateCompatibility(rootDir) : ({} as CompatEvaluation)
+      const host = rootDir ? checkCompatibility(rootDir) : { compatible: true, range: null as string | null }
+      const deps = rootDir ? checkPluginDependencies(rootDir) : { ok: true, issues: [] as PluginDepIssue[] }
+
       return {
         name,
         enabled,
@@ -1111,6 +1349,10 @@ export function getAllPluginInfos(): PluginInfo[] {
         frontendPath: instance?.frontendPath ?? null,
         frontendPage: instance?.frontendPage ?? null,
         version: readPluginVersion(rootDir),
+        minHostVersion: host.range ?? null,
+        dependencyIssues: deps.issues,
+        compatible: !evalRes.hardBlock,
+        compatibilityWarning: evalRes.warning ?? null,
       }
     })
 }

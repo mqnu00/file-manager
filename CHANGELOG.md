@@ -42,6 +42,17 @@
   - 平台自动收集该注册表 handler 的注销函数，卸载/重载时与路由、主题一并清理（插件仍可自行 teardown 注销，幂等）
 - **`ctx.router` 新增编程式导航**：`push(to)` / `replace(to)`（vue-router 原生处理 history / hash 双模式），
   替代插件自造的 `history.pushState + PopStateEvent` hack；"上一张/下一张"等原地切换场景用 `replace` 避免历史栈膨胀
+- **插件兼容性校验（宿主版本 + 插件依赖版本，硬阻塞 / 软提示分级）**：主项目在**安装 / 运行时加载 / 启动自动加载**三处对插件做双轴校验——
+  - 宿主版本轴：校验 `fileManagerPlugin.minHostVersion`（缺省回退 `peerDependencies["@mqn00/file-manager"]`，
+    `file:`/`link:` 路径型 peer 视为无约束）；当前主项目为预发布版时以 `includePrerelease` 规则判定避免误判
+  - 依赖版本轴：校验 `fileManagerPlugin.dependencies`（含 `dependsOn` 名称）满足"已安装 + 已启用 + 已启动 + 版本满足 semver range"，
+    区分 `missing` / `disabled` / `not-started` / `mismatch` 四种状态
+  - **硬阻塞（不允许加载）**：任一依赖 `missing`/`disabled`/`not-started`，**或**宿主不兼容且存在依赖 `mismatch`（多方面不兼容）；
+    安装场景还会 `npm uninstall` 回滚并清配置
+  - **软提示（仍允许加载，仅告警）**：仅宿主版本偏低，或仅依赖 `mismatch`（依赖已装/已启用/已启动但版本偏低）；
+    `GET /api/plugins`、`/load`、`/install` 返回 `compatibilityWarning` 字段，前端弹警告
+  - `GET /api/plugins` 额外返回 `minHostVersion` / `dependencyIssues` / `compatible` / `compatibilityWarning`；
+    插件管理页硬阻塞显示红色「不兼容」标签（禁用加载），软提示显示黄色「兼容警告」标签
 
 ### 🔧 变更
 

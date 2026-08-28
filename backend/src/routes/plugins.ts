@@ -12,6 +12,8 @@ import {
   loadPlugin,
   unloadPluginByName,
   resolvePluginRoot,
+  preflightCheck,
+  evaluateCompatibility,
 } from '../plugin/loader'
 import {
   getConfig,
@@ -55,6 +57,10 @@ router.get('/', async (_req: Request, res: Response) => {
         : null,
       frontendPage: p.frontendPage ?? null,
       version: p.version,
+      minHostVersion: p.minHostVersion ?? null,
+      dependencyIssues: p.dependencyIssues ?? [],
+      compatible: p.compatible,
+      compatibilityWarning: p.compatibilityWarning ?? null,
     }))
   res.json(plugins)
 })
@@ -66,6 +72,17 @@ router.post('/load', authMiddleware, async (req: Request, res: Response) => {
   const { name } = req.body
   if (!name || typeof name !== 'string') {
     res.status(400).json({ error: 'Missing or invalid plugin name' })
+    return
+  }
+
+  // 兼容性预检（宿主版本 + 依赖插件版本）：硬阻塞直接拒绝；软提示仍加载
+  const pf = preflightCheck(name)
+  if (!pf.ok) {
+    if (pf.notFound) {
+      res.status(404).json({ error: `Plugin "${name}" not found or already loaded` })
+    } else {
+      res.status(409).json({ error: pf.reason })
+    }
     return
   }
 
@@ -84,6 +101,7 @@ router.post('/load', authMiddleware, async (req: Request, res: Response) => {
       ? `/plugins-assets/${plugin.name}/${plugin.frontendPath.replace(/^\.\//, '')}`
       : null,
     frontendPage: plugin.frontendPage ?? null,
+    compatibilityWarning: pf.warning ?? null,
   })
 })
 
@@ -282,6 +300,51 @@ function runNpm(
 // semver 或 npm tag 格式校验
 const VERSION_RE = /^[\d.]+(?:-[a-zA-Z0-9.]+)?$|^[a-z]+$/
 
+/**
+ * 安装后兼容性不通过时回滚：npm uninstall + 清除 config.yml 配置。
+ * 避免不兼容的插件残留在 node_modules / 配置中。
+ */
+async function rollbackInstalledPlugin(shortName: string, prefix: string): Promise<void> {
+  try {
+    const rootDir = resolvePluginRoot(shortName)
+    if (rootDir) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const pkgName = require(path.join(rootDir, 'package.json')).name as string | undefined
+      if (pkgName && PKG_NAME_RE.test(pkgName)) {
+        await runNpm(['uninstall', pkgName, '--prefix', prefix], prefix, 60000)
+      }
+    }
+  } catch {
+    /* 回滚失败仅记录，不阻断响应 */
+  }
+  try {
+    removePluginConfig(shortName)
+  } catch {
+    /* 同上 */
+  }
+}
+
+/** 安装后校验兼容性，不通过则回滚并返回错误响应 */
+/** 安装后校验兼容性，硬阻塞则回滚并返回 409；软提示时返回 warning 但不回滚 */
+async function ensureCompatibleOrRollback(
+  shortName: string,
+  prefix: string,
+  res: Response
+): Promise<{ ok: boolean; warning?: string }> {
+  const rootDir = resolvePluginRoot(shortName)
+  if (!rootDir) {
+    res.status(409).json({ error: `Plugin "${shortName}" not found after install` })
+    return { ok: false }
+  }
+  const r = evaluateCompatibility(rootDir)
+  if (r.hardBlock) {
+    await rollbackInstalledPlugin(shortName, prefix)
+    res.status(409).json({ error: r.reason })
+    return { ok: false }
+  }
+  return { ok: true, warning: r.warning }
+}
+
 router.post('/install', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { packageName, version, force } = req.body as {
@@ -327,6 +390,9 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
       }
 
       const instance = await loadPlugin(shortName)
+      // 安装后兼容性校验（宿主版本 + 依赖版本），硬阻塞则回滚；软提示带 warning 但不回滚
+      const compat = await ensureCompatibleOrRollback(shortName, prefix, res)
+      if (!compat.ok) return
       res.json({
         name: shortName,
         enabled: instance !== null,
@@ -336,6 +402,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
           ? `/plugins-assets/${instance.name}/${instance.frontendPath.replace(/^\.\//, '')}`
           : null,
         frontendPage: instance?.frontendPage ?? null,
+        compatibilityWarning: compat.warning ?? null,
       })
       return
     }
@@ -365,6 +432,9 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
 
     // 4. 自动加载插件
     const instance = await loadPlugin(shortName)
+    // 安装后兼容性校验（宿主版本 + 依赖版本），硬阻塞则回滚；软提示带 warning 但不回滚
+    const compat = await ensureCompatibleOrRollback(shortName, prefix, res)
+    if (!compat.ok) return
     if (!instance) {
       res.json({
         name: shortName,
@@ -373,6 +443,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
         source: 'npm' as const,
         frontendPath: null,
         frontendPage: null,
+        compatibilityWarning: compat.warning ?? null,
       })
       return
     }
@@ -386,6 +457,7 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
         ? `/plugins-assets/${instance.name}/${instance.frontendPath.replace(/^\.\//, '')}`
         : null,
       frontendPage: instance.frontendPage ?? null,
+      compatibilityWarning: compat.warning ?? null,
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)

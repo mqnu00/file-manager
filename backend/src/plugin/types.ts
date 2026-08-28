@@ -43,6 +43,14 @@ export interface PluginInfo {
   frontendPage: string | null
   /** package.json 中的版本号（读取失败为 null） */
   version: string | null
+  /** 要求的主项目最低版本（语义化范围字符串，未声明为 null） */
+  minHostVersion: string | null
+  /** 依赖插件版本校验问题列表（无问题为空数组） */
+  dependencyIssues: PluginDepIssue[]
+  /** 是否允许加载：无硬阻塞（缺失/未启用/未启动/多方面不兼容）为 true */
+  compatible: boolean
+  /** 兼容性软提示（仍允许加载）：仅宿主版本偏低 / 仅依赖版本偏低时的告警文案，否则 null */
+  compatibilityWarning: string | null
 }
 
 // ==================== 插件清单 ====================
@@ -57,13 +65,33 @@ export interface PluginConfigField {
 
 /** 插件在 package.json 中 fileManagerPlugin 字段的声明 */
 export interface PluginManifestConfig {
-  /** 依赖的其他插件名（对应 config.yml 的插件键），可选 */
+  /** 依赖的其他插件名（对应 config.yml 的插件键），可选。仅声明存在 + 拓扑顺序 */
   dependsOn?: string[]
+  /**
+   * 依赖插件的最小版本约束（semver range）。
+   * key 为依赖插件名，value 为要求的版本范围（如 ">=1.0.0"）。
+   * 安装/加载时主项目会校验该依赖已安装、已启用且版本满足范围。
+   */
+  dependencies?: Record<string, string>
+  /** 要求的主项目最低版本（semver range）。缺省时回退读取 peerDependencies["@mqn00/file-manager"] */
+  minHostVersion?: string
   /** 插件自定义配置 schema，安装时默认值自动写入 config.yml */
   config?: Record<string, PluginConfigField>
   /** 插件声明的前端配置页路由路径（如 "/plugin/file-viewer"）。
    * 仅当插件注册了独立页面路由时声明；未声明则插件管理页不显示「进入前端」按钮 */
   frontendPage?: string
+}
+
+/** 插件依赖校验问题 */
+export interface PluginDepIssue {
+  /** 依赖插件名 */
+  name: string
+  /** 要求的版本范围（声明了 dependencies 时存在） */
+  required?: string
+  /** 依赖插件当前已安装版本（缺失/未启用时为 null） */
+  current: string | null
+  /** 问题类型 */
+  status: 'missing' | 'disabled' | 'not-started' | 'mismatch'
 }
 
 // ==================== 托管服务 ====================

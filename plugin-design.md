@@ -434,7 +434,12 @@ watch(() => theme.activeTheme.value.name, () => {
 ```jsonc
 {
   "fileManagerPlugin": {
-    "dependsOn": ["smb"],                      // 可选：依赖的其他插件短名
+    "dependsOn": ["smb"],                      // 可选：依赖的其他插件短名（仅存在 + 拓扑顺序）
+    "dependencies": {                           // 可选：依赖插件的最小版本约束（semver range）
+      "smb": ">=1.0.0",                        //   key=依赖插件短名，value=要求的版本范围
+      "compress": ">=0.4.0"
+    },
+    "minHostVersion": "^3.0.0",                // 可选：要求的主项目最低版本（semver range）
     "frontendPage": "/plugin/smb",             // 可选：前端配置页路由路径（见下）
     "config": {                                // 可选：自定义配置 schema
       "servicePort": {
@@ -450,7 +455,35 @@ watch(() => theme.activeTheme.value.name, () => {
 
 - `config` 字段类型：`string` / `number` / `boolean` / `array` / `object`；安装 npm 插件时默认值自动写入 config.yml（仅补充缺失字段，不覆盖已有配置值）
 - `dependsOn` 对应 config.yml 的插件键：加载时做 Kahn 分层拓扑排序，同一层互不依赖可并行加载；缺失依赖/循环依赖会报错，依赖未加载时拒绝加载
+- `dependencies`：依赖插件的**最小版本**约束（semver range）。与 `dependsOn` 的区别：`dependsOn` 只要求"存在"，`dependencies` 还要求"版本满足范围"。两者都会驱动拓扑加载顺序（取并集）。校验在三个时机触发（见下「兼容性校验」）
+- `minHostVersion`：要求的主项目最低版本（semver range）。缺省时主项目回退读取 `peerDependencies["@mqn00/file-manager"]`；`file:`/`link:` 等路径型 peer 视为无约束（本地开发即当前源码）
 - `frontendPage`：插件声明的前端配置页路由路径（如 `/plugin/smb`）。插件用 `ctx.router.addRoute` 注册了独立页面路由后须声明此字段，插件管理页才会显示「进入前端」按钮并跳转到该路径；**未声明的插件（即使有 `exports["./frontend"]` 前端模块）不显示按钮**。子插件（如 file-viewer 系查看器）无独立页面，无需声明
+
+### 兼容性校验
+
+主项目在**安装 / 运行时加载 / 启动自动加载**三处对插件做双轴兼容性校验（宿主版本 + 依赖插件），并按"硬阻塞 / 软提示"分级处理：
+
+- **宿主版本轴**：校验当前主项目版本是否满足 `minHostVersion`（或回退的 peerDependencies 范围）。当前主项目为预发布版（如 `3.0.0-beta7`）时以 `includePrerelease` 规则判定，避免 `>=2.8.0` / `^3.0.0-beta5` 这类范围被误判为不满足。
+- **依赖版本轴**：校验 `dependencies` 中每个依赖插件（含 `dependsOn` 中的名称）满足：① 已安装；② `enabled !== false`；③ 已启动（运行时已加载激活）；④ 版本满足声明的 semver range。不满足时区分四种状态：
+  - `missing`：依赖插件未安装
+  - `disabled`：已安装但未启用（`enabled: false`）
+  - `not-started`：已安装、已启用，但当前未启动（未加载激活）——**依赖插件必须在 A 之前启动**
+  - `mismatch`：已安装 / 已启用 / 已启动，但版本低于要求范围
+
+**分级策略**：
+
+- **硬阻塞（不允许加载）**：任一依赖处于 `missing` / `disabled` / `not-started`（依赖根本不可用）；**或**宿主版本不兼容 **且**同时存在依赖 `mismatch`（多方面不兼容）。
+- **软提示（仍允许加载，仅告警）**：仅宿主版本偏低（依赖正常）；**或**仅依赖 `mismatch`（依赖已安装/已启用/已启动，只是版本偏低）。
+
+行为：
+
+| 时机 | 硬阻塞时 | 软提示时 |
+|---|---|---|
+| `POST /api/plugins/install`（安装） | `npm uninstall` 回滚 + 清配置，响应 `409` | 安装成功，响应带 `compatibilityWarning` 字段 |
+| `POST /api/plugins/load`（运行时加载） | 响应 `409` + 原因 | 加载成功，响应带 `compatibilityWarning`，前端弹警告 |
+| 启动 / `GET /api/plugins` 自动补载 | 跳过该插件并记 `ERROR` 日志 | 仍加载，记 `WARNING` 日志 |
+
+插件管理页（`/plugins`）：硬阻塞插件显示红色「不兼容」标签（hover 显示具体原因），「加载」按钮禁用；软提示插件显示黄色「兼容警告」标签（hover 显示警告文案），可正常加载。
 
 ### config.yml 中的插件配置
 

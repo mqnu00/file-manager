@@ -16,6 +16,19 @@ export interface PluginInfo {
   frontendPage: string | null
   /** package.json 中的版本号（读取失败为 null） */
   version: string | null
+  /** 要求的主项目最低版本（语义化范围字符串，未声明为 null） */
+  minHostVersion?: string | null
+  /** 依赖插件版本校验问题列表 */
+  dependencyIssues?: Array<{
+    name: string
+    required?: string
+    current: string | null
+    status: 'missing' | 'disabled' | 'not-started' | 'mismatch'
+  }>
+  /** 是否兼容当前主项目与依赖（无硬阻塞为 true） */
+  compatible?: boolean
+  /** 兼容性软提示（仍允许加载）：仅宿主版本偏低 / 仅依赖版本偏低时的告警文案，否则 null */
+  compatibilityWarning?: string | null
 }
 
 export interface NpmSearchResult {

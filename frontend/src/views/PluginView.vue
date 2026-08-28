@@ -35,7 +35,21 @@
               <el-table-column prop="name" label="插件名称" min-width="140" />
               <el-table-column label="状态" width="100">
                 <template #default="{ row }">
-                  <el-tag v-if="row.enabled" size="small" type="success">已启用</el-tag>
+                  <el-tooltip
+                    v-if="row.compatible === false"
+                    :content="compatReason(row) || '不兼容当前环境'"
+                    placement="top"
+                  >
+                    <el-tag size="small" type="danger">不兼容</el-tag>
+                  </el-tooltip>
+                  <el-tooltip
+                    v-else-if="row.compatibilityWarning"
+                    :content="row.compatibilityWarning"
+                    placement="top"
+                  >
+                    <el-tag size="small" type="warning">兼容警告</el-tag>
+                  </el-tooltip>
+                  <el-tag v-else-if="row.enabled" size="small" type="success">已启用</el-tag>
                   <el-tag v-else size="small" type="info">已禁用</el-tag>
                 </template>
               </el-table-column>
@@ -78,7 +92,7 @@
                     v-else
                     size="small"
                     type="primary"
-                    :disabled="busyAction !== null"
+                    :disabled="busyAction !== null || row.compatible === false"
                     @click="handleLoad(row)"
                   >加载</el-button>
                   <el-button
@@ -234,6 +248,28 @@ import {
 import { loadPluginFrontend, unloadPluginFrontend } from '@/pluginLoader'
 import PluginVersionSelect from '@/components/PluginVersionSelect.vue'
 
+/** 聚合插件的兼容性原因（宿主版本 + 依赖问题），用于不兼容标签的 tooltip */
+function compatReason(row: PluginInfo): string {
+  const parts: string[] = []
+  if (row.minHostVersion) {
+    parts.push(`需主项目 ${row.minHostVersion}`)
+  }
+  for (const issue of row.dependencyIssues ?? []) {
+    switch (issue.status) {
+      case 'missing':
+        parts.push(`依赖 ${issue.name} 缺失`)
+        break
+      case 'disabled':
+        parts.push(`依赖 ${issue.name} 已安装但未启用`)
+        break
+      case 'mismatch':
+        parts.push(`依赖 ${issue.name} 要求 ${issue.required}，当前 ${issue.current}`)
+        break
+    }
+  }
+  return parts.join('；')
+}
+
 const router = useRouter()
 const plugins = ref<PluginInfo[]>([])
 const activeTab = ref('installed')
@@ -283,7 +319,11 @@ async function runWithBusy<T>(name: string, verb: string, fn: () => Promise<T>):
 async function handleLoad(plugin: PluginInfo) {
   try {
     const result = await loadPlugin(plugin.name)
-    ElMessage.success(`插件 "${plugin.name}" 已加载`)
+    if (result.compatibilityWarning) {
+      ElMessage.warning(`插件 "${plugin.name}" 已加载（兼容性警告：${result.compatibilityWarning}）`)
+    } else {
+      ElMessage.success(`插件 "${plugin.name}" 已加载`)
+    }
     await refreshList()
 
     if (result.frontendPath) {
