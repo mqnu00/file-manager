@@ -12,6 +12,19 @@
  * @keep-in-sync frontend/src/stores/file.ts
  * @keep-in-sync frontend/src/stores/task.ts
  * @keep-in-sync frontend/src/types/index.ts
+ * @keep-in-sync frontend/src/api/auth.ts
+ * @keep-in-sync frontend/src/api/file.ts
+ * @keep-in-sync frontend/src/api/fileIO.ts
+ * @keep-in-sync frontend/src/api/config.ts
+ * @keep-in-sync frontend/src/api/task.ts
+ * @keep-in-sync frontend/src/composables/useTheme.ts
+ * @keep-in-sync frontend/src/composables/useContextMenu.ts
+ * @keep-in-sync frontend/src/composables/useFileProgress.ts
+ * @keep-in-sync frontend/src/composables/useFileSort.ts
+ * @keep-in-sync frontend/src/platform/fileOpen.ts
+ * @keep-in-sync frontend/src/utils/format.ts
+ * @keep-in-sync frontend/src/pluginNav.ts
+ * 漂移防线：frontend/test/types-sync.test-d.ts（vitest typecheck 双向断言，漂移即编译失败）
  */
 
 import type { AxiosInstance } from 'axios'
@@ -22,7 +35,7 @@ import type {
   RouteRecordRaw,
   RouteLocationNormalizedLoaded,
 } from 'vue-router'
-import type { Ref } from 'vue'
+import type { Ref, ComputedRef } from 'vue'
 
 import type { PluginInstallFunction } from './types'
 
@@ -140,30 +153,71 @@ export interface TaskStore {
 
 // ==================== API 模块类型 ====================
 
-/** 认证 API */
+/** 认证 API（同步自 frontend/src/api/auth.ts） */
 export interface AuthApi {
-  login(token: string): Promise<{ sessionToken: string }>
-  logout(): Promise<void>
+  login(token: string): Promise<{ success: boolean; sessionToken: string; expiresIn: number }>
+  logout(): Promise<{ success: boolean }>
   checkAuth(): Promise<{ valid: boolean }>
 }
 
-/** 文件 API */
+/** 文件 API（同步自 frontend/src/api/file.ts） */
 export interface FileApi {
-  list(dirPath?: string): Promise<{ files: FileItem[] }>
-  get(path: string): Promise<unknown>
-  createDir(path: string): Promise<void>
-  delete(paths: string[]): Promise<void>
-  rename(oldPath: string, newPath: string): Promise<void>
-  move(sourcePaths: string[], targetPath: string): Promise<{ taskId: string }>
-  upload(formData: FormData, onProgress?: (pct: number) => void): Promise<void>
-  download(path: string): Promise<Blob>
-  search(query: string, dir?: string): Promise<{ files: FileItem[] }>
+  getFiles(path?: string): Promise<{ path: string; files: FileItem[] }>
+  getFolders(path?: string): Promise<FileItem[]>
+  getDirSize(path: string): Promise<{ size: number }>
+  createFolder(path: string, name: string): Promise<{ success: boolean }>
+  createFile(path: string, name: string): Promise<{ success: boolean }>
+  moveFileAsync(
+    fromPath: string,
+    toPath: string,
+    onProgress?: (progress: number, speed: number, totalSize: number) => void
+  ): Promise<void>
+  downloadFile(filePath: string): Promise<void>
+  deleteFile(path: string): Promise<{ success: boolean }>
+  batchDeleteFiles(
+    paths: string[]
+  ): Promise<{ success: number; failed: { path: string; message: string }[] }>
+  renameFile(path: string, newName: string): Promise<{ success: boolean }>
+  getLogs(params?: {
+    date?: string
+    startDate?: string
+    endDate?: string
+    level?: string
+    action?: string
+    keyword?: string
+    page?: number
+    pageSize?: number
+  }): Promise<{
+    logs: { time: string; level: string; action: string; detail: string }[]
+    total: number
+  }>
+  getAvailableLogDates(): Promise<{ dates: string[] }>
 }
 
-/** 配置 API */
+/** 配置 API（同步自 frontend/src/api/config.ts） */
 export interface ConfigApi {
-  get(): Promise<Record<string, unknown>>
-  update(updates: Record<string, unknown>): Promise<void>
+  getConfig(): Promise<{
+    auth: { token: string; tokenExpiryHours: number }
+    storageRoot: string
+    log: { cleanupOnStartup: boolean; retentionDays: number }
+    pluginInstallDir?: string
+  }>
+  updateConfig(data: {
+    auth?: { token?: string; tokenExpiryHours?: number }
+    storageRoot?: string
+    log?: { cleanupOnStartup?: boolean; retentionDays?: number }
+    pluginInstallDir?: string
+  }): Promise<{
+    success: boolean
+    config: {
+      auth: { token: string; tokenExpiryHours: number }
+      storageRoot: string
+      log: { cleanupOnStartup: boolean; retentionDays: number }
+      pluginInstallDir?: string
+    }
+    sessionsCleared: boolean
+  }>
+  cleanLogs(): Promise<{ success: boolean; deleted: number }>
 }
 
 /**
@@ -205,10 +259,11 @@ export interface FileIOApi {
   bytesToBase64(bytes: Uint8Array): string
 }
 
-/** 任务 API */
+/** 任务 API（同步自 frontend/src/api/task.ts） */
 export interface TaskApi {
+  startMoveTask(sourcePaths: string[], targetPath: string): Promise<{ taskId: string }>
   getTasks(): Promise<{ tasks: TaskInfo[] }>
-  cancelTask(taskId: string): Promise<void>
+  cancelTask(taskId: string): Promise<{ success: boolean }>
   subscribeTask(
     taskId: string,
     handlers: {
@@ -220,10 +275,10 @@ export interface TaskApi {
         currentFile?: string
         completedCount: number
         totalCount: number
-        phase?: TaskPhase
+        phase: string
       }): void
       onComplete?(): void
-      onCancelled?(message: string): void
+      onCancelled?(message?: string): void
       onError?(message: string): void
     }
   ): () => void
@@ -258,32 +313,52 @@ export interface ThemeComposable {
   themes: Ref<ThemeDefinition[]>
   activeTheme: Ref<ThemeDefinition>
   /** 是否为赛博主题（控制 SciFiBackground 等赛博特效显示） */
-  isCyber: Ref<boolean>
+  isCyber: ComputedRef<boolean>
   setTheme(theme: string): void
   registerTheme(def: ThemeDefinition): void
   /** 反注册主题（插件卸载时由平台调用）：移除列表项/样式；若为活动主题则回退默认 */
   unregisterTheme(name: string): void
 }
 
-/** useContextMenu 返回类型 */
+/** useContextMenu 返回类型（同步自 frontend/src/composables/useContextMenu.ts） */
 export interface ContextMenuComposable {
-  visible: Ref<boolean>
-  position: Ref<{ x: number; y: number }>
-  open(event: unknown): void
-  close(): void
+  contextMenuVisible: Ref<boolean>
+  contextMenuX: Ref<number>
+  contextMenuY: Ref<number>
+  contextMenuRow: Ref<FileItem | null>
+  /**
+   * 右键打开菜单（含视口边缘防溢出处理）。
+   * event 参数声明为 any：真实签名接受 DOM MouseEvent，而 backend 无 DOM lib
+   * 无法引用该类型；结构替身会因函数参数逆变破坏双向一致性断言，故做类型门面妥协
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onRowContextmenu(event: any, row: FileItem): void
+  /** 关闭菜单 */
+  closeContextMenu(): void
 }
 
-/** useFileProgress 返回类型 */
+/** useFileProgress 返回类型（同步自 frontend/src/composables/useFileProgress.ts） */
 export interface FileProgressComposable {
-  progress: Ref<number>
-  speed: Ref<number>
-  reset(): void
+  /** 批量移动对话框状态 */
+  moveState: {
+    visible: boolean
+    sourceNames: string[]
+    sourcePaths: string[]
+    targetPath: string
+  }
+  /** 打开批量移动对话框（展示已选条目与默认目标目录） */
+  showBatchMoveDialog(paths: string[], names: string[]): void
+  /** 确认移动：冲突检查 → 启动后台任务 → 关闭对话框 */
+  moveFile(onComplete?: () => void): Promise<void>
 }
 
-/** useFileSort 返回类型 */
+/** useFileSort 返回类型（同步自 frontend/src/composables/useFileSort.ts） */
 export interface FileSortComposable {
-  sortField: Ref<string>
-  sortOrder: Ref<string>
+  sortBy: Ref<'name' | 'type' | 'modified' | 'size'>
+  sortOrder: Ref<'asc' | 'desc'>
+  handleSortChange(val: unknown): void
+  toggleSortOrder(): void
+  sortFiles(): void
 }
 
 // ==================== 平台扩展注册表 ====================
@@ -364,7 +439,10 @@ export interface FrontendPluginContext {
     useTheme(): ThemeComposable
     useContextMenu(): ContextMenuComposable
     useFileProgress(): FileProgressComposable
-    useFileSort(): FileSortComposable
+    useFileSort(
+      getFiles: () => FileItem[],
+      setFiles: (files: FileItem[]) => void
+    ): FileSortComposable
   }
 
   /** 平台扩展注册表（插件向主应用声明能力的挂载点集合） */
@@ -375,10 +453,10 @@ export interface FrontendPluginContext {
 
   /** 工具函数 */
   utils: {
-    formatSize(bytes: number): string
-    formatTime(ms: number): string
-    formatSpeed(bytesPerSec: number): string
-    formatProgress(pct: number): string
+    formatSize(size: number): string
+    formatTime(time: string): string
+    formatSpeed(speed: number): string
+    formatProgress(percent: number, speed: number, totalSize?: number): string
   }
 
   /** 常量 */
