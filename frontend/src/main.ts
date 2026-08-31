@@ -9,6 +9,9 @@ import router from './router'
 import { ctx } from './context'
 import { initScriptRunner } from './scriptRunner'
 import { initPlugins } from './pluginLoader'
+// 插件集合变化事件（file-viewer 等监听并重算可打开集合）。显式引入以保证
+// 模块求值早于插件加载（同 pluginActions/pluginNav 的加载顺序约束）。
+import { emitPluginsChanged } from '@/platform/fileOpen'
 // 批量操作注册表必须在插件 install 前就绪（插件会写入 window.__fm_bulk_actions）。
 // pluginActions 仅被懒加载的 HomeView 静态 import，若不在此显式引入，
 // 其模块求值会晚于插件加载，导致插件注册静默失败（dev 模式必现）。
@@ -63,6 +66,11 @@ exposeToGlobal()
 // 初始化插件系统（必须在 router/mount 前完成，确保插件路由先注册再解析 URL）
 initPlugins().then(() => {
   console.log('[Plugin] All plugins initialized')
+
+  // 全部插件安装完毕后广播插件集合变化：file-viewer 的 onPluginsChanged 会
+  // 重新拉取查看器状态并重算 is-openable。若安装期间的首次拉取因后端未就绪/
+  // 尚未登录而失败，这里是确定的补救时机（此时插件监听器已全部注册）。
+  emitPluginsChanged()
 
   // demo 默认主题：无用户偏好时应用（此时 demo 插件已注册其主题）
   if (import.meta.env.VITE_DEMO_MODE === 'true' && DEMO_DEFAULT_THEME) {

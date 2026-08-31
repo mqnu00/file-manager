@@ -36,8 +36,25 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const http = ctx.api.instance
   const fileOpen = ctx.platform.fileOpen
 
-  // 拉取已注册查看器 + 映射配置（失败静默，保持空状态）
-  void refreshViewers(http).catch(() => {})
+  // 惰性拉取：canOpen/isOpenable 首次被调用（FileTable 渲染，此时用户已登录）
+  // 时确保查看器状态已加载。首次 install 时的 fetch 可能因后端未就绪/尚未
+  // 登录而失败，此处兜底重试；成功后停止，失败则下次渲染再试。
+  let refreshStarted = false
+  const ensureViewers = (): void => {
+    if (refreshStarted) return
+    refreshStarted = true
+    void refreshViewers(http)
+      .catch(() => {
+        // 失败：允许下次 canOpen 调用重试
+        refreshStarted = false
+      })
+      .finally(() => fileOpen.refresh())
+  }
+
+  // 首次安装即拉取（会话已存在的场景下提前填充，避免首帧闪烁）
+  void refreshViewers(http)
+    .catch(() => {})
+    .finally(() => fileOpen.refresh())
 
   // 插件集合变化（加载/卸载/重载）后重算可打开集合：后端注册表已由子插件 teardown
   // 注销，重新拉取并通知主应用重算 is-openable 标记（避免卸载后子查看器后缀仍可点击）
@@ -61,10 +78,12 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   const handler: FileOpenHandler = {
     id: 'file-viewer',
     canOpen: (file: FileItem) => {
+      ensureViewers()
       if (file.isDirectory || file.broken) return false
       return canOpenFile(normExt(file.name))
     },
     isOpenable: (file: FileItem) => {
+      ensureViewers()
       if (file.isDirectory || file.broken) return false
       return canOpenExt(normExt(file.name))
     },
