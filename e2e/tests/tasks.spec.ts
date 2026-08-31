@@ -19,7 +19,10 @@ async function selectRow(page: Page, name: string): Promise<void> {
 test.describe('后台任务（移动）与压缩插件', () => {
   test('压缩文件夹：对话框默认输出当前文件夹，生成 zip 并出现在列表', async ({ page }) => {
     await openHome(page)
+    // 等待插件加载完成：先选择文件触发 bulk-actions 显示，再等待压缩按钮出现
     await selectRow(page, 'docs')
+    // compress 插件注册的压缩按钮可能需要等待加载
+    await expect(page.locator('.bulk-actions').getByRole('button', { name: '压缩' })).toBeVisible({ timeout: 10000 })
     await page.locator('.bulk-actions').getByRole('button', { name: '压缩' }).click()
 
     // compress 插件对话框：已选 1 项，默认输出目录为当前文件夹，权限预检通过后可开始

@@ -14,10 +14,15 @@ test.describe('日志页面（/logs）', () => {
     // el-select 的占位文案不是原生 placeholder，点击"级别"文本打开下拉
     await page.locator('.filter-bar').getByText('级别').click()
     await page.getByRole('option', { name: 'ERROR' }).click()
+    // 等待下拉选项关闭
+    await page.waitForTimeout(300)
     await page.getByRole('button', { name: '搜索' }).click()
-    // 预置日志中 ERROR 2 条
-    await expect(page.locator('.el-table__row')).toHaveCount(2)
-    await expect(page.locator('.el-table__row').getByText('ERROR')).toHaveCount(2)
+    // 等待表格更新
+    await page.waitForTimeout(500)
+    // 预置日志中 ERROR 2 条（筛选后应只显示 ERROR）
+    const rows = page.locator('.el-table__row')
+    await expect(rows).toHaveCount(2)
+    await expect(rows.getByText('ERROR')).toHaveCount(2)
     await expect(page.getByText('用户进入文件列表')).toHaveCount(0)
   })
 
