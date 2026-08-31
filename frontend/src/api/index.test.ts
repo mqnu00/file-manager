@@ -43,11 +43,19 @@ describe('api/index 拦截器', () => {
     expect(result.headers.Authorization).toBeUndefined()
   })
 
-  it('response 拦截器：401 响应清除 session_token', async () => {
+  it('response 拦截器：非提权接口的 401 清除 session_token', async () => {
     localStorage.setItem(STORAGE_KEY_SESSION, 'sess-abc')
-    const error = { response: { status: 401 } }
+    // axios config.url 是相对路径（不含 baseURL 前缀）
+    const error = { response: { status: 401 }, config: { url: '/auth/check' } }
     await expect(captured.responseErrorHandler!(error)).rejects.toBe(error)
     expect(localStorage.getItem(STORAGE_KEY_SESSION)).toBeNull()
+  })
+
+  it('response 拦截器：提权接口的 401 不清除 session_token', async () => {
+    localStorage.setItem(STORAGE_KEY_SESSION, 'sess-abc')
+    const error = { response: { status: 401 }, config: { url: '/auth/elevate' } }
+    await expect(captured.responseErrorHandler!(error)).rejects.toBe(error)
+    expect(localStorage.getItem(STORAGE_KEY_SESSION)).toBe('sess-abc')
   })
 
   it('response 拦截器：非 401 错误不清除 session_token', async () => {

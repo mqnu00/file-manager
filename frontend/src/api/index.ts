@@ -25,7 +25,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(STORAGE_KEY_SESSION)
+      // 仅在非提权接口的 401 时清除会话令牌；
+      // /auth/elevate 返回 401 仅表示 sudo 密码错误，不应影响文件管理器自身的登录态。
+      const isElevateRequest = error.config?.url?.includes('/auth/elevate')
+      if (!isElevateRequest) {
+        localStorage.removeItem(STORAGE_KEY_SESSION)
+      }
     }
     // 权限不足、需要 sudo 提权：弹出对话框收集凭据，成功后以已缓存凭据重放原请求
     if (error.response?.data?.code === 'ELEVATION_REQUIRED' && !error.config?._elevated) {
