@@ -1,9 +1,10 @@
-## v3.0.0 (2026-08-25)
+## v3.0.0 (2026-08-31)
 
-> v3.0.0 正式发布。以下为自 v3.0.0-beta8 至 beta10 的变更汇总（beta7 及更早版本记录见下）。
+> v3.0.0 正式发布。以下为自 v3.0.0-beta7 以来的变更汇总（beta7 及更早版本记录见下）。
 
 ### ✨ 新增功能
 
+- **文件/目录名称搜索**：工具栏新增搜索框，支持实时过滤当前目录下的文件和文件夹，显示匹配数量统计（基于前端 composable `useFileSearch`，大小写不敏感）
 - **插件数据目录**：主项目为插件提供按短名隔离、跨重启保留的本地持久化存储
   - 后端：`ctx.dataDir`（私有目录绝对路径，可直写缓存/二进制大文件）+ `ctx.storage`（结构化 KV，`get`/`set`/`delete`/`has`/`keys`/`all`，JSON 序列化落盘 `<dataDir>/store.json`）
   - 前端：`ctx.pluginData`（KV 接口与后端一致，`get`/`set`/`remove`/`all`），正式环境经已认证 HTTP 调用后端 `ctx.storage`，Demo 模式降级 localStorage 垫片
@@ -61,6 +62,9 @@
 
 ### 🔧 变更
 
+- **插件类型系统完善**：Window 全局扩展类型化，消除 `window as unknown` 强转；发布批量操作/导航注册表类型，消除插件本地类型副本
+- **插件加载竞态修复**：同批插件加载改为串行，修复并行 install 层归属竞态误删其他插件路由
+- **插件事件统一**：`PLUGINS_CHANGED_EVENT` 统一由主项目平台层定义，插件经 `ctx` 读取
 - **file-viewer 系插件迁移到平台契约**：file-viewer 核心删除 document 捕获阶段点击劫持、`document.body`
   MutationObserver 扫描与 `.has-viewer` 事后打标，改为注册文件打开 handler（`canOpen`/`open`）并由主应用
   渲染期打 `is-openable` 标记；file-viewer（查看/返回/配置页）、file-image-viewer（上一张/下一张，改 `replace`）、
@@ -83,6 +87,7 @@
   `unloadPluginFrontend`、包装 ctx（Proxy 拦截 addRoute/registerTheme 做平台收集）
 - **查看器服务化架构**：file-viewer 核心删除 `__fm_file_viewer_registry__` 全局注册表，改为经
   `registerService('file-viewer:viewers')` 暴露注册服务；子查看插件（file-image/video/code/office/binary/music/markdown）经后端 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 向核心报备能力（默认扩展名 + 查看页路由），核心持有解析权（配置表可改写扩展名归属）；各子插件改为注册自有查看页路由（`/plugin/<id>/view`）而非注入组件到全局注册表
+- **file-viewer 分离文件标记判定与打开能力**：将文件标记判定（`canOpen`）与实际打开逻辑（`open`）分离，提升可维护性
 - **服务停止级联卸载依赖插件**：`unloadPlugin` 停止托管服务时递归检查 `dependsOn` 包含该服务的其他托管服务，自动卸载其所属插件（对称于启动方向的 `startOneService` 等待机制）；file-viewer 的 `viewers` 服务停止时自动级联停/卸 7 个子查看插件
 - **前端单测超时抖动治理**：`frontend/vitest.config.ts` 显式设置 `testTimeout: 10s`（原为 vitest 默认 5s）并将 fork worker 并发上限设为 8（16 核机器默认 15）。背景：CPU 过载（负载 ≥ 核数）时多个 worker 并发冷启动（全量 import element-plus + 编译 SFC），文件内首个/全部重度 mount 用例偶发 `Test timed out in 5000ms`；用例单跑 <2s，属调度饿死而非逻辑缺陷。修复后在 14 个占核进程负载下连跑两轮 272/272 全过（对照：同负载旧配置复现 3 例超时失败；`maxWorkers=4` 亦可全过但套件耗时翻倍）
 
@@ -111,11 +116,21 @@
 - 修复查看文件返回后 has-viewer 样式丢失
 - 修复直接刷新查看器 URL 时文件大小显示为 0B（store 为空时异步补全真实元数据）
 - 修复十六进制查看器跳转偏移输入框无法输入（ElInput 的 `onUpdate` 应为 `onUpdate:modelValue`），新增回车跳转与格式占位符提示
+- 修复提权失败不应清除文件管理器自身的登录令牌（凭据缓存与会话令牌分离）
+- 修复符号链接指向目录时 `isDirectory` 误报为 `false`（后端 `fileService` stat 判断逻辑）
+- 修复 file-viewer 首次加载查看器状态拉取失败的兜底重试
+- 修复 file-viewer `canOpenExt` 未考虑 `defaultViewer` 导致无专属映射的文件不可点击
+- 修复 file-viewer 主页空白——插件不可从 external 包导入运行时常量
+- 修复子查看插件卸载时从 file-viewer 注册表注销查看器
+- 修复批量操作注册表在入口提前就绪，修复 dev 模式下插件压缩按钮静默注册失败
+- 修复压缩根目录压缩时默认输出目录归一化为 `/`，修复误报缺少输出文件夹
+- 修复图库缩略图溢出遮住高亮边框
 
 ### 🎨 样式与规范
 
 - 插件样式与主题适配规范：颜色只用 `--app-*` 主题令牌（带 fallback）、禁硬编码；暗色主题声明 `color-scheme: dark`；注入类名必须带插件前缀；Monaco/PDF 等第三方组件内部主题订阅 `useTheme()` 联动
 - file-viewer 系插件类名前缀化与令牌化整改（`fiv-`/`fcv-`/`fbv-`/`fvv-` 等）
+- 卸载/重载插件期间阻止页面其他操作（整卡遮罩 + 按钮禁用）
 
 ### 🔧 工程改进
 
@@ -124,6 +139,9 @@
 - 修复插件热重载临时副本保留 node_modules 依赖解析链
 - 十六进制查看器虚拟滚动改造，解决大文件加载性能问题（渲染节点从约 52 万降至可视区数百）
 - 清理 file-viewer 系列插件的 ElementPlus/Vue 类型断言（`createXxxViewer` 返回类型改由推导，移除 `as unknown as` / `never`）
+- 发布类型一致性断言（vitest typecheck），漂移即编译失败
+- 发布类型对齐真实前端实现，修正六处漂移
+- 前端单测超时抖动治理（`testTimeout` 10s + `maxWorkers` 8）
 
 ---
 
