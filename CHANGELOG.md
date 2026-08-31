@@ -84,6 +84,7 @@
 - **查看器服务化架构**：file-viewer 核心删除 `__fm_file_viewer_registry__` 全局注册表，改为经
   `registerService('file-viewer:viewers')` 暴露注册服务；子查看插件（file-image/video/code/office/binary/music/markdown）经后端 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 向核心报备能力（默认扩展名 + 查看页路由），核心持有解析权（配置表可改写扩展名归属）；各子插件改为注册自有查看页路由（`/plugin/<id>/view`）而非注入组件到全局注册表
 - **服务停止级联卸载依赖插件**：`unloadPlugin` 停止托管服务时递归检查 `dependsOn` 包含该服务的其他托管服务，自动卸载其所属插件（对称于启动方向的 `startOneService` 等待机制）；file-viewer 的 `viewers` 服务停止时自动级联停/卸 7 个子查看插件
+- **前端单测超时抖动治理**：`frontend/vitest.config.ts` 显式设置 `testTimeout: 10s`（原为 vitest 默认 5s）并将 fork worker 并发上限设为 8（16 核机器默认 15）。背景：CPU 过载（负载 ≥ 核数）时多个 worker 并发冷启动（全量 import element-plus + 编译 SFC），文件内首个/全部重度 mount 用例偶发 `Test timed out in 5000ms`；用例单跑 <2s，属调度饿死而非逻辑缺陷。修复后在 14 个占核进程负载下连跑两轮 272/272 全过（对照：同负载旧配置复现 3 例超时失败；`maxWorkers=4` 亦可全过但套件耗时翻倍）
 
 ---
 

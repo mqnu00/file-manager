@@ -17,6 +17,16 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.ts'],
+    // 超时抖动治理（v3.0.0）：
+    // 现象：默认 5s 超时在 CPU 过载 + 默认 15 个 fork worker 并发冷启动（每 worker
+    // 全量 import element-plus + 编译 SFC）时，文件内首个/全部重度 mount 用例偶发
+    // `Test timed out in 5000ms`（复现：16 核机器负载 ≥ nproc 时 39 文件中最多 10 个
+    // 各挂 1 例，且全为耗时长于 5s 的冷启动用例）。
+    // 单个用例本身 <2s（同样负载下单文件运行 5/5 通过），属调度饿死而非逻辑缺陷。
+    // 治理：超时放宽到 10s（覆盖 5-10s 冷启动排队）+ worker 并发减半（16 核 → 8，
+    // 实测套件耗时基本不变，过载/饿死风险减半）。CI 与多任务开发机均受益。
+    testTimeout: 10_000,
+    maxWorkers: 8,
     include: ['src/**/*.test.ts'],
     typecheck: {
       // 插件发布类型一致性断言（test/types-sync.test-d.ts）：
