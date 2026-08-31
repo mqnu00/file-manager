@@ -384,9 +384,9 @@ html.midnight {
 - 自带资源（图片等）经 `/plugins-assets/<短名>/assets/...` 引用，需将 `assets/` 列入 package.json `files` 随包发布
 - 纯前端主题插件（无后端功能）仍需提供最小后端入口（空 `install`）满足加载器要求
 
-### 前端卸载与 teardown 契约（v3.0.0-beta10+）
+### 前端卸载与 teardown 契约（v3.0.0）
 
-**插件生命周期**：后端插件有完整的加载/卸载/重载生命周期；前端插件在 v3.0.0-beta10 起补齐——
+**插件生命周期**：后端插件有完整的加载/卸载/重载生命周期；前端插件自 v3.0.0 起补齐——
 
 **后端 teardown 契约（与前端对称）**：后端 `install(ctx)` 同样可返回 **teardown 函数**，供插件撤销 install 期间产生的、平台不代管的全局副作用（如经其他插件注册表报备的能力——查看器注册等）。`PluginInstallFunction` 的返回类型已放宽（`void | Promise<void> | PluginTeardown | Promise<PluginTeardown>`）。平台在 `unloadPlugin` / `reloadPlugin` 时按「托管服务停止 → **插件 teardown** → 路由层移除 → 注册服务清理」顺序执行，teardown 抛错仅记日志不阻断。
 
@@ -412,7 +412,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   2. `ctx.composables.useTheme().registerTheme` 注册的主题 —— 卸载时逐个 `unregisterTheme(name)`（列表项 + 注入的 `<style>`，若为当前活动主题则回退默认并持久化）。
 - **teardown 的职责**（平台不代管的）：
   - 移除 document/window 上的事件监听与 MutationObserver；
-  - 注销 window 注册表条目（`__fm_bulk_actions.unregister(id)` / `__fm_nav_actions.unregister(id)`，v3.0.0-beta10+ 提供）；
+  - 注销 window 注册表条目（`__fm_bulk_actions.unregister(id)` / `__fm_nav_actions.unregister(id)`，v3.0.0 提供）；
   - 移除自注入的 `<style>`；关闭自挂载的 `createApp` 对话框（`unmount()` + 移除宿主节点）；
   - 子查看插件无需手动注销 fileOpen handler（平台自动收集）；其托管服务由平台级联停止。
 - **卸载顺序**（平台执行）：路由移除 → 主题反注册 → 插件 teardown；任一步骤抛错仅记日志，不阻断其余步骤，也不影响后端卸载与其他插件。

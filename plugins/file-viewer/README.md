@@ -13,7 +13,7 @@ File Manager 文件查看**核心插件**：经平台文件打开契约（`ctx.p
 
 ## 前置要求
 
-- **File Manager** >= 3.0.0-beta7（`ctx.router.addRoute` 的 `requiresAuth` 路由拦截、`ctx.config.get/updatePlugin`、`ctx.api.fileIO`、`ctx.services.fileIO`）
+- **File Manager** >= 3.0.0（`ctx.router.addRoute` 的 `requiresAuth` 路由拦截、`ctx.config.get/updatePlugin`、`ctx.api.fileIO`、`ctx.services.fileIO`）
 - **Node.js** >= 22
 
 ## 安装
@@ -201,7 +201,7 @@ plugins:
 
 ## 与主应用的耦合说明（重要）
 
-- 文件打开经**平台文件打开契约**（`ctx.platform.fileOpen`，v3.0.0-beta10+）：注册
+- 文件打开经**平台文件打开契约**（`ctx.platform.fileOpen`，v3.0.0+）：注册
   `{ id: 'file-viewer', canOpen(file), open(file) }` handler，主应用渲染文件列表时按
   `canOpen` 判定打 `is-openable` 标记、单击文件名时分发调用 `open()`。**本插件不再劫持
   document 点击事件、不再扫描主应用 DOM**；主应用重构文件列表 DOM 不影响本插件

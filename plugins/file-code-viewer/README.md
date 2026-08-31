@@ -17,7 +17,7 @@ ts、tsx、js、jsx、mjs、cjs、vue、json、jsonc、yaml、yml、md、txt、l
 
 ## 前置要求
 
-- **File Manager** >= 3.0.0-beta7
+- **File Manager** >= 3.0.0
 - **@mqn00/file-manager-plugin-file-viewer**（核心，`fileManagerPlugin.dependsOn` 保证加载顺序）
 
 ## 安装

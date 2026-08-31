@@ -18,7 +18,7 @@ File Manager 文件查看子插件：**十六进制查看与编辑**（兜底模
 
 ## 前置要求
 
-- **File Manager** >= 3.0.0-beta7
+- **File Manager** >= 3.0.0
 - **@mqn00/file-manager-plugin-file-viewer**（核心）
 
 ## 安装

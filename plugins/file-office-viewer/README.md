@@ -27,7 +27,7 @@ pdf、docx、doc、xlsx、xls、pptx、ppt
 
 ## 前置要求
 
-- **File Manager** >= 3.0.0-beta7
+- **File Manager** >= 3.0.0
 - **@mqn00/file-manager-plugin-file-viewer**（核心）
 - 预览 ppt/pptx/doc 需服务器安装 LibreOffice（`apt install libreoffice` 或 `soffice` 可用）
 

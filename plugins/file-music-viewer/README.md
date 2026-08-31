@@ -15,7 +15,7 @@ mp3、wav、flac、ogg、m4a、aac、opus
 
 ## 前置要求
 
-- **File Manager** >= 3.0.0-beta7
+- **File Manager** >= 3.0.0
 - **@mqn00/file-manager-plugin-file-viewer**（核心）
 
 ## 安装

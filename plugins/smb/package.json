@@ -20,7 +20,7 @@
     "frontendPage": "/plugin/smb"
   },
   "peerDependencies": {
-    "@mqn00/file-manager": ">=2.8.0"
+    "@mqn00/file-manager": "^3.0.0"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",

@@ -12,7 +12,7 @@ File Manager 插件——在局域网内共享文件，通过 Samba (SMB) 协议
 
 ## 前置要求
 
-- **File Manager** >= 2.8.0
+- **File Manager** >= 3.0.0
 - **Node.js** >= 22
 - **Linux** 系统（需要 `sudo` 权限以启动 `smbd`）
 - 系统需安装 **samba**（`smbd`），或通过插件内置的终端安装功能完成安装

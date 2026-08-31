@@ -23,7 +23,7 @@
     ]
   },
   "peerDependencies": {
-    "@mqn00/file-manager": "^3.0.0-beta7"
+    "@mqn00/file-manager": "^3.0.0"
   },
   "dependencies": {
     "docx-preview": "^0.3.2",

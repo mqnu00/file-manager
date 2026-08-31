@@ -29,7 +29,7 @@
     "test"
   ],
   "peerDependencies": {
-    "@mqn00/file-manager": "^3.0.0-beta5"
+    "@mqn00/file-manager": "^3.0.0"
   },
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",

@@ -37,7 +37,7 @@
     "multer": "^1.4.5-lts.1"
   },
   "peerDependencies": {
-    "@mqn00/file-manager": "^3.0.0-beta5"
+    "@mqn00/file-manager": "^3.0.0"
   },
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",

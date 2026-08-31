@@ -35,7 +35,7 @@ npm run publish:npm -- 0.1.0  # 指定版本发布
 
 发布后在主项目「插件管理 → 发现插件」搜索 `hatsune-miku` 安装。
 
-> 依赖主项目 `registerTheme` 能力（含插件 ctx 类型），需主项目版本 ≥ 3.0.0-beta5 且包含该 API。
+> 依赖主项目 `registerTheme` 能力（含插件 ctx 类型），需主项目版本 ≥ 3.0.0 且包含该 API。
 
 ## 目录结构
 
