@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-markdown-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Markdown 文件只读预览查看器",
   "main": "dist/backend.js",
   "exports": {

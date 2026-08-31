@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-code-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File Manager 文件查看子插件：代码/纯文本查看与编辑（Monaco Editor，按后缀高亮，可保存）",
   "main": "dist/backend.js",
   "exports": {
@@ -18,7 +18,9 @@
     "build:frontend": "node build.mjs"
   },
   "fileManagerPlugin": {
-    "dependsOn": ["file-viewer"]
+    "dependsOn": [
+      "file-viewer"
+    ]
   },
   "peerDependencies": {
     "@mqn00/file-manager": "^3.0.0"

@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-music-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File Manager 文件查看子插件：音频播放（HTML5 流式播放，支持常见音频格式）",
   "main": "dist/backend.js",
   "exports": {
@@ -17,7 +17,9 @@
     "build:frontend": "node build.mjs"
   },
   "fileManagerPlugin": {
-    "dependsOn": ["file-viewer"]
+    "dependsOn": [
+      "file-viewer"
+    ]
   },
   "peerDependencies": {
     "@mqn00/file-manager": "^3.0.0"

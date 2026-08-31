@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File Manager 插件核心：劫持文件列表单击打开文件，维护查看器注册表并分发到子查看插件，提供公共文件 I/O 后端（read/write/bytes/write-range/token/stream）",
   "main": "dist/backend.js",
   "exports": {

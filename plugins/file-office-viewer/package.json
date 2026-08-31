@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-office-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File Manager 文件查看子插件：Office 文档只读预览（PDF 原生预览、docx/xlsx 前端渲染、ppt/doc 后端 LibreOffice 转 PDF）",
   "main": "dist/backend.js",
   "exports": {

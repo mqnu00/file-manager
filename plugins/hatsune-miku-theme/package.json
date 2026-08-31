@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-hatsune-miku-theme",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "File Manager 主题插件：初音未来（Hatsune Miku）青绿霓虹风格主题",
   "license": "MIT",
   "main": "dist/backend.js",
