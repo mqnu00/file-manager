@@ -14,15 +14,19 @@ test.describe('日志页面（/logs）', () => {
     // el-select 的占位文案不是原生 placeholder，点击"级别"文本打开下拉
     await page.locator('.filter-bar').getByText('级别').click()
     await page.getByRole('option', { name: 'ERROR' }).click()
-    // 等待下拉选项关闭
-    await page.waitForTimeout(300)
     await page.getByRole('button', { name: '搜索' }).click()
-    // 等待表格更新
-    await page.waitForTimeout(500)
-    // 预置日志中 ERROR 2 条（筛选后应只显示 ERROR）
+
+    // 筛选后：每一行都必须是 ERROR（数量不固定——测试运行期间可能产生其他 ERROR 日志，
+    // 如插件加载失败、404 等，故不断言精确行数，只断言级别纯度）
     const rows = page.locator('.el-table__row')
-    await expect(rows).toHaveCount(2)
-    await expect(rows.getByText('ERROR')).toHaveCount(2)
+    await expect(rows.first()).toBeVisible()
+    await expect
+      .poll(async () => (await rows.allTextContents()).every((t) => t.includes('ERROR')))
+      .toBe(true)
+    // 预置的 2 条 ERROR 必须存在
+    await expect(rows.getByText('令牌错误: invalid')).toBeVisible()
+    await expect(rows.getByText('删除失败: EACCES')).toBeVisible()
+    // 非 ERROR 日志不得出现
     await expect(page.getByText('用户进入文件列表')).toHaveCount(0)
   })
 

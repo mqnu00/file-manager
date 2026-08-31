@@ -42,6 +42,15 @@ jobs:
         working-directory: plugins/test
         run: npm run build
 
+      # E2E 依赖 compress 插件（压缩任务测试 + 插件管理页测试），dist 被 .gitignore 忽略需显式构建
+      - name: Install compress plugin dependencies
+        working-directory: plugins/compress
+        run: npm ci
+
+      - name: Build compress plugin
+        working-directory: plugins/compress
+        run: npm run build
+
       - name: Backend unit/integration tests
         working-directory: backend
         run: npx vitest run
