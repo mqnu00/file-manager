@@ -50,12 +50,15 @@ export function normExt(name: string): string {
   return dot >= 0 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : ''
 }
 
-/** 该扩展名是否可打开（映射命中或某查看器默认扩展名包含） */
+/** 该扩展名是否可打开（映射命中、某查看器默认扩展名包含、或存在默认查看器） */
 export function canOpenExt(ext: string): boolean {
   if (!ext) return false
   const mapped = extensionMappings[ext]
   if (mapped && viewers.some((v) => v.id === mapped)) return true
-  return viewers.some((v) => v.defaultExtensions.includes(ext))
+  if (viewers.some((v) => v.defaultExtensions.includes(ext))) return true
+  // 兜底：设了默认查看器且该 viewer 仍注册 → 所有未命中映射的扩展名均可打开
+  if (defaultViewer && viewers.some((v) => v.id === defaultViewer)) return true
+  return false
 }
 
 /** 解析某扩展名的最佳查看器（映射 > 默认扩展名命中 > 默认查看器） */
