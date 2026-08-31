@@ -13,14 +13,11 @@ import type {
   FrontendPluginContext,
   FileItem,
   TaskInfo,
+  BulkActionContext,
 } from '@mqn00/file-manager/plugin/frontend'
 
-/** 与主应用 window.__fm_bulk_actions 的 BulkActionContext 结构一致 */
-export interface CompressPayload {
-  selected: string[]
-  infos: FileItem[]
-  currentPath: string
-}
+/** 压缩对话框载荷：主应用批量操作点按上下文（类型入口发布，与 BulkActionContext 同一契约） */
+export type CompressPayload = BulkActionContext
 
 interface SourceCheck {
   path: string

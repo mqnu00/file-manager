@@ -45,7 +45,16 @@ import type {
   FileOpenApi as RealFileOpenApi,
   FileOpenHandler as RealFileOpenHandler,
 } from '@/platform/fileOpen'
-import type { NavAction as RealNavAction } from '@/pluginNav'
+import type {
+  NavAction as RealNavAction,
+  NavActionsApi as RealNavActionsApi,
+} from '@/pluginNav'
+import type {
+  BulkAction as RealBulkAction,
+  BulkActionContext as RealBulkActionContext,
+  BulkActionVisibility as RealBulkActionVisibility,
+  BulkActionsApi as RealBulkActionsApi,
+} from '@/pluginActions'
 
 /** 真实 API 模块命名空间类型（type 位置引用，无运行时导入） */
 type RealAuthApi = typeof import('@/api/auth')
@@ -98,6 +107,11 @@ import type {
   FileOpenApi,
   FileOpenHandler,
   NavAction,
+  NavActionsApi,
+  BulkAction,
+  BulkActionContext,
+  BulkActionVisibility,
+  BulkActionsApi,
   PluginRouteRecord,
   FrontendPluginContext,
 } from '../../backend/src/plugin/frontend-types'
@@ -154,6 +168,29 @@ test('platform.fileOpen：发布视图与真实注册表一致', () => {
 
 test('pluginNav：真实导航项满足发布视图（icon 发布侧故意放宽为 unknown）', () => {
   expectTypeOf<RealNavAction>().toMatchTypeOf<NavAction>()
+})
+
+test('平台注册表 bulk/nav：发布 API 与真实实现漂移防护', () => {
+  // ── bulk：无门面问题，完整双向 ──
+  // 纯数据入参：结构完全一致
+  expectTypeOf<RealBulkActionVisibility>().toEqualTypeOf<BulkActionVisibility>()
+  expectTypeOf<RealBulkActionContext>().toEqualTypeOf<BulkActionContext>()
+  // 操作定义与注册表 API：双向兼容
+  expectTypeOf<RealBulkAction>().toMatchTypeOf<BulkAction>()
+  expectTypeOf<BulkAction>().toMatchTypeOf<RealBulkAction>()
+  expectTypeOf<RealBulkActionsApi>().toMatchTypeOf<BulkActionsApi>()
+  expectTypeOf<BulkActionsApi>().toMatchTypeOf<RealBulkActionsApi>()
+
+  // ── nav：整体单向 + 定向反向（icon 门面豁免） ──
+  // 原因：发布侧 NavAction.icon?: unknown（backend tsconfig 无 DOM lib，无法引用 vue Component），
+  // 真实侧 icon?: Component；NavActionsApi 的 register(action: NavAction) 与 list(): NavAction[]
+  // 两个成员触碰 NavAction，整体反向断言必然失败——属门面边界设计，非类型漂移。
+  // 正向（真实满足发布）：拦截发布声明了真实没有的成员 / 签名不符——漂移防护主渠道
+  expectTypeOf<RealNavActionsApi>().toMatchTypeOf<NavActionsApi>()
+  // 反向（定向）：绕开涉及 icon 的 register/list，只对 unregister/subscribe 做反向结构检查
+  expectTypeOf<Omit<NavActionsApi, 'register' | 'list'>>().toMatchTypeOf<
+    Omit<RealNavActionsApi, 'register' | 'list'>
+  >()
 })
 
 test('utils：真实格式化工具模块与发布视图双向兼容', () => {

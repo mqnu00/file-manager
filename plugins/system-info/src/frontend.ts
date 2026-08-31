@@ -2,33 +2,23 @@
  * 系统信息插件前端入口
  *
  * 1. 注册页面路由 /plugin/system-info（requiresAuth，由主应用路由守卫兜底登录）
- * 2. 向主应用导航注册表（window.__fm_nav_actions）注册顶栏入口按钮
+ * 2. 向主应用导航注册表（window.__fm_nav_actions，类型契约由
+ *    @mqn00/file-manager/plugin/frontend 发布）注册顶栏入口按钮
  */
 import type {
   FrontendPluginContext,
   FrontendPluginInstallFunction,
+  NavAction,
+  NavActionsApi,
 } from '@mqn00/file-manager/plugin/frontend'
 import { Monitor } from '@element-plus/icons-vue'
 import { injectStyles, removeStyles } from './style'
 import { createSystemInfoPage } from './page'
 
-interface NavActionLike {
-  id: string
-  label: string
-  path: string
-  icon?: unknown
-}
-
-interface NavActionsApiLike {
-  register(action: NavActionLike): void
-  /** 主应用 v3.0.0-beta10+ 提供；旧版本缺失时降级（无操作） */
-  unregister?(id: string): void
-}
-
-/** 与主应用挂载点同定义：注册导航项（重复注册按 id 覆盖） */
-function registerNavAction(action: NavActionLike): void {
+/** 注册导航项（重复注册按 id 覆盖）；旧版本主应用缺失注册表时降级（无操作） */
+function registerNavAction(action: NavAction): void {
   const api = (window as unknown as Record<string, unknown>)['__fm_nav_actions'] as
-    | NavActionsApiLike
+    | NavActionsApi
     | undefined
   if (!api || typeof api.register !== 'function') {
     console.warn('[system-info] 主应用未暴露导航注册表（__fm_nav_actions），入口按钮不可用')
@@ -37,10 +27,10 @@ function registerNavAction(action: NavActionLike): void {
   api.register(action)
 }
 
-/** 与主应用挂载点同定义：按 id 移除导航项（插件 teardown 调用） */
+/** 按 id 移除导航项（插件 teardown 调用） */
 function unregisterNavAction(id: string): void {
   const api = (window as unknown as Record<string, unknown>)['__fm_nav_actions'] as
-    | NavActionsApiLike
+    | NavActionsApi
     | undefined
   if (api && typeof api.unregister === 'function') {
     api.unregister(id)

@@ -806,6 +806,12 @@
 | `ctx.router.replace` | 编程式替换当前路由（查看器"上一张/下一张"等原地切换场景，避免历史栈膨胀） |
 | 前端生命周期 | `install(ctx)` 可返回 teardown 函数；平台自动收集 `addRoute` 路由、`registerTheme` 主题与 `platform.fileOpen.register` 的 handler，卸载/重载时统一清理（`unloadPluginFrontend`） |
 
+> **window 注册表类型契约（v3.0.0）**：批量操作注册表（`window.__fm_bulk_actions`）与页面导航注册表（`window.__fm_nav_actions`）
+> 的类型已由类型入口发布：`BulkActionVisibility` / `BulkActionContext` / `BulkAction` / `BulkActionsApi`、
+> `NavAction` / `NavActionsApi`（见 [plugin-design.md](./plugin-design.md)「平台挂载点」）。插件直接
+> `import type { BulkAction, BulkActionsApi } from '@mqn00/file-manager/plugin/frontend'` 使用即可，
+> 无需本地重复声明；两处入口与真实实现经 `frontend/test/types-sync.test-d.ts` 双向断言防漂移。
+
 ### 6. 插件数据目录（v3.0.0）
 
 插件经 `ctx.storage`（后端）/ `ctx.pluginData`（前端）访问按**插件短名隔离、跨重启保留**的 KV 存储。前端调用最终落到以下 HTTP 接口（均需在请求头携带 `Authorization: Bearer <sessionToken>`）：

@@ -225,11 +225,29 @@ ctx.platform.fileOpen.register(handler)
 
 主应用提供多个全局注册表，插件 install 时注册可扩展能力（模块求值即挂到 window，主应用在 `initPlugins()` 前经 `main.ts` 静态 import 保证就绪；重复注册按 id 幂等覆盖，`unregister(id)` 供插件 teardown 移除）：
 
-| 挂载点 | 用途 | 注册项 |
+| 挂载点 | 用途 | 注册项（类型入口已发布） |
 |---|---|---|
-| `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `{ id, label, visible(count, hasFolder), run(selected, infos, currentPath) }` |
-| `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `{ id, label, path, icon? }`（`icon` 为图标组件，点击 `router.push(path)`） |
-| `window.__fm_file_open` | 文件打开钩子 | `{ id, canOpen(file), open(file) }`（见「文件打开契约」；file-viewer 为唯一注册者） |
+| `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `BulkAction`（`visible(count, hasFolder)` + `run(selected, infos, currentPath)`） |
+| `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `NavAction`（`{ id, label, path, icon? }`，`icon` 为图标组件，点击 `router.push(path)`） |
+| `window.__fm_file_open` | 文件打开钩子 | `FileOpenHandler`（见「文件打开契约」；file-viewer 为唯一注册者） |
+
+**类型契约（v3.0.0 起）**：挂载点的注册项与注册表 API 类型均由类型入口 `@mqn00/file-manager/plugin/frontend`
+发布——`BulkActionVisibility` / `BulkActionContext` / `BulkAction` / `BulkActionsApi`、`NavAction` / `NavActionsApi`。
+插件**直接类型导入，不要本地重复声明**：
+
+```ts
+import type { BulkAction, BulkActionsApi, NavAction, NavActionsApi } from '@mqn00/file-manager/plugin/frontend'
+
+// 运行时仍从 window 全局取注册表实例（类型入口只发布类型，不产生运行时依赖）
+const api = (window as unknown as Record<string, unknown>)['__fm_bulk_actions'] as BulkActionsApi | undefined
+if (!api || typeof api.register !== 'function') {
+  console.warn('[my-plugin] 主应用未暴露批量操作注册表，功能不可用')
+  return
+}
+api.register({ id: 'my-op', label: '我的操作', visible: (p) => p.count > 0, run: (p) => { /* … */ } })
+```
+
+发布类型与主应用真实实现经 `frontend/test/types-sync.test-d.ts` **双向断言**防漂移（漂移即编译失败）。
 
 > **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
 
