@@ -170,7 +170,7 @@ export const getFileList = (queryPath: string | undefined): { path: string; file
       return {
         name: file.name,
         path: relativePath.replace(/\\/g, '/'),
-        isDirectory: file.isDirectory(),
+        isDirectory: stats.isDirectory(),
         size: getSafeSize(filePath, stats),
         modified: stats.mtime.toISOString(),
       }
