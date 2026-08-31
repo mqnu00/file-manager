@@ -1,3 +1,5 @@
 node_modules/
 dist/
 *.d.ts
+# demo 插件同步产物（sync-demo-plugins.mjs 生成的插件 dist bundle，非手写源码）
+public/plugins/
