@@ -11,7 +11,6 @@ import type {
   FrontendPluginInstallFunction,
   BulkAction,
   BulkActionContext,
-  BulkActionsApi,
 } from '@mqn00/file-manager/plugin/frontend'
 import { injectStyles, removeStyles } from './style'
 import { openCompressDialog, closeCompressDialog } from './dialog'
@@ -19,9 +18,9 @@ import { openCompressDialog, closeCompressDialog } from './dialog'
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
 
-  const api = (window as unknown as Record<string, unknown>)['__fm_bulk_actions'] as
-    | BulkActionsApi
-    | undefined
+  // window.__fm_bulk_actions 类型由发布入口 declare global 提供（可选属性）；
+  // 判空守卫兼容旧主应用（无该注册表）时降级
+  const api = window.__fm_bulk_actions
   if (!api || typeof api.register !== 'function') {
     console.warn('[compress] 主应用未暴露批量操作注册表（__fm_bulk_actions），压缩按钮不可用')
     return

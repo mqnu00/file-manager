@@ -10,11 +10,14 @@
  * esbuild 打包时不读 tsconfig paths，仍解析真实包并 tree-shake，
  * 仅打包本插件 import 到的图标组件（配合 build.mjs 的 vue → vue-shim 桥）。
  */
-import type { FrontendPluginContext } from '@mqn00/file-manager/plugin/frontend'
+import type { NavAction } from '@mqn00/file-manager/plugin/frontend'
 
-type VueRuntime = FrontendPluginContext['Vue']
-/** 可传给 h() 的组件类型（与图标组件形态一致） */
-type Icon = Parameters<VueRuntime['h']>[0]
+/**
+ * 图标组件类型：直接取发布入口 NavAction['icon']（Component，可选）的非空形态，
+ * 与注册表契约保持同一类型链。不用 Parameters<h>[0]（含 string 标签分支，
+ * 与组件图标语义不符，且无法赋给 Component）。
+ */
+type Icon = NonNullable<NavAction['icon']>
 
 export declare const ArrowLeft: Icon
 export declare const Refresh: Icon

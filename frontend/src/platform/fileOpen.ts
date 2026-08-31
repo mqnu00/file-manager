@@ -53,8 +53,6 @@ export function emitPluginsChanged(): void {
   }
 }
 
-export const FILE_OPEN_GLOBAL_KEY = '__fm_file_open'
-
 const handlers = ref<FileOpenHandler[]>([])
 const listeners = new Set<() => void>()
 
@@ -91,9 +89,10 @@ const api: FileOpenApi = {
   },
 }
 
-// 模块求值即暴露全局，确保插件 install 时可用（幂等）
+// 模块求值即暴露全局，确保插件 install 时可用（幂等）。
+// window 扩展声明见 env.d.ts（与发布类型入口 frontend-types.ts 的 declare global 同构）。
 if (typeof window !== 'undefined') {
-  ;(window as unknown as Record<string, unknown>)[FILE_OPEN_GLOBAL_KEY] = api
+  window.__fm_file_open = api
 }
 
 /** 读取已注册的打开 handler（响应式：插件注册/注销后自动更新，FileTable 渲染期依赖） */

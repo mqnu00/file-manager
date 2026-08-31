@@ -36,7 +36,7 @@ import type {
   RouteRecordRaw,
   RouteLocationNormalizedLoaded,
 } from 'vue-router'
-import type { Ref, ComputedRef } from 'vue'
+import type { Ref, ComputedRef, Component } from 'vue'
 
 import type { PluginInstallFunction } from './types'
 
@@ -98,8 +98,9 @@ export interface NavAction {
   label: string
   /** 点击跳转的路由路径 */
   path: string
-  /** 图标组件（插件自绘 SVG 组件或经类型门面引入的图标组件） */
-  icon?: unknown
+  /** 图标组件（与真实侧一致：vue Component；backend 无 DOM lib 但 Component 类型经
+   *  skipLibCheck 可引用，与既有 typeof import('vue') 全命名空间同机制） */
+  icon?: Component
 }
 
 // ==================== Store 类型 ====================
@@ -588,3 +589,26 @@ export type PluginTeardown = () => void | Promise<void>
 export type FrontendPluginInstallFunction = (
   ctx: FrontendPluginContext
 ) => void | Promise<void> | PluginTeardown | Promise<PluginTeardown>
+
+// ==================== Window 全局扩展声明（插件可见） ====================
+
+/**
+ * 平台挂载点的 window 全局扩展。插件编译时 import 本类型入口即获得类型化访问
+ * （`window.__fm_bulk_actions` 等），无需 `window as unknown as ...` 强转。
+ *
+ * @keep-in-sync frontend/src/env.d.ts —— interface 合并要求两侧同一属性
+ * 结构一致，类型不一致时直接编译失败（天然防漂移）。
+ *
+ * 属性声明为可选（`?:`）：主应用自 v3.0.0 起保证提供，但插件可能需要兼容
+ * 更旧的主应用（无此全局）——可选类型强制插件在访问前判空并降级。
+ */
+declare global {
+  interface Window {
+    /** 批量操作注册表（主项目设定于 pluginActions 模块求值期） */
+    __fm_bulk_actions?: BulkActionsApi
+    /** 页面导航注册表（主项目设定于 pluginNav 模块求值期） */
+    __fm_nav_actions?: NavActionsApi
+    /** 文件打开注册表（主项目设定于 platform/fileOpen 模块求值期） */
+    __fm_file_open?: FileOpenApi
+  }
+}

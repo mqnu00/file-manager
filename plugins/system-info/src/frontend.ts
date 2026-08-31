@@ -9,7 +9,6 @@ import type {
   FrontendPluginContext,
   FrontendPluginInstallFunction,
   NavAction,
-  NavActionsApi,
 } from '@mqn00/file-manager/plugin/frontend'
 import { Monitor } from '@element-plus/icons-vue'
 import { injectStyles, removeStyles } from './style'
@@ -17,9 +16,8 @@ import { createSystemInfoPage } from './page'
 
 /** 注册导航项（重复注册按 id 覆盖）；旧版本主应用缺失注册表时降级（无操作） */
 function registerNavAction(action: NavAction): void {
-  const api = (window as unknown as Record<string, unknown>)['__fm_nav_actions'] as
-    | NavActionsApi
-    | undefined
+  // window.__fm_nav_actions 类型由发布入口 declare global 提供（可选属性）
+  const api = window.__fm_nav_actions
   if (!api || typeof api.register !== 'function') {
     console.warn('[system-info] 主应用未暴露导航注册表（__fm_nav_actions），入口按钮不可用')
     return
@@ -29,9 +27,7 @@ function registerNavAction(action: NavAction): void {
 
 /** 按 id 移除导航项（插件 teardown 调用） */
 function unregisterNavAction(id: string): void {
-  const api = (window as unknown as Record<string, unknown>)['__fm_nav_actions'] as
-    | NavActionsApi
-    | undefined
+  const api = window.__fm_nav_actions
   if (api && typeof api.unregister === 'function') {
     api.unregister(id)
   }

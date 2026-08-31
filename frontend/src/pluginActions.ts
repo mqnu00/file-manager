@@ -57,8 +57,6 @@ export interface BulkActionView {
   onClick(): void
 }
 
-export const BULK_ACTIONS_GLOBAL_KEY = '__fm_bulk_actions'
-
 const actions = ref<BulkAction[]>([])
 const listeners = new Set<() => void>()
 
@@ -86,9 +84,10 @@ const api: BulkActionsApi = {
   },
 }
 
-// 模块求值即暴露全局，确保插件 install 时可用（幂等）
+// 模块求值即暴露全局，确保插件 install 时可用（幂等）。
+// window 扩展声明见 env.d.ts（与发布类型入口 frontend-types.ts 的 declare global 同构）。
 if (typeof window !== 'undefined') {
-  ;(window as unknown as Record<string, unknown>)[BULK_ACTIONS_GLOBAL_KEY] = api
+  window.__fm_bulk_actions = api
 }
 
 /** 读取已注册的批量操作（响应式：插件注册/覆盖后自动更新） */

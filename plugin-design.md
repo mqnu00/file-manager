@@ -236,10 +236,11 @@ ctx.platform.fileOpen.register(handler)
 插件**直接类型导入，不要本地重复声明**：
 
 ```ts
-import type { BulkAction, BulkActionsApi, NavAction, NavActionsApi } from '@mqn00/file-manager/plugin/frontend'
+import type { BulkAction } from '@mqn00/file-manager/plugin/frontend'
 
-// 运行时仍从 window 全局取注册表实例（类型入口只发布类型，不产生运行时依赖）
-const api = (window as unknown as Record<string, unknown>)['__fm_bulk_actions'] as BulkActionsApi | undefined
+// window 扩展由发布入口 declare global 声明（可选属性），运行时读全局无需任何强转；
+// 判空守卫兼容旧主应用（无该注册表）时降级
+const api = window.__fm_bulk_actions
 if (!api || typeof api.register !== 'function') {
   console.warn('[my-plugin] 主应用未暴露批量操作注册表，功能不可用')
   return
@@ -248,6 +249,15 @@ api.register({ id: 'my-op', label: '我的操作', visible: (p) => p.count > 0, 
 ```
 
 发布类型与主应用真实实现经 `frontend/test/types-sync.test-d.ts` **双向断言**防漂移（漂移即编译失败）。
+
+**Window 全局类型声明**：三个挂载点均有类型化的 window 扩展（`window.__fm_bulk_actions` /
+`window.__fm_nav_actions` / `window.__fm_file_open`），由**两侧同步声明**：
+- 主项目侧：`frontend/src/env.d.ts` 的 `declare global { interface Window { … } }`（与 `THREE`/`Vue`/`ElementPlus`/`__runScript` 同一块）；
+- 插件侧：发布类型入口 `frontend-types.ts` 文件尾部的 `declare global`（插件 import 该入口即获得）。
+
+两侧对同一属性的声明经 **interface 合并**强制结构一致（类型不一致直接编译失败）。
+属性声明为**可选**（`?:`）：主应用 v3.0.0 起保证提供，但插件可能需要兼容更旧主应用——
+访问前判空并降级（见上例）。不需要再写 `(window as unknown as Record<string, unknown>)['__fm_xxx']` 之类强转。
 
 > **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
 

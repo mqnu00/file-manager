@@ -166,12 +166,12 @@ test('platform.fileOpen：发布视图与真实注册表一致', () => {
   expectTypeOf<FileOpenHandler>().toMatchTypeOf<RealFileOpenHandler>()
 })
 
-test('pluginNav：真实导航项满足发布视图（icon 发布侧故意放宽为 unknown）', () => {
+test('pluginNav：真实导航项与发布视图双向一致（icon 均为 vue Component）', () => {
   expectTypeOf<RealNavAction>().toMatchTypeOf<NavAction>()
+  expectTypeOf<NavAction>().toMatchTypeOf<RealNavAction>()
 })
 
-test('平台注册表 bulk/nav：发布 API 与真实实现漂移防护', () => {
-  // ── bulk：无门面问题，完整双向 ──
+test('平台注册表 bulk/nav：发布 API 与真实实现完整双向（无门面豁免）', () => {
   // 纯数据入参：结构完全一致
   expectTypeOf<RealBulkActionVisibility>().toEqualTypeOf<BulkActionVisibility>()
   expectTypeOf<RealBulkActionContext>().toEqualTypeOf<BulkActionContext>()
@@ -180,17 +180,19 @@ test('平台注册表 bulk/nav：发布 API 与真实实现漂移防护', () => 
   expectTypeOf<BulkAction>().toMatchTypeOf<RealBulkAction>()
   expectTypeOf<RealBulkActionsApi>().toMatchTypeOf<BulkActionsApi>()
   expectTypeOf<BulkActionsApi>().toMatchTypeOf<RealBulkActionsApi>()
-
-  // ── nav：整体单向 + 定向反向（icon 门面豁免） ──
-  // 原因：发布侧 NavAction.icon?: unknown（backend tsconfig 无 DOM lib，无法引用 vue Component），
-  // 真实侧 icon?: Component；NavActionsApi 的 register(action: NavAction) 与 list(): NavAction[]
-  // 两个成员触碰 NavAction，整体反向断言必然失败——属门面边界设计，非类型漂移。
-  // 正向（真实满足发布）：拦截发布声明了真实没有的成员 / 签名不符——漂移防护主渠道
+  // nav：icon 已统一为 vue Component（发布侧 import type { Component } from 'vue'），
+  // 不再存在门面豁免，恢复完整双向
   expectTypeOf<RealNavActionsApi>().toMatchTypeOf<NavActionsApi>()
-  // 反向（定向）：绕开涉及 icon 的 register/list，只对 unregister/subscribe 做反向结构检查
-  expectTypeOf<Omit<NavActionsApi, 'register' | 'list'>>().toMatchTypeOf<
-    Omit<RealNavActionsApi, 'register' | 'list'>
-  >()
+  expectTypeOf<NavActionsApi>().toMatchTypeOf<RealNavActionsApi>()
+})
+
+test('window 全局扩展：主项目 env.d.ts 与发布入口声明合并后一致（可选属性）', () => {
+  // 两侧（frontend/src/env.d.ts + 发布入口 frontend-types.ts 的 declare global）
+  // 对同一 Window 属性做 interface 合并，类型不一致会直接编译失败；
+  // 此处显式断言兜底并锁定"可选属性"契约
+  expectTypeOf<Window['__fm_bulk_actions']>().toEqualTypeOf<BulkActionsApi | undefined>()
+  expectTypeOf<Window['__fm_nav_actions']>().toEqualTypeOf<NavActionsApi | undefined>()
+  expectTypeOf<Window['__fm_file_open']>().toEqualTypeOf<FileOpenApi | undefined>()
 })
 
 test('utils：真实格式化工具模块与发布视图双向兼容', () => {
