@@ -35,7 +35,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
-import { getFileOpenApi, type FileOpenApi } from '@/platform/fileOpen'
+import { getFileOpenApi, PLUGINS_CHANGED_EVENT, type FileOpenApi } from '@/platform/fileOpen'
 
 import { formatSize, formatTime, formatSpeed, formatProgress } from '@/utils/format'
 
@@ -103,6 +103,8 @@ export interface ScriptContext {
   platform: {
     /** 文件打开钩子：插件声明"能打开哪些文件"，主应用单击文件时分发 */
     fileOpen: FileOpenApi
+    /** 插件集合变化事件名（主应用在加载/卸载/重载完成后广播） */
+    PLUGINS_CHANGED_EVENT: string
   }
 
   /** 工具函数 */
@@ -177,6 +179,7 @@ export function createScriptContext(): ScriptContext {
 
     platform: {
       fileOpen: getFileOpenApi(),
+      PLUGINS_CHANGED_EVENT,
     },
 
     utils: {

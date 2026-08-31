@@ -11,15 +11,6 @@
 
 import type { ViewerMeta } from './types'
 
-/**
- * 插件集合变化事件名（与 frontend/src/platform/fileOpen.ts 的 PLUGINS_CHANGED_EVENT
- * 及 backend/src/plugin/frontend-types.ts 保持一致）。
- * 插件管理页在加载/卸载/重载完成后于 window 广播，供查看器核心重算可打开集合。
- * 注：插件包经 esbuild 打包时 `@mqn00/file-manager/plugin/frontend` 被 external，
- * 运行时不可从外部包取值，故在此本地定义同名常量。
- */
-export const PLUGINS_CHANGED_EVENT = 'fm:plugins:changed'
-
 /** 已注册查看器（id/label/默认扩展名/路由） */
 export let viewers: ViewerMeta[] = []
 /** 扩展名→查看器映射（小写后缀，来自插件存储） */

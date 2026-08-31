@@ -18,7 +18,7 @@ import type {
   FileOpenHandler,
 } from '@mqn00/file-manager/plugin/frontend'
 import { createConfigPage } from './config-page'
-import { refreshViewers, canOpenExt, canOpenFile, resolveViewer, normExt, PLUGINS_CHANGED_EVENT } from './state'
+import { refreshViewers, canOpenExt, canOpenFile, resolveViewer, normExt } from './state'
 
 function injectStyles(): void {
   if (document.getElementById('file-viewer-style')) return
@@ -63,7 +63,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
       .catch(() => {})
       .finally(() => fileOpen.refresh())
   }
-  window.addEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+  window.addEventListener(ctx.platform.PLUGINS_CHANGED_EVENT, onPluginsChanged)
 
   // 配置页：查看器设置（扩展名→查看器映射）
   ctx.router.addRoute({
@@ -98,7 +98,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
   // 卸载/重载清理：注销文件打开 handler、移除事件监听（路由与主题由平台自动清理）
   return () => {
-    window.removeEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+    window.removeEventListener(ctx.platform.PLUGINS_CHANGED_EVENT, onPluginsChanged)
     unregisterOpen()
   }
 }

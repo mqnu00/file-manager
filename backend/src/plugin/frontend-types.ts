@@ -471,6 +471,8 @@ export interface FrontendPluginContext {
   platform: {
     /** 文件打开钩子：插件声明"能打开哪些文件"，主应用单击文件时分发 */
     fileOpen: FileOpenApi
+    /** 插件集合变化事件名（主应用在加载/卸载/重载完成后广播） */
+    PLUGINS_CHANGED_EVENT: string
   }
 
   /** 工具函数 */

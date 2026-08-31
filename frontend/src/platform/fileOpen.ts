@@ -43,7 +43,8 @@ export interface FileOpenApi {
   refresh(): void
 }
 
-/** 插件集合变化事件：插件管理页在加载/卸载/重载完成后广播，供查看器核心等重算可打开集合 */
+/** 插件集合变化事件名（主应用在加载/卸载/重载完成后广播）；定义在 module 顶层，
+ *  context.ts 的 platform 通过 re-export 获取，确保唯一源头。 */
 export const PLUGINS_CHANGED_EVENT = 'fm:plugins:changed'
 
 export function emitPluginsChanged(): void {

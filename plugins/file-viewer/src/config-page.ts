@@ -10,7 +10,6 @@
  */
 
 import type { FrontendPluginContext } from '@mqn00/file-manager/plugin/frontend'
-import { PLUGINS_CHANGED_EVENT } from './state'
 import {
   viewers as stateViewers,
   extensionMappings as stateExtensionMappings,
@@ -143,9 +142,9 @@ export function createConfigPage(ctx: FrontendPluginContext): unknown {
       const onPluginsChanged = () => {
         void load()
       }
-      window.addEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+      window.addEventListener(ctx.platform.PLUGINS_CHANGED_EVENT, onPluginsChanged)
       onUnmounted(() => {
-        window.removeEventListener(PLUGINS_CHANGED_EVENT, onPluginsChanged)
+        window.removeEventListener(ctx.platform.PLUGINS_CHANGED_EVENT, onPluginsChanged)
       })
 
       const addExt = (g: Group) => {
