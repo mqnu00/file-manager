@@ -1062,9 +1062,17 @@ export async function loadEnabledPlugins(): Promise<void> {
     if (eligible.length === 0) continue
     eligible.forEach((m) => loadingPlugins.add(m.name))
 
-    let results: (PluginInstance | null)[]
+    // 注意：同一批次内必须串行加载，不能 Promise.all 并行——
+    // 并行 install 时各插件在 install 前记录的 stackBefore 相同，若两个 install 交错
+    // 追加路由层，后完成者的 layers 切片会把先完成者的路由层也算进自己名下，
+    // 卸载时（indexOf/splice）会误删其他插件的路由（e2e 曾复现：卸载 test 插件后
+    // compress 插件路由全部 404）。串行加载同样保证 currentInstallingPlugin 归属准确。
+    // 拓扑批次顺序（依赖先后）不受影响；插件 install 本身是轻量同步注册，串行无性能顾虑。
+    const results: (PluginInstance | null)[] = []
     try {
-      results = await Promise.all(eligible.map((m) => loadSinglePlugin(m.name, m.rootDir)))
+      for (const m of eligible) {
+        results.push(await loadSinglePlugin(m.name, m.rootDir))
+      }
     } finally {
       eligible.forEach((m) => loadingPlugins.delete(m.name))
     }
