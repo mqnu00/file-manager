@@ -39,7 +39,7 @@
   },
   "keywords": ["file-manager", "file-manager-plugin", "…"],
   "peerDependencies": {
-    "@mqn00/file-manager": "^3.0.0-beta5"       // 声明依赖的主项目版本，编译时解析类型
+    "@mqn00/file-manager": "^3.0.0"             // 声明依赖的主项目版本，编译时解析类型
   },
   "devDependencies": {
     "@mqn00/file-manager": "file:../../backend",// 本地开发：引用主项目源码
@@ -104,8 +104,14 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
 | `ctx.waitForService(name, opts)` | 等待服务达到状态（默认运行中），超时抛错 |
 | `ctx.isServiceRunning(name)` | 查询托管服务是否运行 |
 | `ctx.utils.logger.log(level, tag, message)` | 日志（level: INFO/WARNING/ERROR） |
+| `ctx.utils.path.safe(filePath)` | 路径安全校验（防穿越），返回规范化绝对路径 |
+| `ctx.utils.path.getStorageRoot()` | 获取配置的存储根目录 |
+| `ctx.utils.path.calculateDirSize(dirPath)` | 递归计算目录大小（字节） |
 | `ctx.dataDir` | 插件私有数据目录绝对路径（惰性创建）。缓存文件、二进制大文件等可直接在此写文件 |
 | `ctx.storage` | 结构化 KV 存储（JSON 序列化，落盘 `<dataDir>/store.json`）。方法：`get<T>`/`set`/`delete`/`has`/`keys`/`all`；键禁止路径分隔符、值必须可 JSON 序列化 |
+| `ctx.services.task` | 后端任务系统（见「后端任务系统接入」）：`createExternal`/`signal`/`updateProgress`/`finalize` 等 |
+| `ctx.services.fileIO` | 通用文件 I/O 原语（文本读/写、字节分页读/定位写、流令牌 + Range），供查看器类插件共享 |
+| `ctx.services.file` | 文件操作服务层（列目录、复制/移动/删除等核心操作） |
 
 路由注册示例：
 
@@ -136,6 +142,19 @@ ctx.manageService('test-service', {
 - 启停通过 `ctx.startService`/`ctx.stopService` 走托管包装（持久化 `startedServices`），重启文件管理器后由 `startConfiguredServices()` 自动恢复
 - 服务级依赖（`dependsOn`）按拓扑分层启动；跨层/未声明的依赖由 `waitForService` 兜底等待
 - `canAutoStart` 用于避免假启动，如 smb 用 `sudo -n true` 探测无密码 sudo，避免 PTY 挂起等待密码
+
+### 后端任务系统接入（v3.0.0）
+
+插件可通过 `ctx.services.task` 将耗时操作接入主项目的后台任务系统（TaskPanel 统一展示进度、速度、当前文件、取消按钮）：
+
+| API | 说明 |
+|---|---|
+| `ctx.services.task.createExternal(type, metadata, opts)` | 创建外部任务条目（仅建条目不自动执行），返回 `{ id, metadata }`。`type` 为任务类型，`metadata` 为自定义元数据，`opts` 含 `phase`/`totalCount`/`completedCount` 等初始状态。同类型 + 同 targetPath 的未完成任务视为冲突（抛 `TASK_CONFLICT`） |
+| `ctx.services.task.signal(taskId)` | 取任务的 `AbortSignal`（执行器通过 `signal.aborted` 或监听 `abort` 事件响应取消） |
+| `ctx.services.task.updateProgress(taskId, patch)` | 更新任务进度/字段（广播 SSE + 持久化）。`patch` 含 `progress`/`speed`/`totalSize`/`currentFile`/`completedCount`/`totalCount`/`metadata` 等 |
+| `ctx.services.task.finalize(taskId, status, extra?)` | 任务终态收尾：`'completed'`（进度置 100）、`'failed'`（记 error）、`'cancelled'`（广播取消事件），3 秒后自动从列表移除 |
+
+**前端对接**：前端插件在 `install(ctx)` 中用 `ctx.stores.task.attachTask(taskId, taskInfo, onComplete?)` 挂载任务——TaskPanel 自动展示进度/取消按钮，完成/失败后触发回调。具体用法参考 `plugins/compress`。
 
 ## 五、前端插件（src/frontend.ts）
 
@@ -171,9 +190,10 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 - 类型从 `@mqn00/file-manager/plugin/frontend` 导入
 - **不得直接 `import vue` / `import element-plus`** —— 所有依赖通过 ctx 获取。前端产物是零外部依赖的独立 JS 文件（esbuild 打包时 `external: ['@mqn00/file-manager/plugin/frontend']`，该导入仅为类型，无运行时依赖）
 - 页面用 `h()` 渲染函数 + `defineComponent` 编写（插件不走 SFC/模板编译）
-- 页面路由用 `ctx.router.addRoute({ path, component })` 注册，建议路径 `plugin/<短名>` 或 `/plugin/<短名>`
+- 页面路由用 `ctx.router.addRoute(route)` 注册，`route` 类型为 `PluginRouteRecord`（由 `@mqn00/file-manager/plugin/frontend` 导出），建议路径 `plugin/<短名>` 或 `/plugin/<短名>`
 - **注册了页面路由的插件，必须在 package.json 的 `fileManagerPlugin` 中声明 `frontendPage`（路由路径）**，否则插件管理页不显示「进入前端」按钮
 - 页面需要登录时在 `addRoute` 中声明 `meta: { requiresAuth: true }`：未登录访问该页面会被主项目路由守卫重定向到登录页（登录后自动跳回原页面）；纯主题/公开页面不声明即默认放行。插件前端资源（JS/静态图）的加载不受影响，是否拦截由插件自行声明决定
+- `addRoute` 返回注销函数（插件 teardown 用）
 
 ### ctx 能力
 
@@ -181,10 +201,10 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 |---|---|
 | `ctx.Vue` | Vue 核心库命名空间（`h`、`ref`、`defineComponent`、`onMounted` 等） |
 | `ctx.ElementPlus` | Element Plus 完整命名空间（组件 + 工具函数） |
-| `ctx.stores` | Pinia stores：`auth` / `file` / `task` |
-| `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `config` / `task` API 模块 |
+| `ctx.stores` | Pinia stores：`auth` / `file` / `task`。`task` store 提供 `attachTask(taskId, info, onComplete?)` 方法，用于挂载插件后端通过 `ctx.services.task.createExternal` 创建的后台任务——前端据此在 TaskPanel 中展示进度/取消按钮（见「后端任务系统接入」） |
+| `ctx.api` | axios 实例（`instance`，已配认证拦截器）+ `auth` / `file` / `fileIO` / `config` / `task` API 模块。`fileIO` 提供通用文件二进制读写（纯二进制透传，文本/二进制/大小判断由插件自行完成） |
 | `ctx.composables` | `useTheme` / `useContextMenu` / `useFileProgress` / `useFileSort` |
-| `ctx.platform` | 平台扩展注册表：`fileOpen`（文件打开钩子，见「文件打开契约」） |
+| `ctx.platform` | 平台扩展注册表：`fileOpen`（文件打开钩子，见「文件打开契约」）；`PLUGINS_CHANGED_EVENT`（插件集合变化事件名，加载/卸载/重载完成后广播，插件可监听此事件响应其他插件的状态变化） |
 | `ctx.pluginData` | 按插件隔离的 KV 数据（接口与后端 `ctx.storage` 对应：`get`/`set`/`remove`/`all`）。正式环境经已认证的 HTTP 调用后端 `ctx.storage`；Demo 模式降级为 localStorage 垫片 |
 | `ctx.utils` | `formatSize` / `formatTime` / `formatSpeed` / `formatProgress` |
 | `ctx.constants` | 存储键、主题常量、`API_BASE_URL` |
@@ -192,34 +212,54 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
 ### 文件打开契约（fileOpen）
 
-平台提供 `ctx.platform.fileOpen` 作为「文件打开」的通用钩子。**file-viewer 是平台 fileOpen 的唯一注册者**——子查看插件（file-image-viewer 等）不直接注册 fileOpen，而是通过后端服务向 file-viewer 报备能力，由 file-viewer 统一注册和分发：
-
-```ts
-// file-viewer 核心前端（唯一注册者）
-const handler: FileOpenHandler = {
-  id: 'file-viewer',
-  canOpen(file) {
-    // 查缓存的查看器列表 + 映射表，判断该扩展名是否有可用查看器
-    return canOpenExt(normExt(file.name))
-  },
-  open(file) {
-    // 根据可编辑的扩展名映射表解析最佳查看器，跳转到其查看页路由
-    const v = resolveViewer(normExt(file.name))
-    if (v) void ctx.router.push({ path: v.route, query: { path: file.path } })
-  },
-}
-ctx.platform.fileOpen.register(handler)
-```
+平台提供 `ctx.platform.fileOpen` 作为「文件打开」的通用钩子。插件注册 `{ id, canOpen(file), open(file) }` 声明"能打开哪些文件"：
 
 - 主应用渲染时对可打开文件打 `is-openable` class（**平台语义 class**，样式由插件自行注入）；注册表变化（插件加载/卸载）时自动重算
+- `FileOpenHandler` 支持 `isOpenable?(file)` 可选方法：将「能打开」（`canOpen`）和「应标记」（`isOpenable`）分离——如默认打开器打开的文件不标蓝。缺省时等同 `canOpen`
 - 平台侧实现（`frontend/src/platform/fileOpen.ts`）与类型声明（`@mqn00/file-manager/plugin/frontend`）保持同步
-- **子查看插件不直接调用 `ctx.platform.fileOpen.register`**——它们通过后端 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 向 file-viewer 报备能力，file-viewer 据此更新 fileOpen 的 canOpen 判断
+- **file-viewer 是平台 fileOpen 的唯一注册者**：子查看插件（file-image-viewer 等）不直接注册 fileOpen，而是通过后端服务向 file-viewer 报备能力，由 file-viewer 统一注册和分发。具体架构见 `plugins/file-viewer/README.md`
+
+**FileOpenApi 完整接口**（`ctx.platform.fileOpen`）：
+
+| 方法 | 说明 |
+|---|---|
+| `register(handler)` | 注册 handler（同 id 覆盖替换），返回注销函数 |
+| `unregister(id)` | 按 id 移除已注册 handler（插件 teardown 用），不存在则 no-op |
+| `resolve(file)` | 按注册序返回第一个 `canOpen` 命中的 handler，无则 `null` |
+| `list()` | 当前全部 handler（注册顺序） |
+| `subscribe(fn)` | 注册表变化订阅（插件加载/卸载时触发），返回取消订阅函数 |
+| `refresh()` | 主动触发重算：handler 内部能力来源变化但 handler 本身未增删时通知主应用重算 `is-openable` 标记 |
 
 ### SPA 导航（router.push / replace）
 
 - `ctx.router.push(to)` / `ctx.router.replace(to)`：编程式导航，vue-router 原生处理 history / hash（demo）双模式；**禁止**再使用 `history.pushState + PopStateEvent` hack（历史栈语义与 hash 模式均不正确）
 - 查看器"上一张/下一张"等原地切换场景用 `replace`，避免历史栈膨胀使"返回"失效
 - 页面路由注册仍用 `ctx.router.addRoute`
+
+### 通用文件 I/O（ctx.api.fileIO）
+
+查看器类插件通过 `ctx.api.fileIO` 读写文件二进制，平台只做**纯二进制透传**（返回 base64 编码的原始字节 + 文件总大小），文本/二进制/大小判断由消费方插件自行完成：
+
+| 方法 | 说明 |
+|---|---|
+| `read(path, offset?, length?)` | 读取文件二进制。省略 offset/length = 整文件读取（截断到 8MB，`size` 返回真实大小）；传 offset/length = 分页读取。返回 `{ offset, length, size, data: base64 }` |
+| `write(path, data, offset?)` | 写回文件二进制。省略 offset = 整文件覆盖（允许空内容清空文件）；传 offset = 定位写入 |
+| `createToken(path)` | 签发流令牌（30 分钟有效，可多次使用，供 `<video>`/`<audio>`/`<iframe>` 等无法带 header 的场景） |
+| `streamUrl(token)` | 构造流式 URL（需携带令牌参数） |
+| `base64ToBytes(base64)` | 将 base64 解码为 `Uint8Array` |
+| `bytesToBase64(bytes)` | 将 `Uint8Array` 编码为 base64 |
+
+**典型用法**（图片查看器的流式加载）：
+
+```ts
+// 1. 签发流令牌
+const token = await ctx.api.fileIO.createToken(file.path)
+
+// 2. 构造流式 URL（配合 Range 请求实现大图分片加载）
+const url = ctx.api.fileIO.streamUrl(token)
+
+// 3. 在 <img src> 或 fetch 中使用
+```
 
 ### 平台挂载点（window 注册表）
 
@@ -229,7 +269,7 @@ ctx.platform.fileOpen.register(handler)
 |---|---|---|
 | `window.__fm_bulk_actions` | 文件批量操作栏按钮（如压缩） | `BulkAction`（`visible(count, hasFolder)` + `run(selected, infos, currentPath)`） |
 | `window.__fm_nav_actions` | 顶栏页面导航图标按钮（如系统信息） | `NavAction`（`{ id, label, path, icon? }`，`icon` 为图标组件，点击 `router.push(path)`） |
-| `window.__fm_file_open` | 文件打开钩子 | `FileOpenHandler`（见「文件打开契约」；file-viewer 为唯一注册者） |
+| `window.__fm_file_open` | 文件打开钩子 | `FileOpenHandler`（见「文件打开契约」） |
 
 **类型契约（v3.0.0 起）**：挂载点的注册项与注册表 API 类型均由类型入口 `@mqn00/file-manager/plugin/frontend`
 发布——`BulkActionVisibility` / `BulkActionContext` / `BulkAction` / `BulkActionsApi`、`NavAction` / `NavActionsApi`。
@@ -250,6 +290,19 @@ api.register({ id: 'my-op', label: '我的操作', visible: (p) => p.count > 0, 
 
 发布类型与主应用真实实现经 `frontend/test/types-sync.test-d.ts` **双向断言**防漂移（漂移即编译失败）。
 
+**注册表完整 API**：
+
+| 挂载点 | 方法 | 说明 |
+|---|---|---|
+| `__fm_bulk_actions` | `register(action)` | 注册操作（同 id 覆盖替换） |
+| | `unregister(id)` | 按 id 移除（插件 teardown 用），不存在则 no-op |
+| | `list()` | 当前全部操作（注册顺序） |
+| | `subscribe(fn)` | 注册表变化订阅，返回取消订阅函数 |
+| `__fm_nav_actions` | `register(action)` | 注册导航项（同 id 覆盖替换） |
+| | `unregister(id)` | 按 id 移除（插件 teardown 用），不存在则 no-op |
+| | `list()` | 当前全部导航项（注册顺序） |
+| | `subscribe(fn)` | 注册表变化订阅，返回取消订阅函数 |
+
 **Window 全局类型声明**：三个挂载点均有类型化的 window 扩展（`window.__fm_bulk_actions` /
 `window.__fm_nav_actions` / `window.__fm_file_open`），由**两侧同步声明**：
 - 主项目侧：`frontend/src/env.d.ts` 的 `declare global { interface Window { … } }`（与 `THREE`/`Vue`/`ElementPlus`/`__runScript` 同一块）；
@@ -260,6 +313,15 @@ api.register({ id: 'my-op', label: '我的操作', visible: (p) => p.count > 0, 
 访问前判空并降级（见上例）。不需要再写 `(window as unknown as Record<string, unknown>)['__fm_xxx']` 之类强转。
 
 > **卸载清理**：注册表均提供 `unregister(id)`（v3.0.0）；插件在 teardown 中调用（详见「前端卸载与 teardown 契约」）。`fileOpen` 的 handler 除插件自行注销外，平台在卸载时也会收集兜底清理。
+
+**插件集合变化事件**：`ctx.platform.PLUGINS_CHANGED_EVENT` 是一个自定义事件名（`'fm:plugins-changed'`），主应用在加载/卸载/重载插件完成后通过 `window.dispatchEvent` 广播。其他插件可监听此事件响应状态变化：
+
+```ts
+window.addEventListener(ctx.platform.PLUGINS_CHANGED_EVENT, () => {
+  // 重新查询其他插件状态
+  refreshViewerList()
+})
+```
 
 ### 插件数据目录（v3.0.0）
 
@@ -300,50 +362,6 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 }
 ```
 
-### 查看器服务架构（v3.0.0）
-
-查看器类插件（file-image-viewer 等）通过**服务**向 file-viewer 核心报备能力，不再使用全局注册表。这是「分层契约」的体现：
-
-```
-子插件 ──① 后端 registerViewer(meta)──▶ file-viewer 核心（注册服务）
-子插件 ──② 自有托管服务 dependsOn 'viewers' ──▶ 平台（级联生命周期）
-file-viewer ──③ 唯一 fileOpen handler ──▶ 平台（文件打开分发）
-file-viewer ──④ 后端 GET /viewers ──▶ 前端（解析配置表 + 缓存）
-```
-
-**① 子插件报备能力**（后端 `install`）：
-
-```ts
-// 子插件后端 install
-ctx.getService('file-viewer:viewers').registerViewer({
-  id: 'image',                    // 查看器唯一标识
-  label: '图片查看器',              // 配置页显示名
-  defaultExtensions: ['png','jpg'], // 默认可打开后缀（配置表可改写）
-  route: '/plugin/image/view',     // 子插件提供的查看页路由
-})
-```
-
-**② 托管服务依赖**（级联生命周期）：
-
-```ts
-ctx.manageService('image-viewer', {
-  canAutoStart: async () => true,
-  start: async () => {},
-  stop: async () => {},
-  isRunning: async () => true,
-})
-ctx.startService('image-viewer')
-```
-
-- `dependsOn: ['file-viewer']` 写入 `fileManagerPlugin`（加载顺序保险）
-- 托管服务 `dependsOn: ['viewers']`（file-viewer 的托管服务名）——file-viewer 卸载时平台自动级联停/卸依赖它的子插件
-
-**③ file-viewer 唯一 fileOpen**：file-viewer 注册平台 fileOpen handler，根据可编辑的扩展名映射表（config.yml `extensionMappings` + `defaultViewer`）解析最佳查看器，`router.push` 到子插件查看页。
-
-**④ 配置表保持有效**：file-viewer 持有解析权，配置页（`/plugin/file-viewer`）可编辑扩展名→查看器映射。子插件声明的 `defaultExtensions` 为初始值，file-viewer 可改写。
-
-**子插件查看页路由约定**：`/plugin/<id>/view?path=<文件路径>`，子插件自行渲染组件（不再由中央页 `<component :is>` 渲染）。file-viewer 提供最小页面外壳参考（返回按钮 + 文件信息 + 组件渲染）。
-
 ### 主题注册（registerTheme）
 
 ```ts
@@ -370,7 +388,7 @@ html.midnight {
 
 **插件生命周期**：后端插件有完整的加载/卸载/重载生命周期；前端插件在 v3.0.0-beta10 起补齐——
 
-**后端 teardown 契约（与前端对称）**：后端 `install(ctx)` 同样可返回 **teardown 函数**，供插件撤销 install 期间产生的、平台不代管的全局副作用——典型场景即子查看插件经 `ctx.getService('file-viewer:viewers').registerViewer(meta)` 报备能力后，在 teardown 中调用 `unregisterViewer(id)` 注销，使 file-viewer 配置页不再展示该查看器、其默认后缀也不再可点击。`PluginInstallFunction` 的返回类型已放宽（`void | Promise<void> | PluginTeardown | Promise<PluginTeardown>`）。平台在 `unloadPlugin` / `reloadPlugin` 时按「托管服务停止 → **插件 teardown** → 路由层移除 → 注册服务清理」顺序执行，teardown 抛错仅记日志不阻断。
+**后端 teardown 契约（与前端对称）**：后端 `install(ctx)` 同样可返回 **teardown 函数**，供插件撤销 install 期间产生的、平台不代管的全局副作用（如经其他插件注册表报备的能力——查看器注册等）。`PluginInstallFunction` 的返回类型已放宽（`void | Promise<void> | PluginTeardown | Promise<PluginTeardown>`）。平台在 `unloadPlugin` / `reloadPlugin` 时按「托管服务停止 → **插件 teardown** → 路由层移除 → 注册服务清理」顺序执行，teardown 抛错仅记日志不阻断。
 
 `install(ctx)` 的返回值可扩展为 **teardown 函数**：
 
@@ -407,7 +425,7 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
 
 ### 插件样式与主题适配（样式规范）
 
-插件自带的容器/自定义元素不随主题自动换肤，需遵守以下规范才能在「白天 / 赛博 / 初音未来…」等主题下外观一致（file-viewer 查看器系插件以此整改，见 `plugins/file-*`）。
+插件自带的容器/自定义元素不随主题自动换肤，需遵守以下规范才能在「白天 / 赛博 / 初音未来…」等主题下外观一致。
 
 #### 1. 颜色只用主题令牌
 
@@ -453,19 +471,7 @@ html.my-theme { color-scheme: dark; }
 
 #### 3. 类名加插件前缀
 
-插件注入的 `<style>` 是全局样式，为防与其他插件 / 主项目类名冲突，**所有类名必须带插件专属前缀**，禁止使用 `media-viewer`、`code-bar`、`hex-input` 这类通用词。file-viewer 系前缀约定：
-
-| 插件 | 前缀 |
-|---|---|
-| file-viewer（核心） | `fv-` |
-| file-code-viewer | `fcv-` |
-| file-image-viewer | `fiv-` |
-| file-video-viewer | `fvv-` |
-| file-music-viewer | `fmu-` |
-| file-office-viewer | `fov-` |
-| file-binary-viewer | `fbv-` |
-| compress | `fcp-` |
-| system-info | `fci-` |
+插件注入的 `<style>` 是全局样式，为防与其他插件 / 主项目类名冲突，**所有类名必须带插件专属前缀**，禁止使用 `media-viewer`、`code-bar`、`hex-input` 这类通用词。各插件前缀约定见各自 README。
 
 样式注入惯例：`install()` 时创建带稳定 id 的 `<style>` 标签，先查重后追加（插件卸载/热重载时同 id 覆盖或复用）：
 

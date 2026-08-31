@@ -68,6 +68,67 @@ URL 指定 mode > 页面内选择（localStorage） > config.yml 映射（extens
 
 > 注：`.md` 同时被 `file-code-viewer` 与 `file-markdown-viewer` 注册，默认打开方式取决于二者前端加载顺序；若需固定，可在配置主页（扩展名→查看器映射）显式指定，或在查看页「打开方式」中手动切换并记住选择。
 
+## 类名前缀约定
+
+file-viewer 系插件注入的 `<style>` 是全局样式，为防与其他插件 / 主项目类名冲突，**所有类名必须带插件专属前缀**：
+
+| 插件 | 前缀 |
+|---|---|
+| file-viewer（核心） | `fv-` |
+| file-code-viewer | `fcv-` |
+| file-image-viewer | `fiv-` |
+| file-video-viewer | `fvv-` |
+| file-music-viewer | `fmu-` |
+| file-office-viewer | `fov-` |
+| file-binary-viewer | `fbv-` |
+
+其他主项目插件前缀：compress (`fcp-`)、system-info (`fci-`)。
+
+## 服务架构
+
+file-viewer 是主项目文件打开契约（`ctx.platform.fileOpen`）的**唯一注册者**，子查看插件（file-image-viewer 等）不直接注册 fileOpen，而是通过后端服务向 file-viewer 报备能力，由 file-viewer 统一注册和分发：
+
+```
+子插件 ──① 后端 registerViewer(meta)──▶ file-viewer 核心（注册服务）
+子插件 ──② 自有托管服务 dependsOn 'viewers' ──▶ 平台（级联生命周期）
+file-viewer ──③ 唯一 fileOpen handler ──▶ 平台（文件打开分发）
+```
+
+### ① 子插件报备能力（后端 install）
+
+```ts
+ctx.getService('file-viewer:viewers').registerViewer({
+  id: 'image',                    // 查看器唯一标识
+  label: '图片查看器',              // 配置页显示名
+  defaultExtensions: ['png','jpg'], // 默认可打开后缀（配置表可改写）
+  route: '/plugin/image/view',     // 子插件提供的查看页路由
+})
+```
+
+### ② 托管服务依赖（级联生命周期）
+
+子插件通过 `dependsOn: ['viewers']` 声明对 file-viewer 的 `viewers` 服务依赖：
+
+```ts
+ctx.manageService('image-viewer', {
+  canAutoStart: async () => true,
+  start: async () => {},
+  stop: async () => {},
+  isRunning: async () => true,
+})
+ctx.startService('image-viewer')
+```
+
+file-viewer 卸载时平台自动级联停/卸依赖它的子插件。
+
+### ③ file-viewer 唯一 fileOpen
+
+file-viewer 注册平台 fileOpen handler，根据可编辑的扩展名映射表（config.yml `extensionMappings` + `defaultViewer`）解析最佳查看器，`router.push` 到子插件查看页。
+
+### 子插件查看页路由约定
+
+`/plugin/<id>/view?path=<文件路径>`，子插件自行渲染组件（不再由中央页 `<component :is>` 渲染）。file-viewer 提供最小页面外壳参考（返回按钮 + 文件信息 + 组件渲染）。
+
 ## 查看器注册表契约（第三方接入点）
 
 核心在 `globalThis.__fm_file_viewer_registry__` 上维护注册表。子插件在前端 `install()` 时调用：

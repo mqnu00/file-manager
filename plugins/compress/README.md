@@ -40,3 +40,60 @@ npm test                                                 # vitest 单元测试�
 
 - 运行时：`archiver`
 - 主项目：`file-manager`（peerDependencies，类型与平台能力：`ctx.utils.path.safe`、`ctx.services.task` 外部任务（createExternal/updateProgress/finalize）、日志等；工具栏操作经主应用 `window.__fm_bulk_actions` 注册表挂载）
+
+## 任务系统接入示例
+
+本插件演示如何将耗时操作接入主项目后台任务系统：
+
+**后端**（创建任务 + 执行 + 进度上报）：
+
+```ts
+// 1. 创建任务条目
+const task = ctx.services.task.createExternal(
+  'compress',
+  { paths, names, outputDir, targetPath },
+  { phase: 'compress', totalCount: paths.length }
+)
+
+// 2. 获取取消信号
+const signal = ctx.services.task.signal(task.id)
+
+// 3. 异步执行（不阻塞响应）
+void (async () => {
+  try {
+    // ... 执行压缩 ...
+    ctx.services.task.updateProgress(task.id, { progress: 50, currentFile: 'xxx.txt' })
+    ctx.services.task.finalize(task.id, 'completed')
+  } catch (e) {
+    if (e?.message === 'CANCELLED') {
+      ctx.services.task.finalize(task.id, 'cancelled', { message: '已取消' })
+    } else {
+      ctx.services.task.finalize(task.id, 'failed', { error: e.message })
+    }
+  }
+})()
+
+// 4. 立即返回 taskId
+res.json({ taskId: task.id })
+```
+
+**前端**（挂载任务到 TaskPanel）：
+
+```ts
+export const install: FrontendPluginInstallFunction = (ctx) => {
+  // 注册批量操作
+  const api = window.__fm_bulk_actions
+  api?.register({
+    id: 'compress',
+    label: '压缩',
+    visible: (p) => p.count > 0,
+    run: (payload) => openCompressDialog(ctx, payload),
+  })
+}
+
+// 对话框中创建任务后：
+const { taskId } = await ctx.api.instance.post('/plugin/compress/zip', { paths, outputDir })
+ctx.stores.task.attachTask(taskId, taskInfo, () => {
+  // 完成回调：刷新文件列表等
+})
+```
