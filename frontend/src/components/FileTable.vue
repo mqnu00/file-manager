@@ -116,10 +116,14 @@ const onFileNameClick = (row: FileItem) => {
   }
 }
 
-/** 是否有插件声明可打开该文件（渲染期打 is-openable 标记，样式由插件注入） */
+/** 是否有插件声明可打开该文件（渲染期打 is-openable 标记，样式由插件注入）；
+ *  优先使用 handler.isOpenable（可将「能打开」与「应标记」分离），
+ *  缺省时回退到 canOpen。 */
 const isOpenable = (row: FileItem): boolean => {
   if (row.isDirectory || row.broken) return false
-  return fileOpenApi.resolve(row) !== null
+  const handler = fileOpenApi.resolve(row)
+  if (!handler) return false
+  return handler.isOpenable ? handler.isOpenable(row) : handler.canOpen(row)
 }
 
 const handleContextmenu = (row: FileItem, _index: number, e: MouseEvent) => {

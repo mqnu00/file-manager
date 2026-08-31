@@ -18,7 +18,7 @@ import type {
   FileOpenHandler,
 } from '@mqn00/file-manager/plugin/frontend'
 import { createConfigPage } from './config-page'
-import { refreshViewers, canOpenExt, resolveViewer, normExt, PLUGINS_CHANGED_EVENT } from './state'
+import { refreshViewers, canOpenExt, canOpenFile, resolveViewer, normExt, PLUGINS_CHANGED_EVENT } from './state'
 
 function injectStyles(): void {
   if (document.getElementById('file-viewer-style')) return
@@ -56,9 +56,15 @@ export const install: FrontendPluginInstallFunction = (ctx) => {
   })
 
   // 文件打开 handler（平台 fileOpen 唯一注册者）
+  // canOpen：决定单击是否触发 open()（含 defaultViewer 兜底 + 无后缀文件）
+  // isOpenable：控制 is-openable 蓝色标记（仅映射表命中，不含 defaultViewer 兜底）
   const handler: FileOpenHandler = {
     id: 'file-viewer',
     canOpen: (file: FileItem) => {
+      if (file.isDirectory || file.broken) return false
+      return canOpenFile(normExt(file.name))
+    },
+    isOpenable: (file: FileItem) => {
       if (file.isDirectory || file.broken) return false
       return canOpenExt(normExt(file.name))
     },

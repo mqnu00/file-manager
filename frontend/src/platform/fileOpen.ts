@@ -17,8 +17,12 @@ import type { FileItem } from '@/types'
 export interface FileOpenHandler {
   /** 唯一 id（重复注册时按 id 覆盖替换） */
   id: string
-  /** 该文件是否可由此 handler 打开（同步、轻量，渲染期会被逐行调用） */
+  /** 该文件是否可由此 handler 打开（同步、轻量，渲染期会被逐行调用）；
+   *  单击时 resolve 按此判定分发到 open() */
   canOpen(file: FileItem): boolean
+  /** 控制 is-openable CSS 标记（蓝色悬浮）；缺省时等同 canOpen。
+   *  用于将「能打开」和「应标记」分离——如默认打开器打开的文件不标蓝。 */
+  isOpenable?(file: FileItem): boolean
   /** 消费打开请求（主应用单击文件且 canOpen 命中时调用） */
   open(file: FileItem): void | Promise<void>
 }

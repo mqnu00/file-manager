@@ -165,4 +165,42 @@ describe('FileTable.vue', () => {
     await fileName.trigger('click')
     expect(open).not.toHaveBeenCalled()
   })
+
+  it('handler.isOpenable 与 canOpen 分离：无映射但可打开的文件不标蓝、点击可触发 open', async () => {
+    const open = vi.fn()
+    const handlerFile: FileItem = { name: 'data.xyz', path: 'data.xyz', isDirectory: false, size: 100, modified: '' }
+    getFileOpenApi().register({
+      id: 'default-viewer',
+      canOpen: (f: FileItem) => !f.isDirectory,
+      isOpenable: (f: FileItem) => f.name.endsWith('.txt'),  // 只标记 .txt
+      open,
+    })
+    const files: FileItem[] = [
+      { name: 'a.txt', path: 'a.txt', isDirectory: false, size: 10, modified: '' },
+      handlerFile,
+    ]
+    const wrapper = await mountTable(files)
+    const txtFile = wrapper.findAll('.file-name-text').find((w) => w.text() === 'a.txt')
+    const xyzFile = wrapper.findAll('.file-name-text').find((w) => w.text() === 'data.xyz')
+    // .txt 有标记
+    expect(txtFile!.classes()).toContain('is-openable')
+    // .xyz 无标记（isOpenable 返回 false）
+    expect(xyzFile!.classes()).not.toContain('is-openable')
+    // 但 .xyz 点击仍触发 open（canOpen 返回 true）
+    await xyzFile!.trigger('click')
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(open.mock.calls[0][0]).toMatchObject({ name: 'data.xyz' })
+  })
+
+  it('handler 无 isOpenable 时回退到 canOpen 判定标记', async () => {
+    const open = vi.fn()
+    getFileOpenApi().register({
+      id: 'simple',
+      canOpen: (f: FileItem) => f.name.endsWith('.txt'),
+      open,
+    })
+    const wrapper = await mountTable()
+    const fileName = wrapper.findAll('.file-name-text').find((w) => w.text() === 'a.txt')
+    expect(fileName!.classes()).toContain('is-openable')
+  })
 })
