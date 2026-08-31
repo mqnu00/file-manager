@@ -2,6 +2,7 @@
   <div class="file-manager">
     <div>
       <Toolbar
+        ref="toolbarRef"
         :breadcrumb-parts="breadcrumbParts"
         :sort-by="sortBy"
         :sort-order="sortOrder"
@@ -9,12 +10,15 @@
         :is-single-file-selected="fileStore.isSingleFileSelected"
         :selected-has-folder="selectedHasFolder"
         :bulk-actions="bulkActionViews"
+        :search-query="searchQuery"
+        :match-count="matchCount"
         @navigate="navigateTo"
         @sort-change="handleSortChange"
         @toggle-sort="toggleSortOrder"
         @create-folder="showCreateFolderDialog"
         @create-file="showCreateFileDialog"
         @refresh="refresh"
+        @update:search-query="searchQuery = $event"
         @batch-delete="handleBatchDelete"
         @batch-move="handleBatchMove"
         @batch-download="handleBatchDownload"
@@ -52,11 +56,12 @@
 
     <FileTable
       ref="fileTableRef"
-      :files="fileStore.files"
+      :files="searchQuery ? filteredFiles : fileStore.files"
       :loading="fileStore.loading"
       :dir-size-cache="dirSizeCache"
       :dir-size-loading="dirSizeLoading"
       :dir-size-timeout="dirSizeTimeout"
+      :search-query="searchQuery"
       @open="navigateInto"
       @contextmenu="onRowContextmenu"
       @selection-change="handleSelectionChange"
@@ -121,6 +126,7 @@ import { getFiles, createFolder as createFolderApi, createFile as createFileApi,
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useFileProgress } from '@/composables/useFileProgress'
 import { useFileSort } from '@/composables/useFileSort'
+import { useFileSearch } from '@/composables/useFileSearch'
 import { useTaskStore } from '@/stores/task'
 import { formatSize, formatTime } from '@/utils/format'
 import { useContextMenu } from '@/composables/useContextMenu'
@@ -146,6 +152,10 @@ const fileSort = useFileSort(
 )
 const { sortBy, sortOrder, handleSortChange, toggleSortOrder, sortFiles } = fileSort
 
+// 文件搜索功能
+const fileSearch = useFileSearch(() => fileStore.files)
+const { searchQuery, filteredFiles, matchCount } = fileSearch
+
 // 插件注册的批量操作：可见性 + 点击上下文在此闭包捕获（点击时刻快照）
 const { actions: registeredBulkActions } = useBulkActions()
 const selectedHasFolder = computed(() => fileStore.selectedFileInfos.some((i) => i.isDirectory))
@@ -169,6 +179,9 @@ const { contextMenuVisible, contextMenuX, contextMenuY, contextMenuRow, onRowCon
 
 // FileTable ref
 const fileTableRef = ref<InstanceType<typeof FileTable>>()
+
+// Toolbar ref
+const toolbarRef = ref<InstanceType<typeof Toolbar>>()
 
 // 移除选中的文件
 function removeSelectedFile(file: FileItem) {
@@ -427,7 +440,19 @@ onMounted(() => {
   }
   loadFiles(savedPath)
   taskStore.init()
+
+  // 监听 Ctrl+F 快捷键打开搜索
+  document.addEventListener('keydown', handleKeydown)
 })
+
+// 键盘快捷键处理
+const handleKeydown = (e: KeyboardEvent) => {
+  // Ctrl+F 或 Cmd+F (Mac) 打开搜索
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault()
+    toolbarRef.value?.openSearchPopover()
+  }
+}
 
 // 离开主页（进入设置/插件等页面）时临时保存当前路径，供返回时恢复；
 // 浏览器整页刷新不会触发卸载钩子，因此刷新不会残留记忆
@@ -437,6 +462,8 @@ onBeforeUnmount(() => {
   } catch {
     // sessionStorage 不可用，跳过记忆
   }
+  // 移除键盘事件监听
+  document.removeEventListener('keydown', handleKeydown)
 })
 
 // 离开主页时清空选择，避免 store 中的选中状态残留到其他页面/再次返回时显示

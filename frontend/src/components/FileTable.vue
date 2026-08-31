@@ -24,7 +24,12 @@
               ]"
               @click="onFileNameClick(row)"
             >
-              {{ row.name }}
+              <template v-if="searchQuery">
+                <span v-html="highlightMatch(row.name, searchQuery)"></span>
+              </template>
+              <template v-else>
+                {{ row.name }}
+              </template>
             </span>
             <el-tag v-if="row.broken" type="danger" size="small" effect="dark"
               >符号链接，目标不存在</el-tag
@@ -67,12 +72,21 @@ import { formatSize, formatTime } from '@/utils/format'
 import { getFileOpenApi } from '@/platform/fileOpen'
 import type { ElTable } from 'element-plus'
 
+/** 高亮搜索匹配的文本 */
+const highlightMatch = (text: string, query: string): string => {
+  if (!query) return text
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escapedQuery})`, 'gi')
+  return text.replace(regex, '<span class="search-highlight">$1</span>')
+}
+
 defineProps<{
   files: FileItem[]
   loading: boolean
   dirSizeCache: Record<string, number>
   dirSizeLoading: Record<string, boolean>
   dirSizeTimeout: Record<string, boolean>
+  searchQuery?: string
 }>()
 
 const emit = defineEmits<{
@@ -214,5 +228,13 @@ defineExpose({ tableRef })
 
 :deep(.el-loading-mask) {
   background: var(--app-mask-bg) !important;
+}
+
+:deep(.search-highlight) {
+  background-color: rgba(255, 215, 0, 0.3);
+  color: var(--app-text-bright);
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 0 1px;
 }
 </style>

@@ -48,6 +48,43 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
+        <el-popover
+          ref="searchPopoverRef"
+          v-model:visible="searchPopoverVisible"
+          placement="bottom"
+          :width="340"
+          trigger="click"
+        >
+          <template #reference>
+            <el-button size="small" class="search-btn">
+              <el-icon><Search /></el-icon>
+              搜索
+            </el-button>
+          </template>
+          <div class="search-popover">
+            <el-input
+              ref="searchInputRef"
+              :model-value="searchQuery"
+              placeholder="搜索文件/文件夹名称..."
+              clearable
+              @update:model-value="$emit('update:searchQuery', $event)"
+              @keyup.esc="closeSearchPopover"
+            >
+              <template #prefix>
+                <el-icon class="search-icon"><Search /></el-icon>
+              </template>
+              <template #suffix>
+                <span class="search-count" v-if="searchQuery && matchCount > 0">
+                  {{ matchCount }} 个匹配
+                </span>
+                <span class="search-count no-match" v-else-if="searchQuery && matchCount === 0">
+                  无匹配
+                </span>
+              </template>
+            </el-input>
+            <div class="search-shortcut-hint">快捷键 Ctrl + F · 按 Esc 关闭</div>
+          </div>
+        </el-popover>
         <el-button size="small" @click="$emit('refresh')">
           <el-icon><Refresh /></el-icon>
           刷新
@@ -142,7 +179,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   FolderAdd,
@@ -164,6 +201,7 @@ import {
   Operation,
   Plus,
   DocumentAdd,
+  Search,
 } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 import type { BulkActionView } from '@/pluginActions'
@@ -171,8 +209,11 @@ import { useNavActions } from '@/pluginNav'
 
 const router = useRouter()
 const { themes, activeTheme, setTheme } = useTheme()
-// 插件注册的页面导航入口（顶栏图标按钮），响应式更新
 const { actions: navActions } = useNavActions()
+
+const searchPopoverRef = ref()
+const searchPopoverVisible = ref(false)
+const searchInputRef = ref()
 
 const props = defineProps<{
   breadcrumbParts: string[]
@@ -182,9 +223,10 @@ const props = defineProps<{
   isSingleFileSelected: boolean
   selectedHasFolder: boolean
   bulkActions: BulkActionView[]
+  searchQuery: string
+  matchCount: number
 }>()
 
-// 渲染当前选择下可见的插件注册操作
 const visibleBulkActions = computed(() =>
   props.bulkActions.filter((a) =>
     a.visible({ count: props.selectedCount, hasFolder: props.selectedHasFolder })
@@ -198,6 +240,7 @@ const emit = defineEmits<{
   'create-folder': []
   'create-file': []
   refresh: []
+  'update:searchQuery': [value: string]
   'batch-delete': []
   'batch-move': []
   'batch-download': []
@@ -212,6 +255,19 @@ const handleCreateCommand = (command: string) => {
     emit('create-folder')
   }
 }
+
+const closeSearchPopover = () => {
+  searchPopoverVisible.value = false
+}
+
+// 供父组件通过 ref 调用：打开搜索 popover 并聚焦
+const openSearchPopover = async () => {
+  searchPopoverVisible.value = true
+  await nextTick()
+  searchInputRef.value?.focus()
+}
+
+defineExpose({ openSearchPopover })
 </script>
 
 <style scoped>
@@ -299,5 +355,32 @@ const handleCreateCommand = (command: string) => {
 
 :deep(.el-select .el-select__caret) {
   color: var(--app-select-caret) !important;
+}
+
+.search-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-icon {
+  color: var(--app-accent);
+}
+
+.search-count {
+  font-size: 12px;
+  color: var(--app-text-dim);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.search-count.no-match {
+  color: #f56c6c;
+}
+
+.search-shortcut-hint {
+  font-size: 11px;
+  color: var(--app-text-dim);
+  text-align: right;
 }
 </style>
