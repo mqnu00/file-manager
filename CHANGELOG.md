@@ -1,6 +1,8 @@
 ## v3.0.1 (2026-09-02)
 
 > 插件安装稳定性修复：定位并修复生产环境"第二个插件安装失败"问题（`ENOTEMPTY: directory not empty, rmdir lodash/fp` 与重装报 "installed but not found"）。
+>
+> 本版本仅涉及主项目安装/任务机制，**插件 API 无变更**，已发布插件（peer `^3.0.0`）无需重新发布。
 
 ### 🐛 Bug 修复
 
