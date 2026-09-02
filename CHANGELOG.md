@@ -1,3 +1,22 @@
+## v3.0.1 (2026-09-02)
+
+> 插件安装稳定性修复：定位并修复生产环境"第二个插件安装失败"问题（`ENOTEMPTY: directory not empty, rmdir lodash/fp` 与重装报 "installed but not found"）。
+
+### 🐛 Bug 修复
+
+- **插件安装失败根因修复**：安装插件时 npm 7+ 会自动把宿主 peer（`@mqn00/file-manager`，约 180 个包）装进插件 store，导致安装慢、易被应用超时中途杀死，留下损坏的隐藏锁文件（`node_modules/.package-lock.json`）与撕裂的包目录；此后每次安装 npm 都会判定全树不可信，退役全部已装包并重建，重建期间解包大包（lodash 1050 文件）时 `rmdir lodash/fp` 撞上非空目录 → `ENOTEMPTY (-39)`；残缺目录又使重装出现 "up to date" 假成功 → 报 "installed but not found"
+- **安装默认不再自动安装宿主 peer**：`npm install` 默认追加 `--legacy-peer-deps`（宿主 API 由运行时经 `ctx` 注入，无需装入 store；实测 file-code-viewer 由 181 包/2 分钟降至 2 包/2 秒）；"强制安装"改为追加 `--force`
+- **移除安装自动超时**：不再有 120 秒硬超时杀进程（中断正是锁文件损坏的源头），安装进程持续到结束，进度可观察、可手动终止
+- **npm 操作互斥**：安装/版本切换/回滚卸载/删除卸载共用串行队列（同一 store 永远只有一个 npm 进程），杜绝并发 reify 互相撕扯
+- **撕裂目录自愈**：npm 退出 0 但插件不可解析时，定位残缺包目录（含 `@scope`）删除并在锁内重装一次
+
+### ✨ 新增功能
+
+- **插件安装进度面板**：安装时弹出 modal，实时显示 npm 增量日志（1s 轮询）、状态（正在安装/完成/失败/已手动终止）与退出码；安装完成前 modal 不可关闭（无右上角 X、ESC/遮罩失效），成功后面板停留"安装完成"，由用户点击"关闭"触发页面刷新；支持**手动终止**（SIGTERM，残留目录由下次安装自愈）
+- **安装任务 API**：`GET /api/plugins/install-tasks`（任务列表，页面刷新后恢复面板）、`GET /api/plugins/install-log/:id?offset=N`（增量日志，结束保留 10 分钟）、`POST /api/plugins/install-log/:id/terminate`（手动终止）；安装请求不再受前端 10 秒 axios 超时约束（`timeout: 0`），支持预生成 `taskId` 即时轮询
+
+---
+
 ## v3.0.0 (2026-08-31)
 
 > v3.0.0 正式发布。以下为自 v3.0.0-beta7 以来的变更汇总（beta7 及更早版本记录见下）。

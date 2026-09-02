@@ -13,6 +13,9 @@ import {
   getPluginVersions,
   installPlugin,
   deletePlugin,
+  getInstallTasks,
+  getInstallLog,
+  terminateInstall,
 } from './plugins'
 
 const mockedApi = vi.mocked(api)
@@ -24,7 +27,14 @@ beforeEach(() => {
 describe('api/plugins', () => {
   it('getPlugins 调用 GET /plugins 并返回 data', async () => {
     const plugins = [
-      { name: 'test', enabled: true, local: true, source: 'local', frontendPath: null, frontendPage: null },
+      {
+        name: 'test',
+        enabled: true,
+        local: true,
+        source: 'local',
+        frontendPath: null,
+        frontendPage: null,
+      },
     ]
     mockedApi.get.mockResolvedValue({ data: plugins })
     const res = await getPlugins()
@@ -65,18 +75,57 @@ describe('api/plugins', () => {
   it('getPluginVersions 调用 GET /plugins/versions 并携带 name 参数', async () => {
     mockedApi.get.mockResolvedValue({ data: { versions: ['1.0.0'], latest: '1.0.0' } })
     const res = await getPluginVersions('@mqn00/plugin-smb')
-    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/versions', { params: { name: '@mqn00/plugin-smb' } })
+    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/versions', {
+      params: { name: '@mqn00/plugin-smb' },
+    })
     expect(res.latest).toBe('1.0.0')
   })
 
-  it('installPlugin 调用 POST /plugins/install 并携带 packageName/version/force', async () => {
+  it('installPlugin 调用 POST /plugins/install 并携带 packageName/version/force/taskId，不设超时', async () => {
     mockedApi.post.mockResolvedValue({ data: { name: 'smb' } })
-    await installPlugin('@mqn00/plugin-smb', '1.2.0', true)
-    expect(mockedApi.post).toHaveBeenCalledWith('/plugins/install', {
-      packageName: '@mqn00/plugin-smb',
-      version: '1.2.0',
-      force: true,
+    await installPlugin('@mqn00/plugin-smb', '1.2.0', true, 'task-abc-0001')
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/plugins/install',
+      {
+        packageName: '@mqn00/plugin-smb',
+        version: '1.2.0',
+        force: true,
+        taskId: 'task-abc-0001',
+      },
+      { timeout: 0 }
+    )
+  })
+
+  it('instalPlugin 未传 taskId 时省略该字段', async () => {
+    mockedApi.post.mockResolvedValue({ data: { name: 'smb' } })
+    await installPlugin('@mqn00/plugin-smb')
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      '/plugins/install',
+      { packageName: '@mqn00/plugin-smb', version: undefined, force: undefined, taskId: undefined },
+      { timeout: 0 }
+    )
+  })
+
+  it('getInstallTasks 调用 GET /plugins/install-tasks', async () => {
+    mockedApi.get.mockResolvedValue({ data: [{ id: 't1', status: 'running' }] })
+    const res = await getInstallTasks()
+    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/install-tasks')
+    expect(res[0].id).toBe('t1')
+  })
+
+  it('getInstallLog 携带 offset 增量参数', async () => {
+    mockedApi.get.mockResolvedValue({ data: { offset: 5, lines: ['a'] } })
+    const res = await getInstallLog('task-xyz-0001', 3)
+    expect(mockedApi.get).toHaveBeenCalledWith('/plugins/install-log/task-xyz-0001', {
+      params: { offset: 3 },
     })
+    expect(res.offset).toBe(5)
+  })
+
+  it('terminateInstall 调用 POST /plugins/install-log/:id/terminate', async () => {
+    mockedApi.post.mockResolvedValue({ data: { success: true } })
+    await terminateInstall('task-xyz-0001')
+    expect(mockedApi.post).toHaveBeenCalledWith('/plugins/install-log/task-xyz-0001/terminate')
   })
 
   it('deletePlugin 调用 DELETE /plugins/:name 并携带 clearData 参数', async () => {

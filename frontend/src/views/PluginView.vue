@@ -1,8 +1,8 @@
 <template>
   <div class="plugins-container">
     <div
-      class="plugins-card"
       v-loading="busyAction !== null"
+      class="plugins-card"
       :element-loading-text="
         busyAction ? `正在${busyAction.verb}插件「${busyAction.name}」，请勿进行其他操作…` : ''
       "
@@ -80,13 +80,15 @@
                       size="small"
                       :disabled="busyAction !== null"
                       @click="reloadPlugin(row)"
-                    >重载</el-button>
+                      >重载</el-button
+                    >
                     <el-button
                       size="small"
                       type="danger"
                       :disabled="busyAction !== null"
                       @click="confirmUnload(row)"
-                    >卸载</el-button>
+                      >卸载</el-button
+                    >
                   </template>
                   <el-button
                     v-else
@@ -94,7 +96,8 @@
                     type="primary"
                     :disabled="busyAction !== null || row.compatible === false"
                     @click="handleLoad(row)"
-                  >加载</el-button>
+                    >加载</el-button
+                  >
                   <el-button
                     v-if="!row.local"
                     size="small"
@@ -123,26 +126,26 @@
                 @clear="handleSearch"
               >
                 <template #append>
-                  <el-button @click="handleSearch" :loading="searching">搜索</el-button>
+                  <el-button :loading="searching" @click="handleSearch">搜索</el-button>
                 </template>
               </el-input>
               <div class="discover-options">
                 <el-switch v-model="forceInstall" size="small" />
-                <span class="force-label">强制安装（忽略 peer dependency）</span>
+                <span class="force-label" title="追加 npm --force：强制覆盖已存在包、绕过校验">
+                  强制安装（--force）
+                </span>
               </div>
             </div>
 
             <!-- 搜索结果 -->
             <div v-if="searchResults.length > 0" class="search-results">
-              <div
-                v-for="item in searchResults"
-                :key="item.name"
-                class="search-result-item"
-              >
+              <div v-for="item in searchResults" :key="item.name" class="search-result-item">
                 <div class="result-info">
                   <div class="result-name">
                     {{ item.name }}
-                    <el-tag size="small" type="info" class="result-version">v{{ item.version }}</el-tag>
+                    <el-tag size="small" type="info" class="result-version"
+                      >v{{ item.version }}</el-tag
+                    >
                   </div>
                   <div class="result-desc">{{ item.description }}</div>
                   <div class="result-meta">
@@ -162,8 +165,10 @@
                       size="small"
                       type="warning"
                       :loading="installing === item.name"
+                      :disabled="installing !== null && installing !== item.name"
                       @click="handleInstall(item)"
-                    >切换版本</el-button>
+                      >切换版本</el-button
+                    >
                   </template>
                   <!-- 同名本地插件存在：允许安装但会覆盖 -->
                   <template v-else-if="hasLocalConflict(item.name)">
@@ -176,8 +181,10 @@
                       size="small"
                       type="primary"
                       :loading="installing === item.name"
+                      :disabled="installing !== null && installing !== item.name"
                       @click="handleInstall(item)"
-                    >安装</el-button>
+                      >安装</el-button
+                    >
                     <el-tag size="small" type="warning" class="local-warn">本地同名</el-tag>
                   </template>
                   <!-- 未安装 -->
@@ -191,8 +198,10 @@
                       size="small"
                       type="primary"
                       :loading="installing === item.name"
+                      :disabled="installing !== null && installing !== item.name"
                       @click="handleInstall(item)"
-                    >安装</el-button>
+                      >安装</el-button
+                    >
                   </template>
                 </div>
               </div>
@@ -221,17 +230,59 @@
         <el-divider />
         <div class="plugins-footer">
           <p class="hint">
-            在"发现插件"中搜索 npm registry 上标记了 <code>file-manager-plugin</code> 关键词的包。<br />
-            安装后插件配置自动写入 <code>config.yml</code>，默认启用。本地插件从 <code>plugins/</code> 目录加载。
+            在"发现插件"中搜索 npm registry 上标记了
+            <code>file-manager-plugin</code> 关键词的包。<br />
+            安装后插件配置自动写入 <code>config.yml</code>，默认启用。本地插件从
+            <code>plugins/</code> 目录加载。
           </p>
         </div>
       </div>
     </div>
+
+    <!-- 安装进度面板：实时日志轮询 + 手动终止；安装完成前不可关闭 -->
+    <el-dialog
+      v-model="installPanelVisible"
+      title="插件安装进度"
+      width="680px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+      append-to-body
+    >
+      <template v-if="installPanel">
+        <div class="install-progress-header">
+          <el-tag :type="installStatusTagType" size="small">{{ installStatusText }}</el-tag>
+          <span class="install-progress-pkg">{{ installPanel.packageName }}</span>
+          <span v-if="installPanel.exitCode !== null" class="install-progress-exit">
+            退出码 {{ installPanel.exitCode }}
+          </span>
+        </div>
+        <div ref="installLogEl" class="install-log">
+          <pre>{{ installPanel.lines.join('\n') || '正在启动 npm install …' }}</pre>
+        </div>
+      </template>
+      <template #footer>
+        <el-button
+          v-if="installPanel?.status === 'running'"
+          type="danger"
+          plain
+          :loading="installPanel.terminating"
+          @click="handleTerminateInstall"
+          >终止安装</el-button
+        >
+        <el-button
+          type="primary"
+          :disabled="installPanel?.status === 'running'"
+          @click="closeInstallPanel"
+          >关闭</el-button
+        >
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElCheckbox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -242,8 +293,12 @@ import {
   searchPlugins,
   installPlugin,
   deletePlugin,
+  getInstallTasks,
+  getInstallLog,
+  terminateInstall,
   type PluginInfo,
   type NpmSearchResult,
+  type InstallTaskStatus,
 } from '@/api/plugins'
 import { loadPluginFrontend, unloadPluginFrontend } from '@/pluginLoader'
 import { emitPluginsChanged } from '@/platform/fileOpen'
@@ -287,8 +342,180 @@ const installing = ref<string | null>(null)
 const installVersions = ref<Record<string, string>>({})
 const forceInstall = ref(false)
 
+// ---- 安装进度面板（日志轮询 + 手动终止） ----
+
+interface InstallPanelState {
+  taskId: string
+  packageName: string
+  status: InstallTaskStatus
+  exitCode: number | null
+  lines: string[]
+  offset: number
+  terminating: boolean
+}
+
+const installPanel = ref<InstallPanelState | null>(null)
+const installLogEl = ref<HTMLElement | null>(null)
+let installPollTimer: ReturnType<typeof setInterval> | null = null
+
+/** 生成前端预登记的 taskId（约束：仅字母/数字/_/-，8-64 位） */
+function genTaskId(): string {
+  const raw =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `t-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return raw.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32)
+}
+
+function scrollInstallLogToBottom() {
+  nextTick(() => {
+    const el = installLogEl.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+function stopInstallPolling() {
+  if (installPollTimer) {
+    clearInterval(installPollTimer)
+    installPollTimer = null
+  }
+}
+
+async function pollInstallLogOnce() {
+  const panel = installPanel.value
+  if (!panel || panel.status !== 'running') return
+  try {
+    const data = await getInstallLog(panel.taskId, panel.offset)
+    panel.lines.push(...data.lines)
+    panel.offset = data.offset
+    panel.status = data.status
+    panel.exitCode = data.exitCode
+    scrollInstallLogToBottom()
+    if (data.status !== 'running') stopInstallPolling()
+  } catch {
+    // 任务不存在/已过期（如服务重启）→ 停止轮询，面板保持最后状态
+    stopInstallPolling()
+  }
+}
+
+function startInstallPolling() {
+  stopInstallPolling()
+  void pollInstallLogOnce()
+  installPollTimer = setInterval(() => {
+    void pollInstallLogOnce()
+  }, 1000)
+}
+
+function openInstallPanel(packageName: string, taskId: string) {
+  stopInstallPolling()
+  installPanel.value = {
+    taskId,
+    packageName,
+    status: 'running',
+    exitCode: null,
+    lines: [],
+    offset: 0,
+    terminating: false,
+  }
+  startInstallPolling()
+}
+
+/**
+ * 关闭安装面板。安装（running）期间禁止关闭——用户只能等待或点"终止安装"；
+ * 安装成功后由用户点击关闭时整页刷新（加载新插件的前端资源），
+ * 失败/已终止仅关闭面板（页面状态不变）。
+ */
+function closeInstallPanel() {
+  const panel = installPanel.value
+  if (!panel) return
+  if (panel.status === 'running') return
+  stopInstallPolling()
+  const wasSuccess = panel.status === 'success'
+  installPanel.value = null
+  if (wasSuccess) {
+    window.location.reload()
+  }
+}
+
+async function handleTerminateInstall() {
+  const panel = installPanel.value
+  if (!panel || panel.status !== 'running') return
+  try {
+    await ElMessageBox.confirm(
+      `确定要终止 "${panel.packageName}" 的安装吗？\n终止可能留下不完整的安装目录，重试安装会自动修复。`,
+      '终止安装',
+      { confirmButtonText: '终止', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  panel.terminating = true
+  try {
+    await terminateInstall(panel.taskId)
+  } catch (err: unknown) {
+    ElMessage.error(`终止失败: ${extractError(err)}`)
+  } finally {
+    panel.terminating = false
+  }
+}
+
+/** 页面加载时恢复进行中的安装面板（如安装期间刷新了页面） */
+async function restoreInstallTasks() {
+  try {
+    const tasks = await getInstallTasks()
+    const running = tasks.find((t) => t.status === 'running')
+    if (running && !installPanel.value) {
+      openInstallPanel(running.packageName, running.id)
+    }
+  } catch {
+    /* 无权限/网络异常不打扰用户 */
+  }
+}
+
+const installPanelVisible = computed({
+  get: () => installPanel.value !== null,
+  set: (v: boolean) => {
+    if (!v) closeInstallPanel()
+  },
+})
+
+const installStatusText = computed(() => {
+  switch (installPanel.value?.status) {
+    case 'running':
+      return '正在安装…'
+    case 'success':
+      return '安装完成'
+    case 'failed':
+      return '安装失败'
+    case 'terminated':
+      return '已手动终止'
+    default:
+      return ''
+  }
+})
+
+const installStatusTagType = computed(() => {
+  switch (installPanel.value?.status) {
+    case 'running':
+      return 'info'
+    case 'success':
+      return 'success'
+    case 'failed':
+      return 'danger'
+    case 'terminated':
+      return 'warning'
+    default:
+      return 'info'
+  }
+})
+
 onMounted(async () => {
   await refreshList()
+  await restoreInstallTasks()
+})
+
+onBeforeUnmount(() => {
+  stopInstallPolling()
 })
 
 async function refreshList() {
@@ -321,7 +548,9 @@ async function handleLoad(plugin: PluginInfo) {
   try {
     const result = await loadPlugin(plugin.name)
     if (result.compatibilityWarning) {
-      ElMessage.warning(`插件 "${plugin.name}" 已加载（兼容性警告：${result.compatibilityWarning}）`)
+      ElMessage.warning(
+        `插件 "${plugin.name}" 已加载（兼容性警告：${result.compatibilityWarning}）`
+      )
     } else {
       ElMessage.success(`插件 "${plugin.name}" 已加载`)
     }
@@ -367,11 +596,11 @@ async function confirmUnload(plugin: PluginInfo) {
 async function reloadPlugin(plugin: PluginInfo) {
   if (busyAction.value) return
   try {
-    await ElMessageBox.confirm(
-      `确定要重载插件 "${plugin.name}" 吗？`,
-      '确认重载',
-      { confirmButtonText: '重载', cancelButtonText: '取消', type: 'info' }
-    )
+    await ElMessageBox.confirm(`确定要重载插件 "${plugin.name}" 吗？`, '确认重载', {
+      confirmButtonText: '重载',
+      cancelButtonText: '取消',
+      type: 'info',
+    })
     // 整个重载流程（前端清理 → 后端卸载/加载 → 前端重装）期间阻止页面其他操作
     await runWithBusy(plugin.name, '重载', async () => {
       // 前端先行卸载（清理旧实例副作用），后端重载后重新安装前端
@@ -405,7 +634,7 @@ async function confirmDelete(plugin: PluginInfo) {
       message: h('div', [
         h(
           'p',
-          `确定要删除插件 "${plugin.name}" 吗？这将执行 npm uninstall 并从 config.yml 中移除配置。`,
+          `确定要删除插件 "${plugin.name}" 吗？这将执行 npm uninstall 并从 config.yml 中移除配置。`
         ),
         h(ElCheckbox, {
           modelValue: clearData,
@@ -500,6 +729,9 @@ function deriveShortName(packageName: string): string {
 }
 
 async function handleInstall(item: NpmSearchResult) {
+  // 并发防护：任何 npm 安装/卸载/删除进行中时禁止再发起安装，
+  // 避免两个 npm 进程在同一 store 上并发 reify（ENOTEMPTY / 撕裂目录）
+  if (busyAction.value || installing.value !== null) return
   const ver = installVersions.value[item.name] || undefined
   const verLabel = ver ? `v${ver}` : '最新版'
 
@@ -511,34 +743,68 @@ async function handleInstall(item: NpmSearchResult) {
         '本地插件冲突',
         { confirmButtonText: '覆盖安装', cancelButtonText: '取消', type: 'warning' }
       )
-    } catch { return }
+    } catch {
+      return
+    }
   } else if (isInstalled(item.name)) {
     // 版本切换确认
     try {
-      await ElMessageBox.confirm(
-        `确定要将 "${item.name}" 切换到 ${verLabel} 吗？`,
-        '切换版本',
-        { confirmButtonText: '切换', cancelButtonText: '取消', type: 'info' }
-      )
-    } catch { return }
+      await ElMessageBox.confirm(`确定要将 "${item.name}" 切换到 ${verLabel} 吗？`, '切换版本', {
+        confirmButtonText: '切换',
+        cancelButtonText: '取消',
+        type: 'info',
+      })
+    } catch {
+      return
+    }
   } else {
     try {
-      await ElMessageBox.confirm(
-        `确定要安装插件 "${item.name}" (${verLabel}) 吗？`,
-        '确认安装',
-        { confirmButtonText: '安装', cancelButtonText: '取消', type: 'info' }
-      )
-    } catch { return }
+      await ElMessageBox.confirm(`确定要安装插件 "${item.name}" (${verLabel}) 吗？`, '确认安装', {
+        confirmButtonText: '安装',
+        cancelButtonText: '取消',
+        type: 'info',
+      })
+    } catch {
+      return
+    }
   }
 
   installing.value = item.name
+  // 预生成 taskId：请求发出后立即轮询安装日志（后端任务注册表已接受该 id）
+  const taskId = genTaskId()
+  openInstallPanel(item.name, taskId)
   try {
-    await installPlugin(item.name, ver, forceInstall.value)
-    ElMessage.success(`插件 "${item.name}" 安装成功，即将刷新页面...`)
-    setTimeout(() => { window.location.reload() }, 800)
+    await installPlugin(item.name, ver, forceInstall.value, taskId)
+    if (installPanel.value) {
+      installPanel.value.status = 'success'
+      installPanel.value.exitCode = 0
+      stopInstallPolling()
+      scrollInstallLogToBottom()
+    }
+    ElMessage.success(`插件 "${item.name}" 安装成功，点击"关闭"后刷新页面生效`)
+    // 不再自动刷新：面板停留"安装完成"状态，由用户点击关闭（closeInstallPanel 内刷新）
   } catch (err: unknown) {
     const msg = extractError(err)
-    ElMessage.error(`安装失败: ${msg}`)
+    const panel = installPanel.value
+    // 请求失败后补拉一次最终日志，让面板展示完整结尾
+    if (panel && panel.status === 'running') {
+      try {
+        const data = await getInstallLog(panel.taskId, panel.offset)
+        panel.lines.push(...data.lines)
+        panel.offset = data.offset
+        panel.status = data.status
+        panel.exitCode = data.exitCode
+        scrollInstallLogToBottom()
+      } catch {
+        /* 任务已过期，保留面板当前状态 */
+      }
+      stopInstallPolling()
+    }
+    if (panel?.status === 'terminated' || msg.includes('terminated by user')) {
+      ElMessage.warning(`插件 "${item.name}" 安装已手动终止`)
+    } else {
+      ElMessage.error(`安装失败: ${msg}`)
+    }
   } finally {
     installing.value = null
   }
@@ -722,5 +988,43 @@ function formatDate(dateStr: string): string {
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+/* ---- 安装进度面板 ---- */
+
+.install-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.install-progress-pkg {
+  font-weight: 600;
+  color: var(--app-text-bright);
+}
+
+.install-progress-exit {
+  font-size: 12px;
+  color: var(--app-text-dim);
+}
+
+.install-log {
+  height: 320px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: #0d1117;
+}
+
+.install-log pre {
+  margin: 0;
+  font-family: 'JetBrains Mono', Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

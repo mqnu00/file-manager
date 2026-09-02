@@ -772,7 +772,78 @@
 - **错误响应**:
   - `404` — 插件未加载
 
-### 4. 获取 npm 包版本列表
+### 4. 安装 / 重新安装插件
+
+安装（或切换版本）一个 npm 插件到统一安装目录。
+
+- **接口**: `POST /api/plugins/install`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**:
+
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | `packageName` | string | npm 包名（如 `@mqn00/file-manager-plugin-compress`） |
+  | `version` | string? | 精确版本或 npm tag；缺省为 latest |
+  | `force` | boolean? | 追加 `npm --force`（强制覆盖/绕过校验） |
+  | `taskId` | string? | 前端预生成的任务 id（仅 `[A-Za-z0-9_-]{8,64}`），用于请求发出后立即轮询安装日志 |
+
+- **安装语义**:
+  - 安装命令恒为 `npm install <pkg>@<ver> --prefix <prefix> --save-exact --legacy-peer-deps`（`force` 时追加 `--force`）。默认 `--legacy-peer-deps`：插件声明的 peer（宿主 `@mqn00/file-manager`）由运行时提供，**不会自动安装进插件 store**，避免把整个宿主（约 180 个包）复制进 store；插件所需真实第三方库应声明为普通 `dependencies`。
+  - **不设自动超时**：请求同步挂起直到 npm 结束，期间通过「安装任务日志」接口实时观察进度，可手动终止。
+  - npm 退出 0 但插件不可解析时，自动删除残缺包目录并重装一次（自愈）。
+  - 所有 npm 操作（安装/卸载/回滚）共用互斥队列：同一 store 上永远只有一个 npm 进程，杜绝并发 reify 互相撕扯（`ENOTEMPTY` 等问题）。
+
+- **响应示例**（成功）：
+
+  ```json
+  {
+    "name": "compress",
+    "enabled": true,
+    "local": false,
+    "source": "npm",
+    "taskId": "task-abc-00000001"
+  }
+  ```
+
+- **错误响应**：
+  - `400` — 包名/版本/taskId 非法，或 taskId 已被同名字的进行中任务占用
+  - `500` — npm 安装失败 / 安装后插件不可解析（响应携带 `taskId` 供拉取完整日志）
+
+### 5. 安装任务：日志 / 终止
+
+安装全程不生杀进程、不设超时，进度通过任务日志暴露，用户可自行决定等待或手动终止。
+
+- **查询进行中/近期任务**: `GET /api/plugins/install-tasks`
+
+  ```json
+  [
+    { "id": "task-abc-00000001", "packageName": "file-manager-plugin-compress", "status": "running", "startedAt": 1788317847000 }
+  ]
+  ```
+
+  `status`: `running` / `success` / `failed` / `terminated`。页面刷新后前端据此恢复安装面板。
+
+- **增量拉取日志**: `GET /api/plugins/install-log/:id?offset=<已读行数>`
+
+  ```json
+  { "id": "task-abc-00000001", "status": "running", "exitCode": null, "offset": 42, "lines": ["npm warn deprecated ...", "added 87 packages"] }
+  ```
+
+  前端按返回的 `offset` 继续轮询（建议 1s 间隔）。任务结束后日志保留 10 分钟。
+
+- **手动终止**: `POST /api/plugins/install-log/:id/terminate`
+
+  ```json
+  { "success": true }
+  ```
+
+  以 SIGTERM 结束 npm，任务状态置为 `terminated`，挂起的安装请求以"terminated by user"返回 500。终止可能留下不完整的安装目录，重试安装会自动自愈。
+
+- **错误响应**：
+  - `404` — 任务不存在或已过期
+  - `409` — 任务不在运行中（终止语义）
+
+### 6. 获取 npm 包版本列表
 
 获取 npm 插件包已发布的全部版本（semver 降序）及 latest 版本，用于前端版本下拉选择。
 
@@ -795,7 +866,7 @@
   - `502` — npm registry 请求失败
   - `504` — 请求超时
 
-### 5. 前端插件平台契约（v3.0.0）
+### 7. 前端插件平台契约（v3.0.0）
 
 前端插件 ctx 新增以下平台能力（类型入口 `@mqn00/file-manager/plugin/frontend`，完整规范见 [plugin-design.md](./plugin-design.md)）：
 
@@ -812,7 +883,7 @@
 > `import type { BulkAction, BulkActionsApi } from '@mqn00/file-manager/plugin/frontend'` 使用即可，
 > 无需本地重复声明；两处入口与真实实现经 `frontend/test/types-sync.test-d.ts` 双向断言防漂移。
 
-### 6. 插件数据目录（v3.0.0）
+### 8. 插件数据目录（v3.0.0）
 
 插件经 `ctx.storage`（后端）/ `ctx.pluginData`（前端）访问按**插件短名隔离、跨重启保留**的 KV 存储。前端调用最终落到以下 HTTP 接口（均需在请求头携带 `Authorization: Bearer <sessionToken>`）：
 
