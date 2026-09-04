@@ -58,7 +58,6 @@
     "format:check": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
-    "@mqn00/file-manager-plugin-file-viewer": "0.1.1",
     "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "express": "^4.19.2",
