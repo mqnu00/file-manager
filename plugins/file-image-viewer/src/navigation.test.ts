@@ -77,11 +77,11 @@ describe('currentIndex', () => {
 describe('makeViewerUrl', () => {
   it('编码路径并保留 mode', () => {
     expect(makeViewerUrl('a b/汉.png', 'image')).toBe(
-      '/plugin/file-viewer/view?path=a+b%2F%E6%B1%89.png&mode=image'
+      '/plugin/image/view?path=a+b%2F%E6%B1%89.png&mode=image'
     )
   })
   it('无 mode 时不带 mode 参数', () => {
-    expect(makeViewerUrl('a.png')).toBe('/plugin/file-viewer/view?path=a.png')
+    expect(makeViewerUrl('a.png')).toBe('/plugin/image/view?path=a.png')
   })
 })
 

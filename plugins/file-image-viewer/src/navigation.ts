@@ -39,14 +39,14 @@ export function currentIndex(files: FileItem[], currentPath: string): number {
 }
 
 /**
- * 构造查看页 URL（仅改 query，保持同一 /plugin/file-viewer/view 路由，
- * 由 file-viewer page 的 parseFromRoute 重渲染）。mode 可选保留。
+ * 构造查看页 URL（仅改 query，保持同一 /plugin/image/view 路由，
+ * 由查看页壳重渲染）。mode 可选保留。
  */
 export function makeViewerUrl(targetPath: string, mode?: string): string {
   const params = new URLSearchParams()
   params.set('path', targetPath)
   if (mode) params.set('mode', mode)
-  return `/plugin/file-viewer/view?${params.toString()}`
+  return `/plugin/image/view?${params.toString()}`
 }
 
 // ==================== 缩略图图库分页 ====================
