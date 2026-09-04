@@ -20,6 +20,13 @@ export interface FeaturesConfig {
   sudoElevation?: boolean
 }
 
+export interface NpmRegistryConfig {
+  /** npm 镜像源地址 */
+  url?: string
+  /** 是否启用镜像源（默认 false，使用 npm 官方源） */
+  enabled?: boolean
+}
+
 export interface AppConfig {
   auth: AuthConfig
   storageRoot: string
@@ -28,6 +35,7 @@ export interface AppConfig {
   pluginInstallDir?: string
   features?: FeaturesConfig
   plugins?: Record<string, any>
+  npmRegistry?: NpmRegistryConfig
 }
 
 const CONFIG_PATH = process.env.CONFIG_PATH
@@ -205,3 +213,12 @@ export function getPluginInstallPrefix(): string {
 
 /** 确保插件安装 prefix 目录存在且有 package.json */
 export { ensurePluginInstallPrefix }
+
+/** 获取 npm registry URL（enabled 时返回自定义 url，否则返回 undefined 使用官方源） */
+export function getNpmRegistry(): string | undefined {
+  const cfg = getConfig()
+  if (cfg.npmRegistry?.enabled && cfg.npmRegistry?.url) {
+    return cfg.npmRegistry.url
+  }
+  return undefined
+}

@@ -11,7 +11,7 @@ router.get('/', (_req: Request, res: Response) => {
 })
 
 router.put('/', (req: Request, res: Response) => {
-  const { auth, storageRoot, log, pluginInstallDir } = req.body
+  const { auth, storageRoot, log, pluginInstallDir, npmRegistry } = req.body
   const updates: any = {}
 
   if (auth) {
@@ -43,6 +43,12 @@ router.put('/', (req: Request, res: Response) => {
     updates.pluginInstallDir = pluginInstallDir
   }
 
+  if (npmRegistry !== undefined) {
+    updates.npmRegistry = {}
+    if (npmRegistry.url !== undefined) updates.npmRegistry.url = npmRegistry.url
+    if (npmRegistry.enabled !== undefined) updates.npmRegistry.enabled = npmRegistry.enabled
+  }
+
   const updated = updateConfig(updates)
   const sanitized = getSanitizedConfig()
 
@@ -63,6 +69,32 @@ router.post('/clean-logs', (_req: Request, res: Response) => {
   const maxDays = cfg.log?.retentionDays ?? 30
   const deleted = cleanOldLogs(maxDays)
   res.json({ success: true, deleted })
+})
+
+router.post('/test-registry', async (req: Request, res: Response) => {
+  const { url } = req.body
+  if (!url || typeof url !== 'string') {
+    res.status(400).json({ error: '缺少 url 参数' })
+    return
+  }
+
+  const start = Date.now()
+  try {
+    // 请求一个已知的小型包元数据来测试连通性 + 测延迟
+    const response = await fetch(`${url}/lodash`, {
+      signal: AbortSignal.timeout(10000),
+    })
+    const latency = Date.now() - start
+    if (response.ok) {
+      res.json({ ok: true, latency })
+    } else {
+      res.json({ ok: false, latency, error: `HTTP ${response.status}` })
+    }
+  } catch (err: unknown) {
+    const latency = Date.now() - start
+    const error = err instanceof Error ? err.message : String(err)
+    res.json({ ok: false, latency, error })
+  }
 })
 
 export default router

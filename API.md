@@ -137,7 +137,11 @@
       "token": "new-token",
       "tokenExpiryHours": 48
     },
-    "storageRoot": "/home/user/data"
+    "storageRoot": "/home/user/data",
+    "npmRegistry": {
+      "url": "https://registry.npmmirror.com",
+      "enabled": true
+    }
   }
   ```
 - **响应示例**:
@@ -168,6 +172,39 @@
     "message": "配置已重新加载"
   }
   ```
+
+### 4. 测试 npm 镜像源连通性
+
+测试指定 npm 镜像源的连通性和延迟，用于在启用镜像源前验证其可用性。
+
+- **接口**: `POST /api/config/test-registry`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **请求体**:
+  ```json
+  {
+    "url": "https://registry.npmmirror.com"
+  }
+  ```
+- **响应示例**（成功）:
+  ```json
+  {
+    "ok": true,
+    "latency": 120
+  }
+  ```
+- **响应示例**（失败）:
+  ```json
+  {
+    "ok": false,
+    "latency": 10000,
+    "error": "The operation was aborted"
+  }
+  ```
+- **说明**：
+  - `ok` 表示连通性测试是否成功
+  - `latency` 为响应延迟（毫秒）
+  - `error` 仅在失败时返回，描述失败原因
+  - 超时时间为 10 秒
 
 ---
 

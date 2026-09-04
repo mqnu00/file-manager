@@ -44,6 +44,36 @@
             <div class="form-item-tip">npm 插件的统一安装路径，支持 ~ 表示用户目录。修改后新安装的插件将写入新目录。</div>
           </el-form-item>
 
+          <el-form-item label="npm 镜像源">
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
+              <div style="display: flex; gap: 8px; align-items: center">
+                <el-input
+                  v-model="form.npmRegistryUrl"
+                  placeholder="https://registry.npmmirror.com"
+                  style="flex: 1"
+                />
+                <el-button :loading="testingRegistry" @click="handleTestRegistry">
+                  测试连通
+                </el-button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px">
+                <el-switch v-model="form.npmRegistryEnabled" />
+                <span style="font-size: 13px; color: var(--app-text-dim)">
+                  {{ form.npmRegistryEnabled ? '已启用（使用镜像源下载插件）' : '未启用（使用 npm 官方源）' }}
+                </span>
+              </div>
+              <div v-if="registryTestResult" class="form-item-tip" :style="{ color: registryTestResult.ok ? '#67c23a' : '#f56c6c' }">
+                <template v-if="registryTestResult.ok">
+                  ✓ 连通正常，延迟 {{ registryTestResult.latency }}ms
+                </template>
+                <template v-else>
+                  ✗ 连接失败（{{ registryTestResult.latency }}ms）：{{ registryTestResult.error }}
+                </template>
+              </div>
+              <div class="form-item-tip">下载插件速度慢时启用镜像源加速</div>
+            </div>
+          </el-form-item>
+
           <el-divider content-position="left">
             <span class="divider-label">日志清理</span>
           </el-divider>
@@ -85,7 +115,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getConfig, updateConfig, cleanLogs, type AppConfig } from '@/api/config'
+import { getConfig, updateConfig, cleanLogs, testRegistry, type AppConfig } from '@/api/config'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
@@ -96,6 +126,8 @@ const config = reactive<Partial<AppConfig>>({})
 const saving = ref(false)
 const cleaning = ref(false)
 const cleanResult = ref<number | null>(null)
+const testingRegistry = ref(false)
+const registryTestResult = ref<{ ok: boolean; latency: number; error?: string } | null>(null)
 
 const form = reactive({
   token: '',
@@ -104,6 +136,8 @@ const form = reactive({
   pluginInstallDir: '',
   cleanupOnStartup: true,
   retentionDays: 30,
+  npmRegistryUrl: '',
+  npmRegistryEnabled: false,
 })
 
 onMounted(async () => {
@@ -115,6 +149,8 @@ onMounted(async () => {
     form.pluginInstallDir = cfg.pluginInstallDir || ''
     form.cleanupOnStartup = cfg.log?.cleanupOnStartup ?? true
     form.retentionDays = cfg.log?.retentionDays ?? 30
+    form.npmRegistryUrl = cfg.npmRegistry?.url || ''
+    form.npmRegistryEnabled = cfg.npmRegistry?.enabled ?? false
   } catch {
     ElMessage.error('获取配置失败')
   }
@@ -127,6 +163,9 @@ function handleReset() {
   form.pluginInstallDir = config.pluginInstallDir || ''
   form.cleanupOnStartup = config.log?.cleanupOnStartup ?? true
   form.retentionDays = config.log?.retentionDays ?? 30
+  form.npmRegistryUrl = config.npmRegistry?.url || ''
+  form.npmRegistryEnabled = config.npmRegistry?.enabled ?? false
+  registryTestResult.value = null
 }
 
 async function handleCleanLogs() {
@@ -140,6 +179,22 @@ async function handleCleanLogs() {
     ElMessage.error('清理失败')
   }
   cleaning.value = false
+}
+
+async function handleTestRegistry() {
+  const url = form.npmRegistryUrl.trim()
+  if (!url) {
+    ElMessage.warning('请输入镜像源地址')
+    return
+  }
+  testingRegistry.value = true
+  registryTestResult.value = null
+  try {
+    registryTestResult.value = await testRegistry(url)
+  } catch {
+    registryTestResult.value = { ok: false, latency: 0, error: '请求失败' }
+  }
+  testingRegistry.value = false
 }
 
 async function handleSave() {
@@ -170,6 +225,16 @@ async function handleSave() {
     }
     if (form.pluginInstallDir !== (config.pluginInstallDir || '')) {
       payload.pluginInstallDir = form.pluginInstallDir
+      hasChange = true
+    }
+    if (
+      form.npmRegistryUrl !== (config.npmRegistry?.url || '') ||
+      form.npmRegistryEnabled !== (config.npmRegistry?.enabled ?? false)
+    ) {
+      payload.npmRegistry = {
+        url: form.npmRegistryUrl,
+        enabled: form.npmRegistryEnabled,
+      }
       hasChange = true
     }
 

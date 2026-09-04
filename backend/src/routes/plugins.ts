@@ -23,6 +23,7 @@ import {
   updatePluginConfig,
   getPluginInstallPrefix,
   ensurePluginInstallPrefix,
+  getNpmRegistry,
 } from '../config'
 import { authMiddleware } from '../middleware/auth'
 import { clearPluginData, getPluginStore } from '../plugin/storage'
@@ -549,7 +550,10 @@ async function rollbackInstalledPlugin(shortName: string, prefix: string): Promi
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const pkgName = require(path.join(rootDir, 'package.json')).name as string | undefined
       if (pkgName && PKG_NAME_RE.test(pkgName)) {
-        await withNpmLock(() => runNpm(['uninstall', pkgName, '--prefix', prefix], prefix, 60000))
+        const uninstallArgs = ['uninstall', pkgName, '--prefix', prefix]
+        const uninstallRegistry = getNpmRegistry()
+        if (uninstallRegistry) uninstallArgs.push('--registry', uninstallRegistry)
+        await withNpmLock(() => runNpm(uninstallArgs, prefix, 60000))
       }
     }
   } catch {
@@ -636,6 +640,8 @@ router.post('/install', authMiddleware, async (req: Request, res: Response) => {
       '--legacy-peer-deps',
     ]
     if (force) npmArgs.push('--force')
+    const registry = getNpmRegistry()
+    if (registry) npmArgs.push('--registry', registry)
 
     // 在互斥队列内执行 npm install（可观察、不设超时），完成后解析并自愈残缺目录
     const runInstallInLock = async (): Promise<string | null> => {
@@ -928,7 +934,10 @@ router.delete('/:name', authMiddleware, async (req: Request, res: Response) => {
     const prefix = getPluginInstallPrefix()
     try {
       // 与安装共用互斥队列，避免与并发的 npm install/reify 互相撕扯
-      await withNpmLock(() => runNpm(['uninstall', pkgName, '--prefix', prefix], prefix, 60000))
+      const uninstallArgs = ['uninstall', pkgName, '--prefix', prefix]
+      const uninstallRegistry = getNpmRegistry()
+      if (uninstallRegistry) uninstallArgs.push('--registry', uninstallRegistry)
+      await withNpmLock(() => runNpm(uninstallArgs, prefix, 60000))
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       res.status(500).json({ error: `npm uninstall failed: ${msg}` })
