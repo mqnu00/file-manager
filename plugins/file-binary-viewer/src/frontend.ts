@@ -358,8 +358,14 @@ function injectStyles(): void {
   document.head.appendChild(style)
 }
 
-/** 查看页外壳：返回按钮 + 文件信息 + 子查看器组件 */
-function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
+/** 查看页外壳：优先使用 file-viewer 共享外壳（含查看器切换下拉），否则降级为简易外壳 */
+function resolveViewerPage(ctx: FrontendPluginContext, component: unknown) {
+  const shellFactory = (window as unknown as Record<string, unknown>).__fm_create_viewer_page_shell as
+    | ((ctx: FrontendPluginContext, component: unknown, name?: string) => unknown)
+    | undefined
+  if (shellFactory) {
+    return shellFactory(ctx, component, 'HexViewerPage')
+  }
   const { h, computed, defineComponent } = ctx.Vue as unknown as {
     h: (...args: unknown[]) => unknown
     computed: <T>(fn: () => T) => { value: T }
@@ -400,7 +406,7 @@ function createViewerPage(ctx: FrontendPluginContext, component: unknown) {
 export const install: FrontendPluginInstallFunction = (ctx) => {
   injectStyles()
   const hexComponent = createHexViewer(ctx)
-  const viewerPage = createViewerPage(ctx, hexComponent)
+  const viewerPage = resolveViewerPage(ctx, hexComponent)
 
   ctx.router.addRoute({
     path: '/plugin/hex/view',
