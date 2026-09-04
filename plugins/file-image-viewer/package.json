@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-image-viewer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "File Manager 文件查看子插件：图片查看（缩放/旋转/适应窗口，文件夹内上一张/下一张切换，缩略图图库分页跳转，常见图片格式）",
   "main": "dist/backend.js",
   "exports": {

@@ -1,3 +1,15 @@
+## v3.0.2 (2026-09-04)
+
+> 配置增强：新增 npm 镜像源配置与连通性测试功能。
+>
+> 本版本仅涉及主项目配置功能，**插件 API 无变更**，已发布插件无需重新发布。
+
+### ✨ 新增功能
+
+- **npm 镜像源配置与连通性测试**：`config.yml` 新增 `npmRegistry` 配置段（url / enabled），默认 npmmirror 但不启用；后端新增 `POST /api/config/test-registry` 接口，请求测试延迟（10s 超时）；`PUT /api/config` 支持 `npmRegistry` 字段热更新；插件安装/卸载/回滚自动注入 `--registry`（enabled 时）；前端配置页新增「npm 镜像源」表单：URL 输入 + 启用开关 + 测试连通按钮
+
+---
+
 ## v3.0.1 (2026-09-02)
 
 > 插件安装稳定性修复：定位并修复生产环境"第二个插件安装失败"问题（`ENOTEMPTY: directory not empty, rmdir lodash/fp` 与重装报 "installed but not found"）。

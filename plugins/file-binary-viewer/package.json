@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-file-binary-viewer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "File Manager 文件查看子插件：十六进制查看与编辑（分页读写，未知格式文件的兜底查看方式）",
   "main": "dist/backend.js",
   "exports": {
