@@ -1,13 +1,13 @@
 <template>
   <div class="config-container">
     <div class="config-card">
-      <div style="padding-top: 10px; padding-left: 10px">
+      <div class="back-bar">
         <el-button text class="back-btn" @click="router.push('/')">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
       </div>
-      <div style="padding: 20px 36px">
+      <div class="config-body">
         <div class="config-header">
           <h3 class="config-title">系统配置</h3>
         </div>
@@ -344,19 +344,36 @@ async function handleSave() {
 .config-container {
   height: 100vh;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 60px;
-  overflow-y: auto;
+  padding: 40px 16px;
+  overflow: hidden;
 }
 
 .config-card {
   width: 560px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
+}
+
+.back-bar {
+  flex-shrink: 0;
+  padding: 10px 10px 0;
+}
+
+.config-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 36px;
 }
 
 .config-title {
