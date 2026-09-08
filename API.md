@@ -208,6 +208,59 @@
 
 ---
 
+## 系统信息接口
+
+所有系统信息接口均需认证。
+
+### 1. 获取应用信息
+
+返回当前版本与项目仓库地址（纯本地读取，无网络请求）。
+
+- **接口**: `GET /api/system/info`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**:
+  ```json
+  {
+    "version": "3.0.2",
+    "repoUrl": "https://github.com/mqnu00/file-manager"
+  }
+  ```
+- **说明**：
+  - `version` 读取后端 `package.json`（与 npm 发布版本一致）
+  - `repoUrl` 读取后端 `package.json` 的 `repository.url`（去掉 `.git` 后缀）
+
+### 2. 检测更新
+
+查询 npm registry 中 `@mqn00/file-manager` 的 `dist-tags.latest`，并与当前版本比较（semver）。若 `config.yml` 启用了 `npmRegistry` 镜像源，则通过该镜像查询（与插件下载行为一致）。
+
+- **接口**: `GET /api/system/check-update`
+- **请求头**: `Authorization: Bearer <sessionToken>`
+- **响应示例**（有更新）:
+  ```json
+  {
+    "current": "3.0.2",
+    "latest": "3.1.0",
+    "hasUpdate": true,
+    "releaseUrl": "https://github.com/mqnu00/file-manager/releases/tag/v3.1.0"
+  }
+  ```
+- **响应示例**（已是最新）:
+  ```json
+  {
+    "current": "3.0.2",
+    "latest": "3.0.2",
+    "hasUpdate": false
+  }
+  ```
+- **错误响应**:
+  - `502` - npm registry 请求失败（registry 返回非 2xx 等）
+  - `504` - npm registry 请求超时（10 秒）
+- **说明**：
+  - `releaseUrl` 仅在有更新时返回，指向 GitHub Release 对应 tag
+  - 本接口仅检测并提示，不执行自动升级
+
+---
+
 ## 文件接口
 
 ### 1. 获取文件列表

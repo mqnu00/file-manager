@@ -105,6 +105,56 @@
             <el-button type="primary" :loading="saving" @click="handleSave"> 保存配置 </el-button>
             <el-button @click="handleReset"> 重置 </el-button>
           </el-form-item>
+
+          <el-divider content-position="left">
+            <span class="divider-label">关于</span>
+          </el-divider>
+
+          <el-form-item label="当前版本">
+            <span class="about-version">v{{ systemInfo.version || '---' }}</span>
+          </el-form-item>
+
+          <el-form-item label="项目地址">
+            <a
+              v-if="systemInfo.repoUrl"
+              :href="systemInfo.repoUrl"
+              target="_blank"
+              rel="noopener"
+              class="about-link"
+            >{{ systemInfo.repoUrl }}</a>
+            <span v-else class="form-item-tip">---</span>
+          </el-form-item>
+
+          <el-form-item label="检测更新">
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
+              <div style="display: flex; align-items: center; gap: 10px">
+                <el-button :loading="checkingUpdate" @click="handleCheckUpdate">检测更新</el-button>
+                <el-tag v-if="updateResult?.hasUpdate" type="warning" effect="dark" size="small">
+                  可更新到 v{{ updateResult.latest }}
+                </el-tag>
+              </div>
+              <div
+                v-if="updateResult"
+                class="form-item-tip"
+                :style="{ color: updateResult.hasUpdate ? '#e6a23c' : '#67c23a' }"
+              >
+                <template v-if="updateResult.hasUpdate">
+                  发现新版本 v{{ updateResult.latest }}（当前 v{{ updateResult.current }}）
+                  <template v-if="updateResult.releaseUrl">
+                    · <a :href="updateResult.releaseUrl" target="_blank" rel="noopener" class="about-link">查看更新内容</a>
+                  </template>
+                  <br />
+                  升级命令：<code class="update-cmd">npm i -g @mqn00/file-manager</code>
+                </template>
+                <template v-else>
+                  ✓ 已是最新版本（v{{ updateResult.current }}）
+                </template>
+              </div>
+              <div v-if="updateError" class="form-item-tip" style="color: #f56c6c">
+                ✗ 检测失败：{{ updateError }}
+              </div>
+            </div>
+          </el-form-item>
         </el-form>
       </div>
     </div>
@@ -116,6 +166,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getConfig, updateConfig, cleanLogs, testRegistry, type AppConfig } from '@/api/config'
+import { getSystemInfo, checkUpdate, type SystemInfo, type UpdateCheckResult } from '@/api/system'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
@@ -128,6 +179,11 @@ const cleaning = ref(false)
 const cleanResult = ref<number | null>(null)
 const testingRegistry = ref(false)
 const registryTestResult = ref<{ ok: boolean; latency: number; error?: string } | null>(null)
+
+const systemInfo = reactive<SystemInfo>({ version: '', repoUrl: '' })
+const checkingUpdate = ref(false)
+const updateResult = ref<UpdateCheckResult | null>(null)
+const updateError = ref('')
 
 const form = reactive({
   token: '',
@@ -154,7 +210,27 @@ onMounted(async () => {
   } catch {
     ElMessage.error('获取配置失败')
   }
+
+  // 「关于」信息：获取失败静默，不影响配置页功能
+  try {
+    Object.assign(systemInfo, await getSystemInfo())
+  } catch {
+    /* ignore */
+  }
 })
+
+async function handleCheckUpdate() {
+  checkingUpdate.value = true
+  updateResult.value = null
+  updateError.value = ''
+  try {
+    updateResult.value = await checkUpdate()
+  } catch (err) {
+    const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+    updateError.value = message || '请求失败'
+  }
+  checkingUpdate.value = false
+}
 
 function handleReset() {
   form.token = ''
@@ -316,5 +392,29 @@ async function handleSave() {
   font-size: 12px;
   color: var(--app-text-dim);
   line-height: 1.5;
+}
+
+.about-version {
+  color: var(--app-text-bright);
+  font-weight: 600;
+}
+
+.about-link {
+  color: var(--app-accent);
+  text-decoration: none;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
+.update-cmd {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--app-accent-bg);
+  border: 1px solid var(--app-accent-border);
+  color: var(--app-text-bright);
+  font-family: monospace;
+  font-size: 12px;
 }
 </style>

@@ -11,6 +11,7 @@ import fileStreamRoutes from './routes/fileStream'
 import folderRoutes from './routes/folders'
 import authRoutes from './routes/auth'
 import configRoutes from './routes/config'
+import systemRoutes from './routes/system'
 import logRoutes from './routes/logs'
 import taskRoutes from './routes/tasks'
 import { errorHandler } from './middleware/errorHandler'
@@ -54,6 +55,7 @@ app.use(express.json({ limit: '10mb' }))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/config', configRoutes)
+app.use('/api/system', systemRoutes)
 // 文件流式输出（公开，令牌鉴权）— 必须先于 /api/files 鉴权路由注册
 app.use('/api/files/stream', fileStreamRoutes)
 app.use('/api/files', authMiddleware, fileRoutes)

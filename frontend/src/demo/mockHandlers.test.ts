@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setupMockApi } from './mockHandlers'
+import { mockSystemInfo, DEMO_VERSION } from './mockData'
 
 let requestHandler: ((config: any) => any) | undefined
 
@@ -53,5 +54,22 @@ describe('mockHandlers 插件接口（demo）', () => {
     })
     const afterLoad = await request({ url: '/plugins', method: 'get', baseURL: '/api' })
     expect(afterLoad.data[0].enabled).toBe(true)
+  })
+})
+
+describe('mockHandlers 系统信息接口（demo）', () => {
+  it('GET /api/system/info 返回 demo 版本与项目地址', async () => {
+    const res = await request({ url: '/system/info', method: 'get', baseURL: '/api' })
+    expect(res.data).toEqual(mockSystemInfo)
+    expect(res.data.version).toBe(DEMO_VERSION)
+  })
+
+  it('GET /api/system/check-update 返回已是最新（demo 无真实更新）', async () => {
+    const res = await request({ url: '/system/check-update', method: 'get', baseURL: '/api' })
+    expect(res.data).toEqual({
+      current: DEMO_VERSION,
+      latest: DEMO_VERSION,
+      hasUpdate: false,
+    })
   })
 })

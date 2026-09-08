@@ -1,3 +1,13 @@
+## Unreleased
+
+> 设置页新增「关于」区块：显示当前版本与项目地址，支持检测更新。
+
+### ✨ 新功能
+
+- **关于与更新检测**：后端新增 `GET /api/system/info`（当前版本 + 项目地址，读取 `backend/package.json`，纯本地无网络请求）与 `GET /api/system/check-update`（查询 npm registry 的 `dist-tags.latest` 并以 semver 比较，启用 npm 镜像源时走同一镜像，10s 超时）；前端配置页底部新增「关于」区块：当前版本、GitHub 项目地址、检测更新按钮（发现新版本时提示版本号、Release 链接与 `npm i -g @mqn00/file-manager` 升级命令，仅检测提示、不自动升级）；Demo 模式补充对应 mock 接口
+
+---
+
 ## v3.0.2 (2026-09-04)
 
 > 配置增强：新增 npm 镜像源配置与连通性测试功能。

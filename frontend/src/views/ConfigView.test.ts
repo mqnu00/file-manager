@@ -19,6 +19,11 @@ vi.mock('@/api/config', () => ({
   cleanLogs: vi.fn(),
 }))
 
+vi.mock('@/api/system', () => ({
+  getSystemInfo: vi.fn(),
+  checkUpdate: vi.fn(),
+}))
+
 vi.mock('element-plus', async (importOriginal) => {
   const actual = await importOriginal<typeof import('element-plus')>()
   return {
@@ -30,11 +35,14 @@ vi.mock('element-plus', async (importOriginal) => {
 
 import ConfigView from './ConfigView.vue'
 import { getConfig, updateConfig, cleanLogs } from '@/api/config'
+import { getSystemInfo, checkUpdate } from '@/api/system'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const mockedGetConfig = vi.mocked(getConfig)
 const mockedUpdateConfig = vi.mocked(updateConfig)
 const mockedCleanLogs = vi.mocked(cleanLogs)
+const mockedGetSystemInfo = vi.mocked(getSystemInfo)
+const mockedCheckUpdate = vi.mocked(checkUpdate)
 const mockedAlert = vi.mocked(ElMessageBox.alert)
 
 const fakeConfig = {
@@ -49,6 +57,11 @@ beforeEach(() => {
   mockedGetConfig.mockResolvedValue(JSON.parse(JSON.stringify(fakeConfig)))
   mockedUpdateConfig.mockResolvedValue({ success: true, config: JSON.parse(JSON.stringify(fakeConfig)), sessionsCleared: false })
   mockedCleanLogs.mockResolvedValue({ success: true, deleted: 3 })
+  mockedGetSystemInfo.mockResolvedValue({
+    version: '3.0.2',
+    repoUrl: 'https://github.com/mqnu00/file-manager',
+  })
+  mockedCheckUpdate.mockResolvedValue({ current: '3.0.2', latest: '3.0.2', hasUpdate: false })
   mockedAlert.mockResolvedValue(undefined)
 })
 
@@ -114,5 +127,56 @@ describe('ConfigView.vue', () => {
     mockedGetConfig.mockRejectedValue(new Error('500'))
     await mountView()
     expect(ElMessage.error).toHaveBeenCalledWith('获取配置失败')
+  })
+})
+
+describe('ConfigView.vue 关于区块', () => {
+  it('mount 加载系统信息并显示当前版本与项目地址', async () => {
+    const wrapper = await mountView()
+    expect(mockedGetSystemInfo).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('v3.0.2')
+    const link = wrapper.get('a.about-link')
+    expect(link.attributes('href')).toBe('https://github.com/mqnu00/file-manager')
+  })
+
+  it('getSystemInfo 失败 → 静默降级，不影响配置页', async () => {
+    mockedGetSystemInfo.mockRejectedValue(new Error('500'))
+    const wrapper = await mountView()
+    expect(mockedGetConfig).toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('获取配置失败') // 关于失败不提示，配置加载照常
+  })
+
+  it('检测更新 → 已是最新版本提示', async () => {
+    const wrapper = await mountView()
+    await findButton(wrapper, '检测更新')!.trigger('click')
+    await flushPromises()
+    expect(mockedCheckUpdate).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('已是最新版本（v3.0.2）')
+  })
+
+  it('检测更新 → 发现新版本时显示版本号与升级命令', async () => {
+    mockedCheckUpdate.mockResolvedValue({
+      current: '3.0.2',
+      latest: '3.1.0',
+      hasUpdate: true,
+      releaseUrl: 'https://github.com/mqnu00/file-manager/releases/tag/v3.1.0',
+    })
+    const wrapper = await mountView()
+    await findButton(wrapper, '检测更新')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('可更新到 v3.1.0')
+    expect(wrapper.text()).toContain('发现新版本 v3.1.0（当前 v3.0.2）')
+    expect(wrapper.get('a.about-link[href*="releases/tag/v3.1.0"]').attributes('href')).toBe(
+      'https://github.com/mqnu00/file-manager/releases/tag/v3.1.0'
+    )
+    expect(wrapper.text()).toContain('npm i -g @mqn00/file-manager')
+  })
+
+  it('检测更新失败 → 显示错误原因', async () => {
+    mockedCheckUpdate.mockRejectedValue({ response: { data: { error: 'npm registry request timed out' } } })
+    const wrapper = await mountView()
+    await findButton(wrapper, '检测更新')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('检测失败：npm registry request timed out')
   })
 })
