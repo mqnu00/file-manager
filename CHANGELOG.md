@@ -1,10 +1,27 @@
-## Unreleased
+## v3.0.3 (未发布)
 
-> 设置页新增「关于」区块：显示当前版本与项目地址，支持检测更新。
+> 设置页体验升级：新增「关于」区块（版本显示、项目地址、检测更新）与布局重构（居中卡片、卡内滚动、吸底操作栏）；「发现插件」搜索结果按包名二次过滤，仅显示名称匹配的条目。
+>
+> 本版本仅涉及主项目设置页与插件发现搜索的前端体验，**插件 API 无变更**，已发布插件（peer `^3.0.0`）无需重新发布。
 
-### ✨ 新功能
+### ✨ 新增功能
 
-- **关于与更新检测**：后端新增 `GET /api/system/info`（当前版本 + 项目地址，读取 `backend/package.json`，纯本地无网络请求）与 `GET /api/system/check-update`（查询 npm registry 的 `dist-tags.latest` 并以 semver 比较，启用 npm 镜像源时走同一镜像，10s 超时）；前端配置页底部新增「关于」区块：当前版本、GitHub 项目地址、检测更新按钮（发现新版本时提示版本号、Release 链接与 `npm i -g @mqn00/file-manager` 升级命令，仅检测提示、不自动升级）；Demo 模式补充对应 mock 接口
+- **关于与更新检测**：后端新增 `GET /api/system/info`（当前版本 + 项目地址，读取 `backend/package.json`，纯本地无网络请求）与 `GET /api/system/check-update`（查询 npm registry 的 `dist-tags.latest` 并以 semver 比较，启用 npm 镜像源时走同一镜像，10s 超时）；前端配置页新增独立「关于」区块（与「系统配置」同级）：当前版本、GitHub 项目地址、检测更新按钮（发现新版本时提示版本号、Release 链接与 `npm i -g @mqn00/file-manager` 升级命令，仅检测提示、不自动升级）；Demo 模式补充对应 mock 接口
+- **插件搜索结果按包名过滤**：「发现插件」对 npm 搜索结果做二次过滤——npm 搜索接口为全文匹配（可能命中描述/关键词而非包名），现仅保留包名包含搜索词的条目（大小写不敏感的包含匹配；`file-manager-plugin-<name>` 短名是全名子串，故同样命中），搜索词为空时不过滤；分页仍以 npm 总命中数为准，过滤后当前页可能少于每页条数
+
+### 🎨 样式优化
+
+- **设置页布局重构**：设置卡片垂直居中（上下 40px 等距），页面级滚动改为卡片内滚动（`config-body` 承担 `overflow-y`），返回栏固定于卡片顶部不随内容滚动，卡片补 `max-width` 防窄屏溢出
+- **「关于」独立区块**：移出 `el-form`，升级为与「系统配置」同级的独立区块（复用 `config-header`/`config-title` 视觉），130px 标签列与上方表单标签对齐
+- **保存/重置操作栏 sticky 吸底**：操作栏 `position: sticky; bottom: 0`——自然位置在视口下方时钉在滚动区底部、滚到原位即随内容落位，不再悬浮遮挡；补不透明毛玻璃背景与 `z-index` 覆盖滚动经过的内容
+
+### 🐛 Bug 修复
+
+- **miku 主题吸底操作栏透底修复**：吸底操作栏在 miku 主题下原为一整块纯色黑、滚动时透出底下表单项；主项目新增主题变量钩子 `--app-panel-replica`（内置主题默认 = `--app-panel`，作为悬浮面板通用契约），miku 主题新增 `panel-replica.ts` 按 body 同套视口几何计算背景图绘制矩形并精确对位（监听 scroll/resize/DOM 挂载/`--miku-bg` 变化，rAF 节流，teardown 完整还原）
+
+### 🔧 工程改进
+
+- **CI 修复**：移除 backend 依赖中的 `@mqn00/file-manager-plugin-file-viewer`（其 peer `@mqn00/file-manager@^3.0.0` 无法从 lock 文件解析导致 `npm ci` 失败）
 
 ---
 
