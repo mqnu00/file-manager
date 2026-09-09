@@ -105,57 +105,68 @@
             <el-button type="primary" :loading="saving" @click="handleSave"> 保存配置 </el-button>
             <el-button @click="handleReset"> 重置 </el-button>
           </el-form-item>
+        </el-form>
 
-          <el-divider content-position="left">
-            <span class="divider-label">关于</span>
-          </el-divider>
+        <div class="config-header about-header">
+          <h3 class="config-title">关于</h3>
+        </div>
 
-          <el-form-item label="当前版本">
-            <span class="about-version">v{{ systemInfo.version || '---' }}</span>
-          </el-form-item>
+        <div class="about-section">
+          <div class="about-row">
+            <div class="about-label">当前版本</div>
+            <div class="about-content">
+              <span class="about-version">v{{ systemInfo.version || '---' }}</span>
+            </div>
+          </div>
 
-          <el-form-item label="项目地址">
-            <a
-              v-if="systemInfo.repoUrl"
-              :href="systemInfo.repoUrl"
-              target="_blank"
-              rel="noopener"
-              class="about-link"
-            >{{ systemInfo.repoUrl }}</a>
-            <span v-else class="form-item-tip">---</span>
-          </el-form-item>
+          <div class="about-row">
+            <div class="about-label">项目地址</div>
+            <div class="about-content">
+              <a
+                v-if="systemInfo.repoUrl"
+                :href="systemInfo.repoUrl"
+                target="_blank"
+                rel="noopener"
+                class="about-link"
+              >{{ systemInfo.repoUrl }}</a>
+              <span v-else class="form-item-tip">---</span>
+            </div>
+          </div>
 
-          <el-form-item label="检测更新">
-            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
-              <div style="display: flex; align-items: center; gap: 10px">
-                <el-button :loading="checkingUpdate" @click="handleCheckUpdate">检测更新</el-button>
-                <el-tag v-if="updateResult?.hasUpdate" type="warning" effect="dark" size="small">
-                  可更新到 v{{ updateResult.latest }}
-                </el-tag>
-              </div>
-              <div
-                v-if="updateResult"
-                class="form-item-tip"
-                :style="{ color: updateResult.hasUpdate ? '#e6a23c' : '#67c23a' }"
-              >
-                <template v-if="updateResult.hasUpdate">
-                  发现新版本 v{{ updateResult.latest }}（当前 v{{ updateResult.current }}）
-                  <template v-if="updateResult.releaseUrl">
-                    · <a :href="updateResult.releaseUrl" target="_blank" rel="noopener" class="about-link">查看更新内容</a>
+          <div class="about-row">
+            <div class="about-label">检测更新</div>
+            <div class="about-content">
+              <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <el-button :loading="checkingUpdate" @click="handleCheckUpdate">检测更新</el-button>
+                  <el-tag v-if="updateResult?.hasUpdate" type="warning" effect="dark" size="small">
+                    可更新到 v{{ updateResult.latest }}
+                  </el-tag>
+                </div>
+                <div
+                  v-if="updateResult"
+                  class="form-item-tip"
+                  :style="{ color: updateResult.hasUpdate ? '#e6a23c' : '#67c23a' }"
+                >
+                  <template v-if="updateResult.hasUpdate">
+                    发现新版本 v{{ updateResult.latest }}（当前 v{{ updateResult.current }}）
+                    <template v-if="updateResult.releaseUrl">
+                      · <a :href="updateResult.releaseUrl" target="_blank" rel="noopener" class="about-link">查看更新内容</a>
+                    </template>
+                    <br />
+                    升级命令：<code class="update-cmd">npm i -g @mqn00/file-manager</code>
                   </template>
-                  <br />
-                  升级命令：<code class="update-cmd">npm i -g @mqn00/file-manager</code>
-                </template>
-                <template v-else>
-                  ✓ 已是最新版本（v{{ updateResult.current }}）
-                </template>
-              </div>
-              <div v-if="updateError" class="form-item-tip" style="color: #f56c6c">
-                ✗ 检测失败：{{ updateError }}
+                  <template v-else>
+                    ✓ 已是最新版本（v{{ updateResult.current }}）
+                  </template>
+                </div>
+                <div v-if="updateError" class="form-item-tip" style="color: #f56c6c">
+                  ✗ 检测失败：{{ updateError }}
+                </div>
               </div>
             </div>
-          </el-form-item>
-        </el-form>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -409,6 +420,32 @@ async function handleSave() {
   font-size: 12px;
   color: var(--app-text-dim);
   line-height: 1.5;
+}
+
+.about-header {
+  margin-top: 12px;
+}
+
+.about-row {
+  display: flex;
+  margin-bottom: 18px;
+}
+
+.about-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 32px;
+  color: var(--app-text);
+}
+
+.about-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.about-section :deep(.form-item-tip) {
+  margin-top: 0;
 }
 
 .about-version {
