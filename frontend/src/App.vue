@@ -46,6 +46,10 @@ body {
   --app-bg: #f5f7fa;
   --app-panel: #fff;
   --app-panel-solid: #fff;
+  /* 面板复刻背景：悬浮面板（如设置页吸底操作栏）用，需覆盖滚动经过的内容，
+     且尽量复刻卡片表面观感。默认取 --app-panel；带背景图的主题（如 miku）
+     应覆盖为「视口坐标重铺背景 + 暗色叠加」的完整 background 简写 */
+  --app-panel-replica: var(--app-panel);
   --app-border: #e4e7ed;
   --app-shadow: 0 2px 8px rgb(0 0 0 / 6%);
   --app-glow: none;
@@ -84,6 +88,7 @@ html.cyber {
   --app-bg: #060b1a;
   --app-panel: rgb(10 18 40 / 35%);
   --app-panel-solid: rgb(10 18 40 / 60%);
+  --app-panel-replica: var(--app-panel);
   --app-border: rgb(0 240 255 / 20%);
   --app-shadow: none;
   --app-glow: 0 0 12px rgb(0 240 255 / 30%);

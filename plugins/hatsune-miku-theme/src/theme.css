@@ -45,6 +45,16 @@ html.hatsune-miku {
   --app-scrollbar-track: rgb(0 0 0 / 50%);
   --app-scrollbar-thumb: rgb(10 189 198 / 35%);
   --app-scrollbar-thumb-hover: rgb(0 242 255 / 50%);
+  /* 面板复刻背景（主项目悬浮面板钩子，如设置页吸底操作栏）：与 el-dialog /
+     el-select 下拉同一套「暗色叠加 + 背景图」配方。注意：不能用
+     background-attachment: fixed —— 面板位于带 backdrop-filter 的卡片内，
+     Chromium 会把 fixed 背景相对该祖先定位（甚至不绘制），导致透出底下内容。
+     这里 CSS 只提供不透明基线（元素坐标对齐，未校准但盖得住），
+     精确的视口对位由 panel-replica.ts 按面板实时视口位置计算写入。 */
+  --app-panel-replica: linear-gradient(var(--app-panel), var(--app-panel)) 0 0 / auto no-repeat,
+    linear-gradient(rgb(4 4 5 / 45%), rgb(4 4 5 / 45%)) 0 0 / auto no-repeat,
+    radial-gradient(1000px 520px at 15% -5%, rgb(0 242 255 / 12%), transparent 65%) 0 0 / 100vw 100vh no-repeat,
+    var(--miku-bg) center / cover no-repeat var(--app-bg);
 
   /* Element Plus 主题变量覆盖 */
   --el-color-primary-light-9: rgb(0 242 255 / 10%);

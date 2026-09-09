@@ -102,7 +102,9 @@
           </el-form-item>
         </el-form>
 
-        <div class="form-actions">
+        <!-- data-panel-replica：悬浮面板契约。带背景图的主题（如 miku）据此
+             用 JS 校准背景，使其透出 body 背景图的对应视口位置 -->
+        <div class="form-actions" data-panel-replica>
           <el-button @click="handleReset"> 重置 </el-button>
           <el-button :loading="saving" type="primary" @click="handleSave"> 保存配置 </el-button>
         </div>
@@ -418,7 +420,9 @@ async function handleSave() {
 }
 
 /* 表单级底部操作栏：与各配置分节（认证/存储/插件/日志）区分，作用于整份配置。
-   sticky 钉在滚动区底部，滚至自然位置后随内容落位（不再悬浮）。 */
+   sticky 钉在滚动区底部，滚至自然位置后随内容落位（不再悬浮）。
+   背景用「面板复刻」变量：内置主题为卡片面板色，miku 等带背景图的主题
+   覆盖为「视口坐标重铺背景 + 暗色叠加」，避免出现一整块纯色黑。 */
 /* margin-top 24px 与相邻表单项 18px 下边距折叠后取 24px，对齐 el-divider 分节间距节奏 */
 .form-actions {
   position: sticky;
@@ -428,7 +432,7 @@ async function handleSave() {
   justify-content: flex-end;
   margin-top: 24px;
   padding: 16px 0;
-  background: var(--app-panel-solid);
+  background: var(--app-panel-replica, var(--app-panel));
   backdrop-filter: var(--app-blur);
   border-top: 1px solid var(--app-border);
 }
