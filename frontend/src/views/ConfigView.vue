@@ -100,12 +100,12 @@
               </div>
             </div>
           </el-form-item>
-
-          <el-form-item>
-            <el-button type="primary" :loading="saving" @click="handleSave"> 保存配置 </el-button>
-            <el-button @click="handleReset"> 重置 </el-button>
-          </el-form-item>
         </el-form>
+
+        <div class="form-actions">
+          <el-button @click="handleReset"> 重置 </el-button>
+          <el-button :loading="saving" type="primary" @click="handleSave"> 保存配置 </el-button>
+        </div>
 
         <div class="config-header about-header">
           <h3 class="config-title">关于</h3>
@@ -384,7 +384,9 @@ async function handleSave() {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px 36px;
+  /* 底部不留 padding：sticky 操作栏的约束盒到卡底，钉住时才能贴合卡底缘；
+     内容末尾间距由 about-row 自带 margin 提供 */
+  padding: 20px 36px 0;
 }
 
 .config-title {
@@ -415,6 +417,22 @@ async function handleSave() {
   color: var(--app-text);
 }
 
+/* 表单级底部操作栏：与各配置分节（认证/存储/插件/日志）区分，作用于整份配置。
+   sticky 钉在滚动区底部，滚至自然位置后随内容落位（不再悬浮）。 */
+/* margin-top 24px 与相邻表单项 18px 下边距折叠后取 24px，对齐 el-divider 分节间距节奏 */
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding: 16px 0;
+  background: var(--app-panel-solid);
+  backdrop-filter: var(--app-blur);
+  border-top: 1px solid var(--app-border);
+}
+
 .form-item-tip {
   margin-top: 4px;
   font-size: 12px;
@@ -423,7 +441,7 @@ async function handleSave() {
 }
 
 .about-header {
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .about-row {
