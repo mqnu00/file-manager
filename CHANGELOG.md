@@ -1,4 +1,4 @@
-## v3.0.3 (未发布)
+## v3.0.3 (2026-09-14)
 
 > 设置页体验升级：新增「关于」区块（版本显示、项目地址、检测更新）与布局重构（居中卡片、卡内滚动、吸底操作栏）；「发现插件」搜索结果按包名二次过滤，仅显示名称匹配的条目。
 >
@@ -14,14 +14,24 @@
 - **设置页布局重构**：设置卡片垂直居中（上下 40px 等距），页面级滚动改为卡片内滚动（`config-body` 承担 `overflow-y`），返回栏固定于卡片顶部不随内容滚动，卡片补 `max-width` 防窄屏溢出
 - **「关于」独立区块**：移出 `el-form`，升级为与「系统配置」同级的独立区块（复用 `config-header`/`config-title` 视觉），130px 标签列与上方表单标签对齐
 - **保存/重置操作栏 sticky 吸底**：操作栏 `position: sticky; bottom: 0`——自然位置在视口下方时钉在滚动区底部、滚到原位即随内容落位，不再悬浮遮挡；补不透明毛玻璃背景与 `z-index` 覆盖滚动经过的内容
+- **保存/重置按钮顺序对调**：操作栏从 `el-form-item` 移出为独立按钮条，按钮次序改为「重置」在左、「保存配置」在右，主操作落位到表单常规右侧位置
 
 ### 🐛 Bug 修复
 
 - **miku 主题吸底操作栏透底修复**：吸底操作栏在 miku 主题下原为一整块纯色黑、滚动时透出底下表单项；主项目新增主题变量钩子 `--app-panel-replica`（内置主题默认 = `--app-panel`，作为悬浮面板通用契约），miku 主题新增 `panel-replica.ts` 按 body 同套视口几何计算背景图绘制矩形并精确对位（监听 scroll/resize/DOM 挂载/`--miku-bg` 变化，rAF 节流，teardown 完整还原）
 
+### 🧪 测试
+
+- 新增 4 个测试文件（246 行）：`backend/src/routes/system.test.ts`（`/info` 与 `/check-update` 集成测试，含未认证 401、镜像源 URL 断言、registry 非 2xx → 502、网络异常 → 502、超时 → 504）、`frontend/src/api/system.test.ts`、`frontend/src/demo/mockHandlers.test.ts`（系统信息 mock 接口）、`frontend/src/views/ConfigView.test.ts` 新增「关于区块」用例组（版本/项目地址渲染、`getSystemInfo` 失败静默降级、检测更新三种结果分支）
+
+### 📝 文档
+
+- `API.md` 新增「系统信息接口」章节：`GET /api/system/info`、`GET /api/system/check-update`（含响应示例、`502`/`504` 错误说明与镜像源行为）
+- `README.md` 特性列表补充「关于与更新检测」
+
 ### 🔧 工程改进
 
-- **CI 修复**：移除 backend 依赖中的 `@mqn00/file-manager-plugin-file-viewer`（其 peer `@mqn00/file-manager@^3.0.0` 无法从 lock 文件解析导致 `npm ci` 失败）
+- **CI 修复**：移除 backend 依赖中的 `@mqn00/file-manager-plugin-file-viewer`（其 peer `@mqn00/file-manager@^3.0.0` 无法从 lock 文件解析导致 `npm ci` 失败）；该提交位于 v3.0.2 发布提交之后、未收录进 v3.0.2 段落，随本版本一并发布
 
 ---
 
