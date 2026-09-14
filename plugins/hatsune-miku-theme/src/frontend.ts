@@ -28,6 +28,7 @@ import {
 import type { BackgroundInfo } from './backgrounds'
 import { currentPanelOpacity, currentPanelBlur, previewPanelSettings } from './panel-settings'
 import { setupTooltipFixedBackground } from './tooltip-fixed-background'
+import { setupPanelReplica } from './panel-replica'
 import { createBackgroundView } from './background-view'
 
 const THEME_CSS = rawThemeCss
@@ -57,6 +58,8 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
 
   injectPageStyles()
   const teardownTooltip = setupTooltipFixedBackground()
+  // 吸底悬浮面板（[data-panel-replica]）背景对位：透出 body 背景对应位置
+  const teardownReplica = setupPanelReplica()
 
   /** 背景列表（内置 + 自定义），失败时保持内置兜底 */
   const backgrounds = ref<BackgroundInfo[]>(builtinFallback())
@@ -96,5 +99,6 @@ export const install: FrontendPluginInstallFunction = async (ctx) => {
   return () => {
     document.getElementById(PAGE_STYLE_ID)?.remove()
     teardownTooltip()
+    teardownReplica()
   }
 }

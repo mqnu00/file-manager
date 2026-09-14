@@ -1,0 +1,52 @@
+# Codecov 配置
+# 参考：https://docs.codecov.com/docs/common-recipe-list
+#
+# 本文件显式打开 Codecov 默认不做（或默认关闭）的两件事：
+#   1. PR 上的「项目覆盖检查」—— 默认只挂 git diff 的 patch 检查，
+#      补 coverage.status.project 后才会出现 project 检查
+#   2. PR 评论里的「项目覆盖报告」—— 默认只显示 diff 覆盖，
+#      由 comment.hide_project_coverage: false 打开
+#
+# 修改后请校验：curl -X POST --data-binary @codecov.yml https://codecov.io/validate
+
+codecov:
+  # 等本次 commit 的其余 CI 状态跑完再下发 Codecov 状态。
+  # 注意本项目覆盖率上传排在单测之后、Playwright E2E 之前
+  # （见 .github/workflows/test-release.yml），所以 Codecov 状态会晚于 E2E 结束才出现
+  require_ci_to_pass: true
+
+# 与 CI 上传的 flags 对齐（上传时用 flags: backend / frontend）
+# carryforward：某个 flag 本次没上传（例如跳过了前端单测）时沿用上一份报告，
+# 避免它被当成「0 覆盖」而让项目覆盖率出现假的暴跌
+flags:
+  backend:
+    carryforward: true
+  frontend:
+    carryforward: true
+
+coverage:
+  status:
+    # 项目整体覆盖率检查：默认不存在，必须显式声明才会出现在 PR 上
+    project:
+      default:
+        # auto = 与 base commit 的覆盖率比较（若不写则默认 auto）
+        target: auto
+        # 允许的波动范围，0% 即不允许下降
+        threshold: 0%
+        base: auto
+        # 第一阶段非阻塞：检查照常显示在 PR 上，但不会拦住合并。
+        # 待覆盖率基线稳定后删掉这一行即可转为阻塞。
+        informational: true
+
+comment:
+  # 评论里的区块：diff（本次改动行覆盖）/ flags（backend、frontend 分项）/ files（文件明细）
+  layout: 'diff, flags, files'
+  behavior: default
+  # false：覆盖率无变化时也发评论，便于确认 Codecov 确实收到了报告
+  require_changes: false
+  # false：没有 base 报告的首次 PR 也发评论
+  require_base: false
+  # true：必须有 head 报告才发，避免上传失败时发出空评论
+  require_head: true
+  # 关键项：false 才会在评论中显示「项目覆盖率」，而不仅是 git diff 覆盖
+  hide_project_coverage: false

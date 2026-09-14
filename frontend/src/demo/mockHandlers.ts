@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios'
-import { mockFileTree, mockConfig, mockLogs, getMockLogDates } from './mockData'
+import { mockFileTree, mockConfig, mockLogs, getMockLogDates, mockSystemInfo, DEMO_VERSION } from './mockData'
 import type { FileItem } from '@/types'
 import { DEMO_PLUGINS } from './plugins'
 import type { DemoPluginConfig } from './plugins'
@@ -263,6 +263,17 @@ export function setupMockApi(api: AxiosInstance) {
 
     if (fullUrl === '/api/config/clean-logs' && method === 'post') {
       return mockResponse({ success: true, deleted: 3 })
+    }
+
+    // ============================================================
+    // System（关于：版本 / 项目地址 / 检测更新）
+    // ============================================================
+    if (fullUrl === '/api/system/info' && method === 'get') {
+      return mockResponse(mockSystemInfo)
+    }
+
+    if (fullUrl === '/api/system/check-update' && method === 'get') {
+      return mockResponse({ current: DEMO_VERSION, latest: DEMO_VERSION, hasUpdate: false })
     }
 
     // ============================================================

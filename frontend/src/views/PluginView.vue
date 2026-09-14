@@ -689,7 +689,11 @@ async function fetchSearch() {
   searched.value = false
   try {
     const res = await searchPlugins(searchQuery.value.trim(), currentPage.value, pageSize.value)
-    searchResults.value = res.results
+    // 二次过滤：npm 搜索是全文匹配（可能命中描述/关键词），
+    // 这里仅保留"包名包含搜索词"的结果，搜索词为空时不过滤
+    const q = searchQuery.value.trim()
+    const filtered = q ? res.results.filter((item) => matchesQuery(item.name, q)) : res.results
+    searchResults.value = filtered
     searchTotal.value = res.total
     // 初始化版本号
     const versions: Record<string, string> = {}
@@ -726,6 +730,11 @@ function deriveShortName(packageName: string): string {
   const unscoped = packageName.includes('/') ? packageName.split('/')[1] : packageName
   const prefix = 'file-manager-plugin-'
   return unscoped.startsWith(prefix) ? unscoped.slice(prefix.length) : unscoped
+}
+
+/** 搜索词与插件包名的二次匹配（大小写不敏感的包含匹配） */
+function matchesQuery(packageName: string, query: string): boolean {
+  return packageName.toLowerCase().includes(query.toLowerCase())
 }
 
 async function handleInstall(item: NpmSearchResult) {

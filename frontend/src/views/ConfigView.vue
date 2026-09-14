@@ -1,13 +1,13 @@
 <template>
   <div class="config-container">
     <div class="config-card">
-      <div style="padding-top: 10px; padding-left: 10px">
+      <div class="back-bar">
         <el-button text class="back-btn" @click="router.push('/')">
           <el-icon><ArrowLeft /></el-icon>
           返回
         </el-button>
       </div>
-      <div style="padding: 20px 36px">
+      <div class="config-body">
         <div class="config-header">
           <h3 class="config-title">系统配置</h3>
         </div>
@@ -100,12 +100,75 @@
               </div>
             </div>
           </el-form-item>
-
-          <el-form-item>
-            <el-button type="primary" :loading="saving" @click="handleSave"> 保存配置 </el-button>
-            <el-button @click="handleReset"> 重置 </el-button>
-          </el-form-item>
         </el-form>
+
+        <!-- data-panel-replica：悬浮面板契约。带背景图的主题（如 miku）据此
+             用 JS 校准背景，使其透出 body 背景图的对应视口位置 -->
+        <div class="form-actions" data-panel-replica>
+          <el-button @click="handleReset"> 重置 </el-button>
+          <el-button :loading="saving" type="primary" @click="handleSave"> 保存配置 </el-button>
+        </div>
+
+        <div class="config-header about-header">
+          <h3 class="config-title">关于</h3>
+        </div>
+
+        <div class="about-section">
+          <div class="about-row">
+            <div class="about-label">当前版本</div>
+            <div class="about-content">
+              <span class="about-version">v{{ systemInfo.version || '---' }}</span>
+            </div>
+          </div>
+
+          <div class="about-row">
+            <div class="about-label">项目地址</div>
+            <div class="about-content">
+              <a
+                v-if="systemInfo.repoUrl"
+                :href="systemInfo.repoUrl"
+                target="_blank"
+                rel="noopener"
+                class="about-link"
+              >{{ systemInfo.repoUrl }}</a>
+              <span v-else class="form-item-tip">---</span>
+            </div>
+          </div>
+
+          <div class="about-row">
+            <div class="about-label">检测更新</div>
+            <div class="about-content">
+              <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
+                <div style="display: flex; align-items: center; gap: 10px">
+                  <el-button :loading="checkingUpdate" @click="handleCheckUpdate">检测更新</el-button>
+                  <el-tag v-if="updateResult?.hasUpdate" type="warning" effect="dark" size="small">
+                    可更新到 v{{ updateResult.latest }}
+                  </el-tag>
+                </div>
+                <div
+                  v-if="updateResult"
+                  class="form-item-tip"
+                  :style="{ color: updateResult.hasUpdate ? '#e6a23c' : '#67c23a' }"
+                >
+                  <template v-if="updateResult.hasUpdate">
+                    发现新版本 v{{ updateResult.latest }}（当前 v{{ updateResult.current }}）
+                    <template v-if="updateResult.releaseUrl">
+                      · <a :href="updateResult.releaseUrl" target="_blank" rel="noopener" class="about-link">查看更新内容</a>
+                    </template>
+                    <br />
+                    升级命令：<code class="update-cmd">npm i -g @mqn00/file-manager</code>
+                  </template>
+                  <template v-else>
+                    ✓ 已是最新版本（v{{ updateResult.current }}）
+                  </template>
+                </div>
+                <div v-if="updateError" class="form-item-tip" style="color: #f56c6c">
+                  ✗ 检测失败：{{ updateError }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -116,6 +179,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getConfig, updateConfig, cleanLogs, testRegistry, type AppConfig } from '@/api/config'
+import { getSystemInfo, checkUpdate, type SystemInfo, type UpdateCheckResult } from '@/api/system'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 
@@ -128,6 +192,11 @@ const cleaning = ref(false)
 const cleanResult = ref<number | null>(null)
 const testingRegistry = ref(false)
 const registryTestResult = ref<{ ok: boolean; latency: number; error?: string } | null>(null)
+
+const systemInfo = reactive<SystemInfo>({ version: '', repoUrl: '' })
+const checkingUpdate = ref(false)
+const updateResult = ref<UpdateCheckResult | null>(null)
+const updateError = ref('')
 
 const form = reactive({
   token: '',
@@ -154,7 +223,27 @@ onMounted(async () => {
   } catch {
     ElMessage.error('获取配置失败')
   }
+
+  // 「关于」信息：获取失败静默，不影响配置页功能
+  try {
+    Object.assign(systemInfo, await getSystemInfo())
+  } catch {
+    /* ignore */
+  }
 })
+
+async function handleCheckUpdate() {
+  checkingUpdate.value = true
+  updateResult.value = null
+  updateError.value = ''
+  try {
+    updateResult.value = await checkUpdate()
+  } catch (err) {
+    const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+    updateError.value = message || '请求失败'
+  }
+  checkingUpdate.value = false
+}
 
 function handleReset() {
   form.token = ''
@@ -268,19 +357,38 @@ async function handleSave() {
 .config-container {
   height: 100vh;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 60px;
-  overflow-y: auto;
+  padding: 40px 16px;
+  overflow: hidden;
 }
 
 .config-card {
   width: 560px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--app-panel);
   border: 1px solid var(--app-border);
   border-radius: 12px;
   box-shadow: var(--app-glow), var(--app-shadow);
   backdrop-filter: var(--app-blur);
+}
+
+.back-bar {
+  flex-shrink: 0;
+  padding: 10px 10px 0;
+}
+
+.config-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 底部不留 padding：sticky 操作栏的约束盒到卡底，钉住时才能贴合卡底缘；
+     内容末尾间距由 about-row 自带 margin 提供 */
+  padding: 20px 36px 0;
 }
 
 .config-title {
@@ -311,10 +419,78 @@ async function handleSave() {
   color: var(--app-text);
 }
 
+/* 表单级底部操作栏：与各配置分节（认证/存储/插件/日志）区分，作用于整份配置。
+   sticky 钉在滚动区底部，滚至自然位置后随内容落位（不再悬浮）。
+   背景用「面板复刻」变量：内置主题为卡片面板色，miku 等带背景图的主题
+   覆盖为「视口坐标重铺背景 + 暗色叠加」，避免出现一整块纯色黑。 */
+/* margin-top 24px 与相邻表单项 18px 下边距折叠后取 24px，对齐 el-divider 分节间距节奏 */
+.form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding: 16px 0;
+  background: var(--app-panel-replica, var(--app-panel));
+  backdrop-filter: var(--app-blur);
+  border-top: 1px solid var(--app-border);
+}
+
 .form-item-tip {
   margin-top: 4px;
   font-size: 12px;
   color: var(--app-text-dim);
   line-height: 1.5;
+}
+
+.about-header {
+  margin-top: 0;
+}
+
+.about-row {
+  display: flex;
+  margin-bottom: 18px;
+}
+
+.about-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 32px;
+  color: var(--app-text);
+}
+
+.about-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.about-section :deep(.form-item-tip) {
+  margin-top: 0;
+}
+
+.about-version {
+  color: var(--app-text-bright);
+  font-weight: 600;
+}
+
+.about-link {
+  color: var(--app-accent);
+  text-decoration: none;
+}
+
+.about-link:hover {
+  text-decoration: underline;
+}
+
+.update-cmd {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--app-accent-bg);
+  border: 1px solid var(--app-accent-border);
+  color: var(--app-text-bright);
+  font-family: monospace;
+  font-size: 12px;
 }
 </style>
