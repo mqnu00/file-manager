@@ -32,6 +32,7 @@
 ### 🔧 工程改进
 
 - **CI 修复**：移除 backend 依赖中的 `@mqn00/file-manager-plugin-file-viewer`（其 peer `@mqn00/file-manager@^3.0.0` 无法从 lock 文件解析导致 `npm ci` 失败）；该提交位于 v3.0.2 发布提交之后、未收录进 v3.0.2 段落，随本版本一并发布
+- **接入 Codecov 覆盖率上传**：CI 的后端/前端单测步骤改为 `vitest run --coverage`（两处 `vitest.config.ts` 本就配置了 `lcov` reporter），新增两步 `codecov/codecov-action@v5` 以 `flags: backend` / `frontend` 分别上传各自 `coverage/lcov.info`（`disable_search` 限定只上传指定文件，`fail_ci_if_error: false` 令 fork PR 取不到 token 时仅告警不阻断）；上传置于单测之后、E2E 之前，E2E 失败不会丢掉已产出的覆盖率报告
 
 ---
 

@@ -51,13 +51,40 @@ jobs:
         working-directory: plugins/compress
         run: npm run build
 
+      # --coverage：provider v8、reporter 含 lcov，产出 <pkg>/coverage/lcov.info
+      # （见 backend/vitest.config.ts 与 frontend/vitest.config.ts）
       - name: Backend unit/integration tests
         working-directory: backend
-        run: npx vitest run
+        run: npx vitest run --coverage
 
       - name: Frontend component tests
         working-directory: frontend
-        run: npx vitest run
+        run: npx vitest run --coverage
+
+      # 覆盖率上传：分两次上传，用 flags 区分后端/前端，
+      # 便于在 Codecov 上分别查看与配置各自的状态检查。
+      # 放在单测之后、E2E 之前：E2E 失败也不会丢掉已产出的覆盖率报告。
+      # fail_ci_if_error 保持 false——fork 发起的 PR 拿不到 CODECOV_TOKEN，
+      # 上传失败只告警，不阻断流水线。
+      - name: Upload backend coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/coverage/lcov.info
+          disable_search: true
+          flags: backend
+          name: backend
+          fail_ci_if_error: false
+
+      - name: Upload frontend coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/coverage/lcov.info
+          disable_search: true
+          flags: frontend
+          name: frontend
+          fail_ci_if_error: false
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
