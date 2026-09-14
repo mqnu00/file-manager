@@ -33,6 +33,7 @@
 
 - **CI 修复**：移除 backend 依赖中的 `@mqn00/file-manager-plugin-file-viewer`（其 peer `@mqn00/file-manager@^3.0.0` 无法从 lock 文件解析导致 `npm ci` 失败）；该提交位于 v3.0.2 发布提交之后、未收录进 v3.0.2 段落，随本版本一并发布
 - **接入 Codecov 覆盖率上传**：CI 的后端/前端单测步骤改为 `vitest run --coverage`（两处 `vitest.config.ts` 本就配置了 `lcov` reporter），新增两步 `codecov/codecov-action@v5` 以 `flags: backend` / `frontend` 分别上传各自 `coverage/lcov.info`（`disable_search` 限定只上传指定文件，`fail_ci_if_error: false` 令 fork PR 取不到 token 时仅告警不阻断）；上传置于单测之后、E2E 之前，E2E 失败不会丢掉已产出的覆盖率报告
+- **新增根 `codecov.yml`**：打开 PR 上的「项目覆盖检查」（`coverage.status.project`——Codecov 默认只挂 git diff 的 patch 检查）与 PR 评论中的「项目覆盖报告」（`comment.hide_project_coverage: false`——默认只显示 diff 覆盖）；两项均以 `informational: true` **非阻塞**起步（检查照常显示但不拦合并，待基线稳定后去掉该行即转为阻塞）；`flags` 声明 `carryforward: true`，避免某一侧单测未上传时其覆盖率被误判为 0 而出现假暴跌；配置已通过 `https://codecov.io/validate` 校验
 
 ---
 
