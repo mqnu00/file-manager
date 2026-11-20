@@ -1,6 +1,6 @@
 {
   "name": "@mqn00/file-manager-plugin-compress",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File Manager 压缩插件：支持多选文件/文件夹压缩为 zip，可指定输出文件夹（默认当前文件夹），压缩前预检源读取权限与输出目录写入权限，SSE 进度与取消",
   "main": "dist/backend.js",
   "exports": {

@@ -281,12 +281,6 @@ export function createCompressService(deps: ServiceDeps) {
           // 忽略清理失败
         }
       }
-      const cleanupAbort = () => {
-        if (signal?.aborted) {
-          cleanup()
-          reject(new Error('CANCELLED'))
-        }
-      }
 
       const output = createWriteStream(targetFull)
       const archive = archiver.create('zip', { zlib: { level: 9 } })
@@ -299,11 +293,26 @@ export function createCompressService(deps: ServiceDeps) {
         fn()
       }
 
+      /**
+       * 释放写流 fd。
+       * 取消/出错时若只 unlink 半成品、不 destroy 写流，fd 会钉住已删除的 zip，
+       * 压缩数据块直到进程退出才归还。
+       */
+      const destroyOutput = () => {
+        try {
+          output.destroy()
+        } catch {
+          // 已销毁/已关闭时幂等
+        }
+      }
+
       const onAbort = () => {
         if (settled) return
         settled = true
-        cleanup()
+        signal?.removeEventListener('abort', onAbort)
         archive.abort()
+        destroyOutput()
+        cleanup()
         reject(new Error('CANCELLED'))
       }
 
@@ -331,16 +340,18 @@ export function createCompressService(deps: ServiceDeps) {
 
       archive.on('error', (err) => {
         finish(() => {
-          cleanupAbort()
           signal?.removeEventListener('abort', onAbort)
+          destroyOutput()
+          cleanup()
           reject(err instanceof Error ? err : new Error(String(err)))
         })
       })
 
       output.on('error', (err) => {
         finish(() => {
-          cleanup()
           signal?.removeEventListener('abort', onAbort)
+          destroyOutput()
+          cleanup()
           reject(err instanceof Error ? err : new Error(String(err)))
         })
       })

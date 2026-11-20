@@ -1,7 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import os from 'os'
 import path from 'path'
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, chmodSync, statSync, existsSync } from 'fs'
+import {
+  mkdtempSync,
+  rmSync,
+  mkdirSync,
+  writeFileSync,
+  chmodSync,
+  statSync,
+  existsSync,
+  readdirSync,
+  readlinkSync,
+} from 'fs'
 import { createCompressService, ZCompressError } from './compress'
 import type { ServiceDeps } from './compress'
 
@@ -51,9 +61,9 @@ describe('computeTarget 命名与冲突后缀', () => {
   })
 
   it('多个 → <首名> 等 N 项.zip', () => {
-    expect(
-      service.targetBaseName([src('a.txt'), src('b.txt'), src('docs', 'dir')])
-    ).toBe('a.txt 等 3 项.zip')
+    expect(service.targetBaseName([src('a.txt'), src('b.txt'), src('docs', 'dir')])).toBe(
+      'a.txt 等 3 项.zip'
+    )
   })
 
   it('目标已存在时自动加 (n) 后缀', () => {
@@ -195,6 +205,25 @@ describe('runJob 压缩任务', () => {
     const result = await promise
     expect(result).toBe('CANCELLED')
     expect(existsSync(p('big.zip'))).toBe(false)
+
+    // 取消后写流必须已释放 fd，否则已删除的半成品 zip 会一直占着数据块（Linux 断言，CI 覆盖）
+    if (process.platform === 'linux') {
+      const zipFds = () =>
+        readdirSync('/proc/self/fd')
+          .map((fd) => {
+            try {
+              return readlinkSync(`/proc/self/fd/${fd}`)
+            } catch {
+              return ''
+            }
+          })
+          .filter((target) => target.includes('big.zip'))
+      const deadline = Date.now() + 1500
+      while (zipFds().length > 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+      }
+      expect(zipFds()).toEqual([])
+    }
   })
 
   it('空选择 → ZCompressError', async () => {
@@ -206,8 +235,8 @@ describe('runJob 压缩任务', () => {
     const service = createCompressService(makeDeps())
     mkdirSync(p('docs/sub'), { recursive: true })
     writeFileSync(p('docs/a.txt'), 'a')
-    await expect(
-      service.runJob({ paths: ['docs'], outputDir: 'docs/sub' })
-    ).rejects.toThrow(/不能位于/)
+    await expect(service.runJob({ paths: ['docs'], outputDir: 'docs/sub' })).rejects.toThrow(
+      /不能位于/
+    )
   })
 })
