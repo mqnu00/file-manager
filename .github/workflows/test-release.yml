@@ -51,6 +51,11 @@ jobs:
         working-directory: plugins/compress
         run: npm run build
 
+      # 压缩取消路径的 fd 释放回归（/proc/self/fd 断言，Linux 有效）
+      - name: Compress plugin tests
+        working-directory: plugins/compress
+        run: npm test
+
       # --coverage：provider v8、reporter 含 lcov，产出 <pkg>/coverage/lcov.info
       # （见 backend/vitest.config.ts 与 frontend/vitest.config.ts）
       - name: Backend unit/integration tests

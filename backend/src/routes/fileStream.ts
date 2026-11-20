@@ -12,6 +12,7 @@ import path from 'path';
 import mime from 'mime-types';
 import { getTokenStore, parseRange } from '../services/fileIO';
 import { log } from '../utils/logger';
+import { pipeStreamToResponse } from '../utils/streamResponse';
 
 const router = Router();
 
@@ -52,12 +53,12 @@ router.get('/', (req: Request, res: Response) => {
       res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
       res.setHeader('Content-Length', end - start + 1);
       const stream = fs.createReadStream(fullPath, { start, end });
-      stream.pipe(res);
+      pipeStreamToResponse(stream, res, 'stream');
       return;
     }
 
     res.setHeader('Content-Length', stat.size);
-    fs.createReadStream(fullPath).pipe(res);
+    pipeStreamToResponse(fs.createReadStream(fullPath), res, 'stream');
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     log('ERROR', 'stream', `流式读取失败: ${msg}`);

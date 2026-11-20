@@ -20,6 +20,7 @@ import type {
   Request,
   Response,
 } from '@mqn00/file-manager/plugin'
+import { pipeStreamToResponse } from './streamResponse'
 
 /** 需要 soffice 转换的后缀（其余格式前端直接渲染） */
 export const CONVERTIBLE_EXTENSIONS = ['.ppt', '.pptx', '.doc']
@@ -200,6 +201,8 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
     if (!token) return sendError(res, 400, '缺少 token 参数')
     const fullPath = tokenStore.consume(token)
     if (!fullPath) return sendError(res, 403, '令牌无效或已过期')
+    const onStreamError = (message: string) =>
+      ctx.utils.logger.log('ERROR', 'file-office-viewer', `stream 失败: ${message}`)
     try {
       if (!fs.existsSync(fullPath) || fs.statSync(fullPath).isDirectory()) {
         return sendError(res, 404, '文件不存在')
@@ -232,12 +235,12 @@ export const install: PluginInstallFunction<BackendPluginContext> = (ctx) => {
         res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`)
         res.setHeader('Content-Length', end - start + 1)
         const stream = fs.createReadStream(fullPath, { start, end })
-        stream.pipe(res)
+        pipeStreamToResponse(stream, res, onStreamError)
         return
       }
 
       res.setHeader('Content-Length', stat.size)
-      fs.createReadStream(fullPath).pipe(res)
+      pipeStreamToResponse(fs.createReadStream(fullPath), res, onStreamError)
     } catch (e) {
       ctx.utils.logger.log(
         'ERROR',

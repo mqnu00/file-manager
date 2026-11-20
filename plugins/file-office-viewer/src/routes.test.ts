@@ -39,7 +39,11 @@ beforeAll(() => {
     utils: {
       path: { safe: mockSafe },
       logger: { log: () => {} },
-    } as never,
+    },
+    // 托管服务/查看器注册所需的最小桩（真实上下文由加载器注入）
+    getService: () => ({ registerViewer: () => {}, unregisterViewer: () => {} }),
+    manageService: () => {},
+    startService: () => {},
   } as never)
 })
 

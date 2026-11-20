@@ -10,6 +10,7 @@ import { safePath, getStorageRoot, isVirtualFs } from '../utils/safePath'
 import { sendSSEProgress, sendSSEComplete, sendSSEError, setSSEHeaders } from '../utils/sse'
 import { AppError, ElevationRequiredError } from '../utils/AppError'
 import { log } from '../utils/logger'
+import { pipeStreamToResponse } from '../utils/streamResponse'
 import * as sudoService from './sudoService'
 import * as fileIO from './fileIO'
 
@@ -550,7 +551,7 @@ export const downloadFile = (filePath: string, res: Response): void => {
   res.setHeader('Content-Length', stats.size)
 
   const stream = fs.createReadStream(fullPath)
-  stream.pipe(res)
+  pipeStreamToResponse(stream, res, 'download')
 }
 
 /**
