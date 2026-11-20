@@ -57,6 +57,9 @@ file-manager.tar.gz
 # 文件管理目录（可选，如果需要忽略管理的文件）
 backend/files/
 
+# VS Code 本地历史
+.history/
+
 # agent
 .mimocode/
 .qwen/

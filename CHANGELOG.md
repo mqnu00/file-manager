@@ -1,3 +1,31 @@
+## v3.0.4 (2026-11-20)
+
+> 修复流式传输的文件句柄泄漏：预览、下载、Office 转换与压缩在客户端中断（返回、拖动进度条、取消）时不再遗留源流，删除文件后磁盘块可立即归还；同步补发 v3.0.3 已记录的 miku 主题吸底修复。
+>
+> 插件 API 无变更，已安装插件无需改动；本次涉及体验修复的 3 个插件同步发版。
+
+### 🐛 Bug 修复
+
+- **中断预览/下载后删除文件，磁盘空间不归还（文件句柄泄漏）**：`createReadStream().pipe(res)` 在客户端断开时只 `unpipe`、不销毁源流，fd 一直持有 inode（`nlink=0`、显示为 `(deleted)`），块需等进程退出才释放——大视频看一半返回再删除即可复现（实测 512MB 视频一个块都不还）。新增 `backend/src/utils/streamResponse.ts` 统一转发：监听 `res.close` 销毁源流、补 `error` 监听（未发响应头返回 500，已发头直接关闭连接）；接入预览流（Range/非 Range，`routes/fileStream.ts`）、下载流（`services/fileService.ts`）与 Office 转 PDF 产物（`plugins/file-office-viewer`）
+- **压缩取消/出错后残留半成品与句柄**：取消或出错时先 `destroy()` 写流再 `unlink`，并移除 abort 监听；archive 的 `error` 事件同样清理半成品（`plugins/compress`）
+
+### 🧪 测试
+
+- 新增 `streamResponse` 单测与路由级集成测试（真实 HTTP 服务 + `/proc/self/fd` 断言 fd 数，非 Linux 自动跳过）；Office 插件补同类用例；compress 插件补「取消后无残留 fd」断言；CI 增加 compress 插件测试步骤
+
+### 🔧 工程改进
+
+- `.gitignore` 忽略 VS Code 本地历史 `.history/`
+- README 插件区版本号同步为 v3.0.4
+
+### 📦 插件发版
+
+- `file-manager-plugin-compress` 0.1.0 → **0.1.1**：取消/出错时的半成品与句柄清理
+- `file-manager-plugin-file-office-viewer` 0.1.2 → **0.1.3**：转换产物流的中断清理
+- `file-manager-plugin-hatsune-miku-theme` 0.1.2 → **0.1.3**：补发 v3.0.3 已记录的「吸底操作栏透底」修复（`panel-replica` 背景对位），该修复此前只进了仓库、未发布到 npm（0.1.2 仍是 2026-08-31 的构建）
+
+---
+
 ## v3.0.3 (2026-09-14)
 
 > 设置页体验升级：新增「关于」区块（版本显示、项目地址、检测更新）与布局重构（居中卡片、卡内滚动、吸底操作栏）；「发现插件」搜索结果按包名二次过滤，仅显示名称匹配的条目。
